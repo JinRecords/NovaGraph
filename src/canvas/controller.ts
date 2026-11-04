@@ -666,11 +666,25 @@ export class CanvasController {
           ta.style.lineHeight = '1.3';
           ta.style.color = '#1e293b';
 
+          editor.addEventListener('mousedown', (e) => e.stopPropagation());
+          editor.addEventListener('click', (e) => e.stopPropagation());
+
           ta.addEventListener('input', () => {
-            this.updateStickyNote(target as Group, { text: ta.value });
+            const rec = target as unknown as Record<string, unknown>;
+            rec.ngNoteText = ta.value;
+            const objs = (target as Group).getObjects?.() || [];
+            const tb = objs[3] as any;
+            if (tb && typeof tb.set === 'function') {
+              tb.set('text', ta.value);
+              (target as Group).set('dirty', true);
+              this.canvas.requestRenderAll();
+            }
           });
 
+          let closed = false;
           const closeEditor = () => {
+            if (closed) return;
+            closed = true;
             this.updateStickyNote(target as Group, { text: ta.value });
             editor.remove();
           };
@@ -678,6 +692,8 @@ export class CanvasController {
           ta.addEventListener('blur', closeEditor);
           ta.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
               closeEditor();
             }
             e.stopPropagation();

@@ -148,7 +148,6 @@ export function App({ onClose }: { onClose: () => void }) {
           editingObj.exitEditing();
           ctrl.canvas.requestRenderAll();
         }
-        setEditingNote(null);
         return;
       }
 
