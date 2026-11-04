@@ -71,9 +71,6 @@ export function App({ onClose }: { onClose: () => void }) {
       containerRef.current
     );
     ctrl.setToastHandler(showToast);
-    ctrl.onEditStickyNote = (group, rect, text, color) => {
-      setEditingNote({ group, rect, text, color });
-    };
     controllerRef.current = ctrl;
     setController(ctrl);
 
