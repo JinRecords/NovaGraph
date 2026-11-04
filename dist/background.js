@@ -1,0 +1,1 @@
+(function(){chrome.action?.onClicked?.addListener(async e=>{e.id&&e.url?.includes(`novastar.show`)?chrome.tabs.sendMessage(e.id,{action:`toggle_novagraph`}):chrome.tabs.create({url:`https://novastar.show/`})})})();
