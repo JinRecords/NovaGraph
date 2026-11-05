@@ -122,6 +122,8 @@ export class CanvasController {
   private spacePressed = false;
   private lastPanClient = { x: 0, y: 0 };
   private panningDragDistance = 0;
+  private lastRightClickWasDrag = false;
+  private contextMenuOpenedAt = 0;
   private altCloneDoneForDrag = false;
   private smartGuides: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
   private isExporting = false;
@@ -349,15 +351,6 @@ export class CanvasController {
     const handleContextMenu = (ev: MouseEvent) => {
       ev.preventDefault();
       ev.stopPropagation();
-
-      if (this.panningDragDistance > 6) {
-        this.panningDragDistance = 0;
-        return;
-      }
-
-      const scenePt = this.canvas.getScenePoint(ev);
-      const target = this.canvas.findTarget(ev);
-      this.triggerContextMenu(ev, scenePt, target || null);
     };
 
     this.canvasEl.addEventListener('contextmenu', handleContextMenu);
@@ -391,6 +384,17 @@ export class CanvasController {
       }
 
       if (e.button === 2 || (e.ctrlKey && e.button === 0) || this.isPanning) {
+        const dist = this.rightClickDownPos
+          ? Math.hypot(e.clientX - this.rightClickDownPos.x, e.clientY - this.rightClickDownPos.y)
+          : 0;
+        const wasDrag = dist > 5 || this.panningDragDistance > 5;
+        if (wasDrag) {
+          this.lastRightClickWasDrag = true;
+          window.setTimeout(() => {
+            this.lastRightClickWasDrag = false;
+          }, 100);
+        }
+        this.panningDragDistance = 0;
         this.isPanning = false;
         this.canvas.selection = this.activeTool === 'select';
         this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
@@ -401,7 +405,7 @@ export class CanvasController {
     });
 
     window.addEventListener('mousemove', (e: MouseEvent) => {
-      if (this.isPanning) {
+      if (this.isPanning && (e.target !== this.canvas.upperCanvasEl && e.target !== this.canvasEl)) {
         if (e.buttons === 0 && !this.spacePressed && this.activeTool !== 'pan') {
           this.isPanning = false;
           this.canvas.selection = this.activeTool === 'select';
@@ -413,6 +417,12 @@ export class CanvasController {
         const dx = e.clientX - this.lastPanClient.x;
         const dy = e.clientY - this.lastPanClient.y;
         this.panningDragDistance += Math.hypot(dx, dy);
+        if (this.rightClickDownPos) {
+          const totalDist = Math.hypot(e.clientX - this.rightClickDownPos.x, e.clientY - this.rightClickDownPos.y);
+          if (totalDist > 5) {
+            this.lastRightClickWasDrag = true;
+          }
+        }
         this.lastPanClient = { x: e.clientX, y: e.clientY };
         const vpt = this.canvas.viewportTransform;
         if (vpt) {
@@ -455,6 +465,8 @@ export class CanvasController {
       // 1. Right click: Pan if held/dragged, context menu if clicked without moving
       if (ev.button === 2) {
         this.isPanning = true;
+        this.lastRightClickWasDrag = false;
+        this.panningDragDistance = 0;
         this.canvas.selection = false;
         this.lastPanClient = { x: ev.clientX, y: ev.clientY };
         this.rightClickDownPos = {
@@ -633,11 +645,20 @@ export class CanvasController {
           this.canvas.requestRenderAll();
           return;
         }
+        const dx = ev.clientX - this.lastPanClient.x;
+        const dy = ev.clientY - this.lastPanClient.y;
+        this.panningDragDistance += Math.hypot(dx, dy);
+        if (this.rightClickDownPos) {
+          const totalDist = Math.hypot(ev.clientX - this.rightClickDownPos.x, ev.clientY - this.rightClickDownPos.y);
+          if (totalDist > 5) {
+            this.lastRightClickWasDrag = true;
+          }
+        }
+        this.lastPanClient = { x: ev.clientX, y: ev.clientY };
         const vpt = this.canvas.viewportTransform;
         if (vpt) {
-          vpt[4] += ev.clientX - this.lastPanClient.x;
-          vpt[5] += ev.clientY - this.lastPanClient.y;
-          this.lastPanClient = { x: ev.clientX, y: ev.clientY };
+          vpt[4] += dx;
+          vpt[5] += dy;
           this.canvas.requestRenderAll();
         }
         return;
@@ -872,13 +893,15 @@ export class CanvasController {
         const movedDist = this.rightClickDownPos
           ? Math.hypot(ev.clientX - this.rightClickDownPos.x, ev.clientY - this.rightClickDownPos.y)
           : 0;
+        const wasDrag = this.panningDragDistance > 5 || movedDist > 5;
+        this.panningDragDistance = 0;
         this.isPanning = false;
         this.canvas.selection = this.activeTool === 'select';
         this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
         this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
         this.canvas.requestRenderAll();
 
-        if (movedDist < 5) {
+        if (!wasDrag) {
           this.triggerContextMenu(ev, scenePt, this.rightClickDownPos?.target || opt.target);
         }
         this.rightClickDownPos = null;
@@ -1661,17 +1684,31 @@ export class CanvasController {
   }
 
   public copySelected() {
-    if (this.selectedConnectorId) {
-      const conn = this.connectors.find((c) => c.id === this.selectedConnectorId);
-      if (conn) this.clipboardData = { type: 'connector', data: JSON.parse(JSON.stringify(conn)) };
-      return;
-    }
     const active = this.canvas.getActiveObject();
+    const activeObjects = this.canvas.getActiveObjects();
+    const highlightedConnIds = this.getHighlightedConnectorIds();
+
+    const selectedObjIds = new Set(
+      activeObjects
+        .map((o) => (o as unknown as Record<string, unknown>).ngId)
+        .filter(Boolean) as string[]
+    );
+    const connsToCopy = this.connectors.filter(
+      (c) =>
+        highlightedConnIds.has(c.id) ||
+        (selectedObjIds.size > 0 && selectedObjIds.has(c.fromId) && selectedObjIds.has(c.toId))
+    );
+
     if (active) {
-      if (active instanceof ActiveSelection || (active as any).type === 'activeselection' || (active as any).type === 'ActiveSelection') {
+      if (
+        active instanceof ActiveSelection ||
+        (active as any).type === 'activeselection' ||
+        (active as any).type === 'ActiveSelection'
+      ) {
         this.clipboardData = {
           type: 'activeSelection',
           json: (active as any).toObject(NG_CUSTOM_PROPS),
+          connectors: JSON.parse(JSON.stringify(connsToCopy)),
           origLeft: active.left,
           origTop: active.top,
         };
@@ -1679,10 +1716,20 @@ export class CanvasController {
         this.clipboardData = {
           type: 'object',
           json: (active as any).toObject(NG_CUSTOM_PROPS),
+          origId: String((active as unknown as Record<string, unknown>).ngId || ''),
+          connectors: JSON.parse(JSON.stringify(connsToCopy)),
           origLeft: active.left,
           origTop: active.top,
         };
       }
+      return;
+    }
+
+    if (connsToCopy.length > 0) {
+      this.clipboardData = {
+        type: 'connectors',
+        connectors: JSON.parse(JSON.stringify(connsToCopy)),
+      };
     }
   }
 
@@ -1694,6 +1741,7 @@ export class CanvasController {
   public async pasteAt(pt?: { x: number; y: number }) {
     if (!this.clipboardData) return;
     const dest = pt || this.getViewportCenter();
+
     if (this.clipboardData.type === 'activeSelection') {
       const clonedArr = await util.enlivenObjects([this.clipboardData.json]);
       if (clonedArr.length > 0) {
@@ -1712,9 +1760,13 @@ export class CanvasController {
         selObj.canvas = this.canvas;
         this.canvas.discardActiveObject();
         let hasFrame = false;
+        const idMap = new Map<string, string>();
         selObj.forEachObject((child) => {
           const rec = child as unknown as Record<string, unknown>;
-          rec.ngId = genNgId(String(rec.ngType || 'obj'));
+          const oldId = String(rec.ngId || '');
+          const newId = genNgId(String(rec.ngType || 'obj'));
+          rec.ngId = newId;
+          if (oldId) idMap.set(oldId, newId);
           if (rec.ngType === 'frame') hasFrame = true;
           this.canvas.add(child);
         });
@@ -1722,18 +1774,47 @@ export class CanvasController {
         if (hasFrame) {
           this.ensureFramesAtBack();
         }
+
+        const pastedConnIds = new Set<string>();
+        if (Array.isArray(this.clipboardData.connectors)) {
+          for (const rawConn of this.clipboardData.connectors) {
+            const fromId = idMap.get(rawConn.fromId) || (this.findObjectById(rawConn.fromId) ? rawConn.fromId : null);
+            const toId = idMap.get(rawConn.toId) || (this.findObjectById(rawConn.toId) ? rawConn.toId : null);
+            if (fromId && toId) {
+              const newConn: ConnectorConfig = {
+                ...JSON.parse(JSON.stringify(rawConn)),
+                id: genNgId('conn'),
+                fromId,
+                toId,
+              };
+              this.connectors.push(newConn);
+              pastedConnIds.add(newConn.id);
+            }
+          }
+        }
+        if (pastedConnIds.size > 0) {
+          this.multiSelectedConnectorIds = pastedConnIds;
+          this.selectedConnectorId = null;
+        }
+
         this.canvas.setActiveObject(selObj);
         this.canvas.requestRenderAll();
         this.notifyChange(true);
         return;
       }
     }
+
     if (this.clipboardData.type === 'object') {
       const clonedArr = await util.enlivenObjects([this.clipboardData.json]);
       if (clonedArr.length > 0) {
         const obj = clonedArr[0] as FabricObject;
         const rec = obj as unknown as Record<string, unknown>;
-        rec.ngId = genNgId(String(rec.ngType || 'obj'));
+        const oldId = String(rec.ngId || this.clipboardData.origId || '');
+        const newId = genNgId(String(rec.ngType || 'obj'));
+        rec.ngId = newId;
+        const idMap = new Map<string, string>();
+        if (oldId) idMap.set(oldId, newId);
+
         const origLeft = this.clipboardData.origLeft ?? obj.left;
         const origTop = this.clipboardData.origTop ?? obj.top;
         const targetLeft = pt ? dest.x : origLeft + 20;
@@ -1749,9 +1830,66 @@ export class CanvasController {
         if (rec.ngType === 'frame') {
           this.ensureFramesAtBack();
         }
+
+        const pastedConnIds = new Set<string>();
+        if (Array.isArray(this.clipboardData.connectors)) {
+          for (const rawConn of this.clipboardData.connectors) {
+            const fromId = idMap.get(rawConn.fromId) || (this.findObjectById(rawConn.fromId) ? rawConn.fromId : null);
+            const toId = idMap.get(rawConn.toId) || (this.findObjectById(rawConn.toId) ? rawConn.toId : null);
+            if (fromId && toId) {
+              const newConn: ConnectorConfig = {
+                ...JSON.parse(JSON.stringify(rawConn)),
+                id: genNgId('conn'),
+                fromId,
+                toId,
+              };
+              this.connectors.push(newConn);
+              pastedConnIds.add(newConn.id);
+            }
+          }
+        }
+        if (pastedConnIds.size > 0) {
+          this.multiSelectedConnectorIds = pastedConnIds;
+          this.selectedConnectorId = null;
+        }
+
         this.canvas.setActiveObject(obj);
         this.canvas.requestRenderAll();
         this.notifyChange(true);
+        return;
+      }
+    }
+
+    if (this.clipboardData.type === 'connectors' || this.clipboardData.type === 'connector') {
+      const conns =
+        this.clipboardData.type === 'connector'
+          ? [this.clipboardData.data]
+          : this.clipboardData.connectors;
+      if (Array.isArray(conns) && conns.length > 0) {
+        const newIds = new Set<string>();
+        for (const conn of conns) {
+          const fromObj = this.findObjectById(conn.fromId);
+          const toObj = this.findObjectById(conn.toId);
+          if (fromObj && toObj) {
+            const newConn: ConnectorConfig = {
+              ...JSON.parse(JSON.stringify(conn)),
+              id: genNgId('conn'),
+              elbowOffset: (conn.elbowOffset || 0) + 16,
+            };
+            this.connectors.push(newConn);
+            newIds.add(newConn.id);
+          }
+        }
+        if (newIds.size === 1) {
+          this.selectedConnectorId = [...newIds][0];
+          this.multiSelectedConnectorIds.clear();
+        } else if (newIds.size > 1) {
+          this.multiSelectedConnectorIds = newIds;
+          this.selectedConnectorId = null;
+        }
+        this.canvas.requestRenderAll();
+        this.notifyChange(true);
+        return;
       }
     }
   }
@@ -1814,6 +1952,9 @@ export class CanvasController {
   }
 
   private triggerContextMenu(ev: MouseEvent, scenePt: Point, target?: FabricObject | null) {
+    const now = Date.now();
+    if (now - this.contextMenuOpenedAt < 200) return;
+    this.contextMenuOpenedAt = now;
     if (target) {
       if (this.canvas.getActiveObject() !== target) {
         this.canvas.setActiveObject(target);
@@ -1867,31 +2008,100 @@ export class CanvasController {
 
   public async duplicateSelected() {
     const active = this.canvas.getActiveObject();
-    if (!active) return;
+    const highlightedConnIds = this.getHighlightedConnectorIds();
+
+    if (!active) {
+      if (highlightedConnIds.size > 0) {
+        const newIds = new Set<string>();
+        for (const conn of this.connectors) {
+          if (highlightedConnIds.has(conn.id)) {
+            const newConn: ConnectorConfig = {
+              ...JSON.parse(JSON.stringify(conn)),
+              id: genNgId('conn'),
+              elbowOffset: (conn.elbowOffset || 0) + 16,
+            };
+            this.connectors.push(newConn);
+            newIds.add(newConn.id);
+          }
+        }
+        if (newIds.size === 1) {
+          this.selectedConnectorId = [...newIds][0];
+          this.multiSelectedConnectorIds.clear();
+        } else if (newIds.size > 1) {
+          this.multiSelectedConnectorIds = newIds;
+          this.selectedConnectorId = null;
+        }
+        this.canvas.requestRenderAll();
+        this.notifyChange(true);
+      }
+      return;
+    }
+
     if (active instanceof ActiveSelection || (active as any).type === 'activeselection' || (active as any).type === 'ActiveSelection') {
-      const cloned = await (active as ActiveSelection).clone(NG_CUSTOM_PROPS);
+      const activeSel = active as ActiveSelection;
+      const cloned = await activeSel.clone(NG_CUSTOM_PROPS);
       cloned.set({
         left: (active.left || 200) + 24,
         top: (active.top || 200) + 24,
       });
       cloned.canvas = this.canvas;
       this.canvas.discardActiveObject();
+
+      const idMap = new Map<string, string>();
+      const origObjects = activeSel.getObjects();
+      const clonedObjects = cloned.getObjects();
       let hasFrame = false;
-      cloned.forEachObject((child) => {
+
+      for (let i = 0; i < clonedObjects.length; i++) {
+        const child = clonedObjects[i];
+        const origChild = origObjects[i];
         const rec = child as unknown as Record<string, unknown>;
-        rec.ngId = genNgId(String(rec.ngType || 'dup'));
+        const origRec = origChild as unknown as Record<string, unknown>;
+        const oldId = String(origRec?.ngId || rec.ngId || '');
+        const newId = genNgId(String(rec.ngType || 'dup'));
+        rec.ngId = newId;
+        if (oldId) idMap.set(oldId, newId);
         if (rec.ngType === 'frame') hasFrame = true;
         this.canvas.add(child);
-      });
+      }
+
       cloned.setCoords();
       if (hasFrame) {
         this.ensureFramesAtBack();
       }
+
+      const selectedObjIds = new Set(idMap.keys());
+      const connsToDup = this.connectors.filter(
+        (c) =>
+          highlightedConnIds.has(c.id) ||
+          (selectedObjIds.has(c.fromId) && selectedObjIds.has(c.toId))
+      );
+      const dupConnIds = new Set<string>();
+      for (const rawConn of connsToDup) {
+        const fromId = idMap.get(rawConn.fromId) || (this.findObjectById(rawConn.fromId) ? rawConn.fromId : null);
+        const toId = idMap.get(rawConn.toId) || (this.findObjectById(rawConn.toId) ? rawConn.toId : null);
+        if (fromId && toId) {
+          const newConn: ConnectorConfig = {
+            ...JSON.parse(JSON.stringify(rawConn)),
+            id: genNgId('conn'),
+            fromId,
+            toId,
+          };
+          this.connectors.push(newConn);
+          dupConnIds.add(newConn.id);
+        }
+      }
+      if (dupConnIds.size > 0) {
+        this.multiSelectedConnectorIds = dupConnIds;
+        this.selectedConnectorId = null;
+      }
+
       this.canvas.setActiveObject(cloned);
       this.canvas.requestRenderAll();
       this.notifyChange(true);
       return;
     }
+
     const cloned = await active.clone(NG_CUSTOM_PROPS);
     const rec = cloned as unknown as Record<string, unknown>;
     rec.ngId = genNgId('dup');
