@@ -271,8 +271,25 @@ try {
     throw new Error('Textbox is still in editing mode after clicking out!');
   }
 
+  // ==========================================
+  // TEST Feat: Right click and hold to drag canvas (pan)
+  // ==========================================
+  console.log('Testing Right Click Drag to pan canvas...');
+  const vptBefore = await page.evaluate(() => [...window.__novagraph_ctrl.canvas.viewportTransform]);
+  await page.mouse.move(700, 400);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(770, 450, { steps: 5 });
+  await page.mouse.up({ button: 'right' });
+  const vptAfter = await page.evaluate(() => [...window.__novagraph_ctrl.canvas.viewportTransform]);
+  const pannedX = vptAfter[4] - vptBefore[4];
+  const pannedY = vptAfter[5] - vptBefore[5];
+  console.log('✓ Right Click Drag Panned:', { pannedX, pannedY, vptAfter });
+  if (pannedX === 0 && pannedY === 0) {
+    throw new Error('Right click drag did not pan the canvas!');
+  }
+
   console.log('\n======================================================');
-  console.log('🎉 ALL 7 NEW USER BUGS FULLY VERIFIED AND PASSING 🎉');
+  console.log('🎉 ALL USER BUGS & RIGHT CLICK DRAG FULLY VERIFIED 🎉');
   console.log('======================================================');
 } catch (err) {
   console.error('Test execution error:', err);

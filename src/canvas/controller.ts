@@ -127,6 +127,8 @@ export class CanvasController {
       snapAngle: 15,
       snapThreshold: 6,
       stopContextMenu: true,
+      fireRightClick: true,
+      fireMiddleClick: true,
     });
 
     // Style selection handles
@@ -297,13 +299,38 @@ export class CanvasController {
   }
 
   private installInteractionHandlers() {
-    this.canvasEl.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
+    const stopContext = (e: Event) => e.preventDefault();
+    this.canvasEl.addEventListener('contextmenu', stopContext);
+    this.canvas.upperCanvasEl?.addEventListener('contextmenu', stopContext);
+    this.canvas.wrapperEl?.addEventListener('contextmenu', stopContext);
+    if (this.textareaContainer) {
+      this.textareaContainer.addEventListener('contextmenu', stopContext);
+    }
+
+    window.addEventListener('mouseup', (e: MouseEvent) => {
+      if (this.isPanning && (e.button === 2 || e.button === 1 || e.buttons === 0)) {
+        this.isPanning = false;
+        this.canvas.selection = this.activeTool === 'select';
+        this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
+        this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
+        this.canvas.requestRenderAll();
+      }
     });
 
     this.canvas.on('mouse:down', (opt) => {
       const ev = opt.e as MouseEvent;
       const scenePt = this.canvas.getScenePoint(ev);
+
+      // 1. Pan mode (Right click button 2, middle click button 1, Space held, or activeTool === 'pan')
+      // Priority over everything: right click drag always moves the canvas regardless of what is under the cursor
+      if (ev.button === 2 || ev.button === 1 || this.activeTool === 'pan' || this.spacePressed) {
+        this.isPanning = true;
+        this.canvas.selection = false;
+        this.lastPanClient = { x: ev.clientX, y: ev.clientY };
+        this.canvas.defaultCursor = 'grabbing';
+        this.canvas.hoverCursor = 'grabbing';
+        return;
+      }
 
       // Exit editing mode on any currently editing text object if clicked outside
       const editingObj = this.canvas.getObjects().find((o: any) => o.isEditing) as any;
@@ -324,14 +351,6 @@ export class CanvasController {
           // Resize or rotate control clicked! Let Fabric handle transforming without drawing a connector
           return;
         }
-      }
-
-      // 1. Pan mode (Space held, middle click, right click, or activeTool === 'pan')
-      if (this.activeTool === 'pan' || this.spacePressed || ev.button === 1 || ev.button === 2) {
-        this.isPanning = true;
-        this.canvas.selection = false;
-        this.lastPanClient = { x: ev.clientX, y: ev.clientY };
-        return;
       }
 
       // 2. Check if clicking an LED Screen partition line to slide it
@@ -396,6 +415,14 @@ export class CanvasController {
 
       // 1. Panning
       if (this.isPanning) {
+        if (ev.buttons === 0 && !this.spacePressed && this.activeTool !== 'pan') {
+          this.isPanning = false;
+          this.canvas.selection = this.activeTool === 'select';
+          this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
+          this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
+          this.canvas.requestRenderAll();
+          return;
+        }
         const vpt = this.canvas.viewportTransform;
         if (vpt) {
           vpt[4] += ev.clientX - this.lastPanClient.x;
@@ -537,6 +564,9 @@ export class CanvasController {
       if (this.isPanning) {
         this.isPanning = false;
         this.canvas.selection = this.activeTool === 'select';
+        this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
+        this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
+        this.canvas.requestRenderAll();
         return;
       }
 
