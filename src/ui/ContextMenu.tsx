@@ -14,6 +14,7 @@ export interface ContextMenuProps {
 
 export function ContextMenu({ x, y, scenePt, targetType, targetConnector, controller, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const mountTimeRef = useRef(Date.now());
 
   // Position adjustment so menu never goes outside the viewport
   const winW = typeof window !== 'undefined' ? window.innerWidth : 1440;
@@ -24,6 +25,7 @@ export function ContextMenu({ x, y, scenePt, targetType, targetConnector, contro
   const top = Math.max(10, Math.min(y, winH - menuH - 14));
 
   useEffect(() => {
+    mountTimeRef.current = Date.now();
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -40,7 +42,7 @@ export function ContextMenu({ x, y, scenePt, targetType, targetConnector, contro
   };
 
   const isObject = targetType === 'object' || targetType === 'product' || targetType === 'frame';
-  const isConnector = targetType === 'connector';
+  const isConnector = targetType === 'connector' || (targetType !== 'canvas' && (Boolean(controller.selectedConnectorId) || controller.multiSelectedConnectorIds.size > 0));
 
   return (
     <>
@@ -62,7 +64,9 @@ export function ContextMenu({ x, y, scenePt, targetType, targetConnector, contro
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          onClose();
+          if (Date.now() - mountTimeRef.current > 250) {
+            onClose();
+          }
         }}
       />
 

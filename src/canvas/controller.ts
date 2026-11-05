@@ -351,6 +351,29 @@ export class CanvasController {
     const handleContextMenu = (ev: MouseEvent) => {
       ev.preventDefault();
       ev.stopPropagation();
+
+      // On macOS, contextmenu can fire during mousedown while mouse buttons are still held.
+      // If the user is currently holding the button (ev.buttons > 0) or is actively panning,
+      // do not open the menu yet — mouse:up will determine whether it was a click or a pan drag.
+      if (ev.buttons !== 0 || this.isPanning) {
+        return;
+      }
+
+      const dist = this.rightClickDownPos
+        ? Math.hypot(ev.clientX - this.rightClickDownPos.x, ev.clientY - this.rightClickDownPos.y)
+        : 0;
+      if (this.lastRightClickWasDrag || this.panningDragDistance > 8 || dist > 8) {
+        this.lastRightClickWasDrag = false;
+        this.panningDragDistance = 0;
+        this.rightClickDownPos = null;
+        return;
+      }
+      this.panningDragDistance = 0;
+      this.isPanning = false;
+      const scenePt = this.canvas.getScenePoint(ev);
+      const target = this.canvas.findTarget(ev) || this.rightClickDownPos?.target || null;
+      this.rightClickDownPos = null;
+      this.triggerContextMenu(ev, scenePt, target);
     };
 
     this.canvasEl.addEventListener('contextmenu', handleContextMenu);
@@ -387,12 +410,12 @@ export class CanvasController {
         const dist = this.rightClickDownPos
           ? Math.hypot(e.clientX - this.rightClickDownPos.x, e.clientY - this.rightClickDownPos.y)
           : 0;
-        const wasDrag = dist > 5 || this.panningDragDistance > 5;
+        const wasDrag = this.lastRightClickWasDrag || dist > 8 || this.panningDragDistance > 8;
         if (wasDrag) {
           this.lastRightClickWasDrag = true;
           window.setTimeout(() => {
             this.lastRightClickWasDrag = false;
-          }, 100);
+          }, 200);
         }
         this.panningDragDistance = 0;
         this.isPanning = false;
@@ -463,7 +486,8 @@ export class CanvasController {
       }
 
       // 1. Right click: Pan if held/dragged, context menu if clicked without moving
-      if (ev.button === 2) {
+      const isRightClick = ev.button === 2 || (ev.button === 0 && ev.ctrlKey);
+      if (isRightClick) {
         this.isPanning = true;
         this.lastRightClickWasDrag = false;
         this.panningDragDistance = 0;
@@ -889,11 +913,12 @@ export class CanvasController {
         return;
       }
 
-      if (ev?.button === 2) {
+      const isRightClick = ev && (ev.button === 2 || (ev.button === 0 && ev.ctrlKey));
+      if (isRightClick) {
         const movedDist = this.rightClickDownPos
           ? Math.hypot(ev.clientX - this.rightClickDownPos.x, ev.clientY - this.rightClickDownPos.y)
           : 0;
-        const wasDrag = this.panningDragDistance > 5 || movedDist > 5;
+        const wasDrag = this.lastRightClickWasDrag || this.panningDragDistance > 8 || movedDist > 8;
         this.panningDragDistance = 0;
         this.isPanning = false;
         this.canvas.selection = this.activeTool === 'select';
@@ -901,7 +926,12 @@ export class CanvasController {
         this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
         this.canvas.requestRenderAll();
 
-        if (!wasDrag) {
+        if (wasDrag) {
+          this.lastRightClickWasDrag = true;
+          window.setTimeout(() => {
+            this.lastRightClickWasDrag = false;
+          }, 200);
+        } else {
           this.triggerContextMenu(ev, scenePt, this.rightClickDownPos?.target || opt.target);
         }
         this.rightClickDownPos = null;
@@ -1953,36 +1983,86 @@ export class CanvasController {
 
   private triggerContextMenu(ev: MouseEvent, scenePt: Point, target?: FabricObject | null) {
     const now = Date.now();
-    if (now - this.contextMenuOpenedAt < 200) return;
+    if (now - this.contextMenuOpenedAt < 250) return;
     this.contextMenuOpenedAt = now;
-    if (target) {
-      if (this.canvas.getActiveObject() !== target) {
-        this.canvas.setActiveObject(target);
+
+    const allObjects = this.canvas.getObjects();
+
+    // 1. Resolve target if not provided by Fabric
+    let resolvedTarget = target || null;
+    if (!resolvedTarget) {
+      for (let i = allObjects.length - 1; i >= 0; i--) {
+        const o = allObjects[i];
+        if (!o.visible || !(o as any).ngId) continue;
+        if (o.containsPoint(scenePt)) {
+          resolvedTarget = o;
+          break;
+        }
+      }
+    }
+
+    const activeObj = this.canvas.getActiveObject();
+    const activeObjects = this.canvas.getActiveObjects();
+    const isMultiSelected = activeObjects.length > 1;
+
+    // Check if clicked target is already within the active multi-selection
+    const isTargetInActiveSelection =
+      Boolean(resolvedTarget) &&
+      (resolvedTarget === activeObj || activeObjects.includes(resolvedTarget!));
+
+    if (resolvedTarget) {
+      if (isMultiSelected && isTargetInActiveSelection) {
+        // Maintain the multi-selection of objects!
+        this.canvas.requestRenderAll();
+        this.onOpenContextMenu?.({
+          x: ev.clientX,
+          y: ev.clientY,
+          scenePt: { x: scenePt.x, y: scenePt.y },
+          targetType: 'object',
+          targetObject: activeObj,
+        });
+        return;
+      }
+
+      // Single object clicked or clicked outside existing multi-selection
+      if (activeObj !== resolvedTarget) {
+        this.canvas.setActiveObject(resolvedTarget);
       }
       this.selectedConnectorId = null;
       this.multiSelectedConnectorIds.clear();
-      const rec = target as unknown as Record<string, unknown>;
+
+      const rec = resolvedTarget as unknown as Record<string, unknown>;
       const targetType =
         rec.ngType === 'frame'
           ? 'frame'
           : rec.ngType === 'product'
           ? 'product'
           : 'object';
+
       this.canvas.requestRenderAll();
       this.onOpenContextMenu?.({
         x: ev.clientX,
         y: ev.clientY,
         scenePt: { x: scenePt.x, y: scenePt.y },
         targetType,
-        targetObject: target,
+        targetObject: resolvedTarget,
       });
       return;
     }
 
-    const hitConn = hitTestConnector(this.connectors, this.canvas.getObjects(), scenePt, 12);
+    // 2. Hit-test connector lines
+    const hitConn = hitTestConnector(this.connectors, allObjects, scenePt, 14);
     if (hitConn) {
-      this.selectedConnectorId = hitConn.id;
-      this.canvas.discardActiveObject();
+      const isAlreadyInMulti = this.multiSelectedConnectorIds.has(hitConn.id);
+      if (!isAlreadyInMulti && this.multiSelectedConnectorIds.size > 0) {
+        this.multiSelectedConnectorIds.clear();
+      }
+      if (!isAlreadyInMulti) {
+        this.selectedConnectorId = hitConn.id;
+      }
+      if (activeObjects.length === 0) {
+        this.canvas.discardActiveObject();
+      }
       this.canvas.requestRenderAll();
       this.onOpenContextMenu?.({
         x: ev.clientX,
@@ -1994,6 +2074,7 @@ export class CanvasController {
       return;
     }
 
+    // 3. Clicked empty canvas
     this.canvas.discardActiveObject();
     this.selectedConnectorId = null;
     this.multiSelectedConnectorIds.clear();
