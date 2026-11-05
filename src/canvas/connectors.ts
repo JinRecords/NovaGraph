@@ -37,12 +37,14 @@ export function getObjectEdgePoint(
   }
 }
 
-/** Return candidate anchor ports around an object on its perimeter. */
-export function getObjectAnchorPorts(obj: FabricObject, forceOffset = 0): AnchorPoint[] {
+/** Return candidate anchor ports around an object. When selected, ports are offset outside resize handles (Lucidchart style). */
+export function getObjectAnchorPorts(obj: FabricObject, forceOffset?: number): AnchorPoint[] {
   const rec = obj as unknown as Record<string, unknown>;
   const objectId = String(rec.ngId || '');
   if (!objectId) return [];
   const br = obj.getBoundingRect();
+  const isSelected = obj.canvas ? obj.canvas.getActiveObject() === obj : false;
+  const offset = forceOffset !== undefined ? forceOffset : isSelected ? 28 : 0;
 
   // Space anchor ratios away from the 8 transform handles (corners and midpoints)
   const isWide = br.width > 190;
@@ -51,15 +53,15 @@ export function getObjectAnchorPorts(obj: FabricObject, forceOffset = 0): Anchor
 
   const ports: AnchorPoint[] = [];
   for (const r of hRatios) {
-    const ptTop = getObjectEdgePoint(obj, 'top', r, forceOffset);
+    const ptTop = getObjectEdgePoint(obj, 'top', r, offset);
     ports.push({ objectId, side: 'top', ratio: r, x: ptTop.x, y: ptTop.y });
-    const ptBot = getObjectEdgePoint(obj, 'bottom', r, forceOffset);
+    const ptBot = getObjectEdgePoint(obj, 'bottom', r, offset);
     ports.push({ objectId, side: 'bottom', ratio: r, x: ptBot.x, y: ptBot.y });
   }
   for (const r of vRatios) {
-    const ptLeft = getObjectEdgePoint(obj, 'left', r, forceOffset);
+    const ptLeft = getObjectEdgePoint(obj, 'left', r, offset);
     ports.push({ objectId, side: 'left', ratio: r, x: ptLeft.x, y: ptLeft.y });
-    const ptRight = getObjectEdgePoint(obj, 'right', r, forceOffset);
+    const ptRight = getObjectEdgePoint(obj, 'right', r, offset);
     ports.push({ objectId, side: 'right', ratio: r, x: ptRight.x, y: ptRight.y });
   }
   return ports;
@@ -77,6 +79,26 @@ export function findNearestAnchorPort(
   let best: AnchorPoint | null = null;
   let bestDist = isAltFreeMode ? Math.max(maxDist, 40) : maxDist;
 
+  // 1. If an object is currently selected on canvas, prioritize its offset-28 anchor handles.
+  // This ensures hovering directly on a selected object's visual anchor handles always hits,
+  // even if an underlying background object contains scenePt or targetObject was set to it.
+  if (!isAltFreeMode && objects.length > 0) {
+    const activeObj = objects[0].canvas ? objects[0].canvas.getActiveObject() : null;
+    const activeId = activeObj ? String((activeObj as any).ngId || '') : '';
+    if (activeObj && activeId && activeId !== excludeObjectId && activeObj.visible) {
+      for (const port of getObjectAnchorPorts(activeObj, 28)) {
+        const d = Math.hypot(scenePt.x - port.x, scenePt.y - port.y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = port;
+        }
+      }
+      if (best) {
+        return best;
+      }
+    }
+  }
+
   // When hovering directly over an object, strictly check ONLY that object.
   // This prevents underlying objects (e.g. products under an LED screen) from ever showing anchor ports.
   const candidateObjects: FabricObject[] = targetObject
@@ -91,9 +113,12 @@ export function findNearestAnchorPort(
     const id = String(rec.ngId || '');
     if (!id || id === excludeObjectId || !obj.visible) continue;
 
+    const isSelected = obj.canvas ? obj.canvas.getActiveObject() === obj : false;
+    const offset = isSelected ? 28 : 0;
+
     // Fast AABB check: if scenePt is not within effectiveDist of the bounding rect, skip completely
     const br = obj.getBoundingRect();
-    const effectiveDist = isAltFreeMode ? Math.max(maxDist, 40) : maxDist;
+    const effectiveDist = (isAltFreeMode ? Math.max(maxDist, 40) : maxDist) + offset;
     if (
       scenePt.x < br.left - effectiveDist ||
       scenePt.x > br.left + br.width + effectiveDist ||
@@ -105,7 +130,7 @@ export function findNearestAnchorPort(
 
     // In normal mode, first check discrete anchor ports
     if (!isAltFreeMode) {
-      for (const port of getObjectAnchorPorts(obj)) {
+      for (const port of getObjectAnchorPorts(obj, offset)) {
         const d = Math.hypot(scenePt.x - port.x, scenePt.y - port.y);
         if (d < bestDist) {
           bestDist = d;
@@ -114,44 +139,44 @@ export function findNearestAnchorPort(
       }
     }
 
-    // Also allow snapping continuously along any of the 4 edges if close to the perimeter (or anywhere on node in Alt mode)
+    // Also allow snapping continuously along any of the 4 edges if close to the perimeter (or anywhere on node in Alt mode).
+    // When an object is selected (normal mode), discrete ports at offset 28 are used; avoid snapping to the inner perimeter edge.
     const dTop = Math.abs(scenePt.y - br.top);
     const dBot = Math.abs(scenePt.y - (br.top + br.height));
     const dLeft = Math.abs(scenePt.x - br.left);
     const dRight = Math.abs(scenePt.x - (br.left + br.width));
     const minEdge = Math.min(dTop, dBot, dLeft, dRight);
-    // Only fallback to continuous perimeter snapping if not already snapped to a discrete port (or in Alt mode)
-    if (isAltFreeMode || (!best && minEdge < maxDist)) {
-        bestDist = minEdge;
-        if (minEdge === dTop) {
-          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.x - br.left) / Math.max(1, br.width)));
-          best = { objectId: id, side: 'top', ratio, x: br.left + br.width * ratio, y: br.top };
-        } else if (minEdge === dBot) {
-          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.x - br.left) / Math.max(1, br.width)));
-          best = {
-            objectId: id,
-            side: 'bottom',
-            ratio,
-            x: br.left + br.width * ratio,
-            y: br.top + br.height,
-          };
-        } else if (minEdge === dLeft) {
-          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.y - br.top) / Math.max(1, br.height)));
-          best = { objectId: id, side: 'left', ratio, x: br.left, y: br.top + br.height * ratio };
-        } else {
-          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.y - br.top) / Math.max(1, br.height)));
-          best = {
-            objectId: id,
-            side: 'right',
-            ratio,
-            x: br.left + br.width,
-            y: br.top + br.height * ratio,
-          };
-        }
+    if (isAltFreeMode || (!isSelected && minEdge < bestDist * 0.85)) {
+      bestDist = minEdge;
+      if (minEdge === dTop) {
+        const ratio = Math.max(0.04, Math.min(0.96, (scenePt.x - br.left) / Math.max(1, br.width)));
+        best = { objectId: id, side: 'top', ratio, x: br.left + br.width * ratio, y: br.top };
+      } else if (minEdge === dBot) {
+        const ratio = Math.max(0.04, Math.min(0.96, (scenePt.x - br.left) / Math.max(1, br.width)));
+        best = {
+          objectId: id,
+          side: 'bottom',
+          ratio,
+          x: br.left + br.width * ratio,
+          y: br.top + br.height,
+        };
+      } else if (minEdge === dLeft) {
+        const ratio = Math.max(0.04, Math.min(0.96, (scenePt.y - br.top) / Math.max(1, br.height)));
+        best = { objectId: id, side: 'left', ratio, x: br.left, y: br.top + br.height * ratio };
+      } else {
+        const ratio = Math.max(0.04, Math.min(0.96, (scenePt.y - br.top) / Math.max(1, br.height)));
+        best = {
+          objectId: id,
+          side: 'right',
+          ratio,
+          x: br.left + br.width,
+          y: br.top + br.height * ratio,
+        };
       }
     }
-    return best;
   }
+  return best;
+}
 
 function sideNormal(side: AnchorSide): { nx: number; ny: number } {
   switch (side) {
@@ -701,13 +726,15 @@ export function renderAnchorPortsOverlay(
 
   // In normal mode, draw discrete anchor port handles. When holding Option (isAltFreeMode), handles disappear!
   if (!isAltFreeMode) {
-    const ports = getObjectAnchorPorts(obj);
+    const isSelected = obj.canvas ? obj.canvas.getActiveObject() === obj : false;
+    const ports = getObjectAnchorPorts(obj, isSelected ? 28 : 0);
     for (const p of ports) {
       const isHit =
         activeAnchor &&
         activeAnchor.objectId === p.objectId &&
         activeAnchor.side === p.side &&
-        Math.abs(activeAnchor.ratio - p.ratio) < 0.08;
+        Math.abs(activeAnchor.ratio - p.ratio) < 0.08 &&
+        Math.hypot(activeAnchor.x - p.x, activeAnchor.y - p.y) < 14;
       if (isHit) activeRendered = true;
       ctx.beginPath();
       ctx.arc(p.x, p.y, isHit ? 7 : 4.5, 0, Math.PI * 2);

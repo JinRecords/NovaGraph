@@ -292,7 +292,19 @@ export class CanvasController {
             renderAnchorPortsOverlay(ctx, this.hoveredObject, this.repositioningConnector.targetAnchor, this.altPressed);
           }
         } else {
-          renderAnchorPortsOverlay(ctx, this.hoveredObject, this.hoveredAnchor, this.altPressed);
+          const activeObj = this.canvas.getActiveObject();
+          const isSingleActive =
+            activeObj &&
+            (activeObj as any).ngId &&
+            !this.selectedConnectorId &&
+            this.canvas.getObjects().includes(activeObj);
+          if (isSingleActive && this.hoveredObject && this.hoveredObject !== activeObj) {
+            renderAnchorPortsOverlay(ctx, activeObj, this.hoveredAnchor, this.altPressed);
+            renderAnchorPortsOverlay(ctx, this.hoveredObject, this.hoveredAnchor, this.altPressed);
+          } else {
+            const targetObj = this.hoveredObject || (isSingleActive ? activeObj : null);
+            renderAnchorPortsOverlay(ctx, targetObj, this.hoveredAnchor, this.altPressed);
+          }
         }
       }
 
@@ -852,7 +864,7 @@ export class CanvasController {
         : findNearestAnchorPort(
             allObjects,
             scenePt,
-            16,
+            18,
             excludeId,
             topObj,
             this.altPressed || ev.altKey
