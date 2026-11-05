@@ -7,7 +7,7 @@ import {
 } from '../types';
 import { extractAssignedLiteral } from './literal';
 
-constIMG_CDN = 'https://img.novastar.show';
+const IMG_CDN = 'https://img.novastar.show';
 
 /** Convert a CDN URL or relative path into a same-origin /api/img proxy URL. */
 export function toProxyImageUrl(raw: string | null | undefined): string | null {
@@ -20,8 +20,8 @@ export function toProxyImageUrl(raw: string | null | undefined): string | null {
     const p = trimmed.slice('/api/img'.length);
     return `/api/img?path=${encodeURIComponent(p)}&v=1`;
   }
-  if (trimmed.startsWith(constIMG_CDN + '/')) {
-    const p = trimmed.slice(constIMG_CDN.length);
+  if (trimmed.startsWith(IMG_CDN + '/')) {
+    const p = trimmed.slice(IMG_CDN.length);
     return `/api/img?path=${encodeURIComponent(p)}&v=1`;
   }
   if (trimmed.startsWith('/products/') || trimmed.startsWith('/cards/')) {

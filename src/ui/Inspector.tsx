@@ -204,6 +204,150 @@ export function Inspector({
     );
   }
 
+  // 1b. MULTIPLE CONNECTORS SELECTED (no active Fabric object)
+  const selState = controller.getSelectionState();
+  const multiConns = selState.selectedConnectors;
+  if (!activeObject && multiConns && multiConns.length > 1) {
+    const first = multiConns[0];
+    const presets = ['#5b84b1', '#d4a843', '#6aa84f', '#ea580c', '#334155', '#2563eb', '#dc2626', '#0f172a'];
+
+    return (
+      <div className="ng-sidebar-right">
+        <div className="ng-inspector-header">
+          <span>{`${multiConns.length} Connectors`}</span>
+          <button className="ng-btn-icon" onClick={() => controller.deleteSelected()} title="Delete selected connectors">
+            <Icon name="trash" size={14} />
+          </button>
+        </div>
+
+        {/* Routing / Line type */}
+        <div className="ng-inspector-section">
+          <span className="ng-section-title">{t('lineRouting')}</span>
+          <div className="ng-tool-group" style={{ width: '100%' }}>
+            {(['elbow', 'straight', 'curved'] as LineRouting[]).map((r) => (
+              <button
+                key={r}
+                className={`ng-tool-tab ${multiConns.every((c) => c.routing === r) ? 'active' : ''}`}
+                style={{ flex: 1, justifyContent: 'center' }}
+                onClick={() => controller.updateSelectedConnectors({ routing: r })}
+              >
+                {r === 'elbow' ? t('routingElbow') : r === 'straight' ? t('routingStraight') : t('routingCurved')}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* End Caps */}
+        <div className="ng-inspector-section">
+          <span className="ng-section-title">Arrowheads</span>
+          <div className="ng-field-row">
+            <span className="ng-field-label">{t('startEndType')}</span>
+            <select
+              className="ng-input-select"
+              value={multiConns.every((c) => c.startEnd === first.startEnd) ? first.startEnd : ''}
+              onChange={(e) =>
+                controller.updateSelectedConnectors({
+                  startEnd: (e.target as HTMLSelectElement).value as LineEndType,
+                })
+              }
+            >
+              <option value="">Mixed</option>
+              <option value="none">{t('endNone')}</option>
+              <option value="arrow">{t('endArrow')}</option>
+              <option value="open-arrow">{t('endOpenArrow')}</option>
+              <option value="circle">{t('endCircle')}</option>
+              <option value="diamond">{t('endDiamond')}</option>
+              <option value="bar">{t('endBar')}</option>
+            </select>
+          </div>
+          <div className="ng-field-row">
+            <span className="ng-field-label">{t('endEndType')}</span>
+            <select
+              className="ng-input-select"
+              value={multiConns.every((c) => c.endEnd === first.endEnd) ? first.endEnd : ''}
+              onChange={(e) =>
+                controller.updateSelectedConnectors({
+                  endEnd: (e.target as HTMLSelectElement).value as LineEndType,
+                })
+              }
+            >
+              <option value="">Mixed</option>
+              <option value="none">{t('endNone')}</option>
+              <option value="arrow">{t('endArrow')}</option>
+              <option value="open-arrow">{t('endOpenArrow')}</option>
+              <option value="circle">{t('endCircle')}</option>
+              <option value="diamond">{t('endDiamond')}</option>
+              <option value="bar">{t('endBar')}</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Line Style & Thickness */}
+        <div className="ng-inspector-section">
+          <span className="ng-section-title">Style & Color</span>
+          <div className="ng-field-row">
+            <span className="ng-field-label">{t('lineDash')}</span>
+            <select
+              className="ng-input-select"
+              value={multiConns.every((c) => c.dash === first.dash) ? first.dash : ''}
+              onChange={(e) =>
+                controller.updateSelectedConnectors({
+                  dash: (e.target as HTMLSelectElement).value as LineDashType,
+                })
+              }
+            >
+              <option value="">Mixed</option>
+              <option value="solid">{t('dashSolid')}</option>
+              <option value="dashed">{t('dashDashed')}</option>
+              <option value="dotted">{t('dashDotted')}</option>
+            </select>
+          </div>
+
+          <div className="ng-field-row">
+            <span className="ng-field-label">{t('lineThickness')}</span>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={first.strokeWidth || 2}
+              onInput={(e) =>
+                controller.updateSelectedConnectors({
+                  strokeWidth: Number((e.target as HTMLInputElement).value),
+                })
+              }
+            />
+          </div>
+
+          <div>
+            <div className="ng-field-row" style={{ marginBottom: '6px' }}>
+              <span className="ng-field-label">{t('lineColor')}</span>
+              <input
+                type="color"
+                className="ng-input-color"
+                value={first.stroke || '#5b84b1'}
+                onInput={(e) =>
+                  controller.updateSelectedConnectors({
+                    stroke: (e.target as HTMLInputElement).value,
+                  })
+                }
+              />
+            </div>
+            <div className="ng-color-presets">
+              {presets.map((c) => (
+                <div
+                  key={c}
+                  className="ng-color-dot"
+                  style={{ background: c }}
+                  onClick={() => controller.updateSelectedConnectors({ stroke: c })}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 2. PRODUCT SELECTED
   const rec = (activeObject as unknown as Record<string, unknown>) || {};
   if (activeObject && rec.ngType === 'product') {

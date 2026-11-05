@@ -96,6 +96,18 @@ export function findNearestAnchorPort(
     const id = String(rec.ngId || '');
     if (!id || id === excludeObjectId || !obj.visible) continue;
 
+    // Fast AABB check: if scenePt is not within effectiveDist of the bounding rect, skip completely
+    const br = obj.getBoundingRect();
+    const effectiveDist = isAltFreeMode ? Math.max(maxDist, 40) : maxDist;
+    if (
+      scenePt.x < br.left - effectiveDist ||
+      scenePt.x > br.left + br.width + effectiveDist ||
+      scenePt.y < br.top - effectiveDist ||
+      scenePt.y > br.top + br.height + effectiveDist
+    ) {
+      continue;
+    }
+
     // In normal mode, first check discrete anchor ports
     if (!isAltFreeMode) {
       for (const port of getObjectAnchorPorts(obj)) {
@@ -108,20 +120,12 @@ export function findNearestAnchorPort(
     }
 
     // Also allow snapping continuously along any of the 4 edges if close to the perimeter (or anywhere on node in Alt mode)
-    const br = obj.getBoundingRect();
-    const effectiveDist = isAltFreeMode ? Math.max(maxDist, 32) : maxDist;
-    if (
-      scenePt.x >= br.left - effectiveDist &&
-      scenePt.x <= br.left + br.width + effectiveDist &&
-      scenePt.y >= br.top - effectiveDist &&
-      scenePt.y <= br.top + br.height + effectiveDist
-    ) {
-      const dTop = Math.abs(scenePt.y - br.top);
-      const dBot = Math.abs(scenePt.y - (br.top + br.height));
-      const dLeft = Math.abs(scenePt.x - br.left);
-      const dRight = Math.abs(scenePt.x - (br.left + br.width));
-      const minEdge = Math.min(dTop, dBot, dLeft, dRight);
-      if (isAltFreeMode || minEdge < bestDist * 0.85) {
+    const dTop = Math.abs(scenePt.y - br.top);
+    const dBot = Math.abs(scenePt.y - (br.top + br.height));
+    const dLeft = Math.abs(scenePt.x - br.left);
+    const dRight = Math.abs(scenePt.x - (br.left + br.width));
+    const minEdge = Math.min(dTop, dBot, dLeft, dRight);
+    if (isAltFreeMode || minEdge < bestDist * 0.85) {
         bestDist = minEdge;
         if (minEdge === dTop) {
           const ratio = Math.max(0.04, Math.min(0.96, (scenePt.x - br.left) / Math.max(1, br.width)));
@@ -150,9 +154,8 @@ export function findNearestAnchorPort(
         }
       }
     }
+    return best;
   }
-  return best;
-}
 
 function sideNormal(side: AnchorSide): { nx: number; ny: number } {
   switch (side) {
@@ -298,7 +301,7 @@ export function renderConnectorsOnContext(
   ctx: CanvasRenderingContext2D,
   connectors: ConnectorConfig[],
   objects: FabricObject[],
-  selectedConnectorId: string | null,
+  selectedConnectorId: string | null | Set<string>,
   draftConnector?: {
     from: AnchorPoint;
     toPt: { x: number; y: number };
@@ -337,7 +340,10 @@ export function renderConnectorsOnContext(
       }
     }
 
-    const isSelected = conn.id === selectedConnectorId;
+    const isSelected =
+      selectedConnectorId instanceof Set
+        ? selectedConnectorId.has(conn.id)
+        : conn.id === selectedConnectorId;
     const compat = evaluateConnectorCompatibility(conn, objMap);
     const isIncompatible = compat.applicable && compat.status === 0;
 
@@ -560,56 +566,70 @@ function distToSegment(
   return Math.hypot(p.x - (a.x + t * (b.x - a.x)), p.y - (a.y + t * (b.y - a.y)));
 }
 
-/** Hit-test whether `scenePt` clicks on any connector line within `threshold` pixels. */
-export function hitTestConnector(
-  connectors: ConnectorConfig[],
-  objects: FabricObject[],
-  scenePt: Point,
-  threshold = 8
-): ConnectorConfig | null {
+/** Compute the polyline approximation (scene coords) of a connector's rendered path. */
+function getConnectorPolyline(
+  conn: ConnectorConfig,
+  fromObj: FabricObject,
+  toObj: FabricObject
+): Array<{ x: number; y: number }> {
+  const p1 = getObjectEdgePoint(fromObj, conn.fromSide, conn.fromRatio ?? 0.5);
+  const p2 = getObjectEdgePoint(toObj, conn.toSide, conn.toRatio ?? 0.5);
+
+  if (conn.routing === 'straight') {
+    return [p1, p2];
+  }
+  if (conn.routing === 'curved') {
+    const n1 = sideNormal(conn.fromSide);
+    const n2 = sideNormal(conn.toSide);
+    const dist = Math.max(40, Math.hypot(p2.x - p1.x, p2.y - p1.y) * 0.42);
+    const c1 = { x: p1.x + n1.nx * dist, y: p1.y + n1.ny * dist };
+    const c2 = { x: p2.x + n2.nx * dist, y: p2.y + n2.ny * dist };
+    const pts: Array<{ x: number; y: number }> = [];
+    for (let k = 0; k <= 12; k++) {
+      const t = k / 12;
+      const mt = 1 - t;
+      pts.push({
+        x:
+          mt * mt * mt * p1.x +
+          3 * mt * mt * t * c1.x +
+          3 * mt * t * t * c2.x +
+          t * t * t * p2.x,
+        y:
+          mt * mt * mt * p1.y +
+          3 * mt * mt * t * c1.y +
+          3 * mt * t * t * c2.y +
+          t * t * t * p2.y,
+      });
+    }
+    return pts;
+  }
+  return computeElbowPoints(p1, conn.fromSide, p2, conn.toSide, conn.elbowOffset || 0);
+}
+
+function buildVisibleObjectMap(objects: FabricObject[]): Map<string, FabricObject> {
   const objMap = new Map<string, FabricObject>();
   for (const o of objects) {
     const rec = o as unknown as Record<string, unknown>;
     if (rec.ngId && o.visible) objMap.set(String(rec.ngId), o);
   }
+  return objMap;
+}
+
+/** Hit-test whether `scenePt` clicks on any connector line within `threshold` pixels. */
+export function hitTestConnector(
+  connectors: ConnectorConfig[],
+  objects: FabricObject[],
+  scenePt: Point | { x: number; y: number },
+  threshold = 8
+): ConnectorConfig | null {
+  const objMap = buildVisibleObjectMap(objects);
 
   for (let i = connectors.length - 1; i >= 0; i--) {
     const conn = connectors[i];
     const fromObj = objMap.get(conn.fromId);
     const toObj = objMap.get(conn.toId);
     if (!fromObj || !toObj) continue;
-    const p1 = getObjectEdgePoint(fromObj, conn.fromSide, conn.fromRatio ?? 0.5);
-    const p2 = getObjectEdgePoint(toObj, conn.toSide, conn.toRatio ?? 0.5);
-
-    let pts: Array<{ x: number; y: number }>;
-    if (conn.routing === 'straight') {
-      pts = [p1, p2];
-    } else if (conn.routing === 'curved') {
-      const n1 = sideNormal(conn.fromSide);
-      const n2 = sideNormal(conn.toSide);
-      const dist = Math.max(40, Math.hypot(p2.x - p1.x, p2.y - p1.y) * 0.42);
-      const c1 = { x: p1.x + n1.nx * dist, y: p1.y + n1.ny * dist };
-      const c2 = { x: p2.x + n2.nx * dist, y: p2.y + n2.ny * dist };
-      pts = [];
-      for (let k = 0; k <= 12; k++) {
-        const t = k / 12;
-        const mt = 1 - t;
-        pts.push({
-          x:
-            mt * mt * mt * p1.x +
-            3 * mt * mt * t * c1.x +
-            3 * mt * t * t * c2.x +
-            t * t * t * p2.x,
-          y:
-            mt * mt * mt * p1.y +
-            3 * mt * mt * t * c1.y +
-            3 * mt * t * t * c2.y +
-            t * t * t * p2.y,
-        });
-      }
-    } else {
-      pts = computeElbowPoints(p1, conn.fromSide, p2, conn.toSide, conn.elbowOffset || 0);
-    }
+    const pts = getConnectorPolyline(conn, fromObj, toObj);
 
     for (let j = 0; j < pts.length - 1; j++) {
       if (distToSegment(scenePt, pts[j], pts[j + 1]) <= threshold + (conn.strokeWidth || 2) / 2) {
@@ -618,6 +638,58 @@ export function hitTestConnector(
     }
   }
   return null;
+}
+
+/** Liang-Barsky test: does segment a-b intersect the axis-aligned rect? */
+function segmentIntersectsRect(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  r: { left: number; top: number; right: number; bottom: number }
+): boolean {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  let t0 = 0;
+  let t1 = 1;
+  const p = [-dx, dx, -dy, dy];
+  const q = [a.x - r.left, r.right - a.x, a.y - r.top, r.bottom - a.y];
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) {
+      if (q[i] < 0) return false;
+    } else {
+      const t = q[i] / p[i];
+      if (p[i] < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
+      }
+    }
+  }
+  return true;
+}
+
+/** Return all connectors whose rendered path touches the given scene-space rectangle (marquee). */
+export function connectorsIntersectingRect(
+  connectors: ConnectorConfig[],
+  objects: FabricObject[],
+  rect: { left: number; top: number; right: number; bottom: number }
+): ConnectorConfig[] {
+  const objMap = buildVisibleObjectMap(objects);
+  const result: ConnectorConfig[] = [];
+  for (const conn of connectors) {
+    const fromObj = objMap.get(conn.fromId);
+    const toObj = objMap.get(conn.toId);
+    if (!fromObj || !toObj) continue;
+    const pts = getConnectorPolyline(conn, fromObj, toObj);
+    for (let j = 0; j < pts.length - 1; j++) {
+      if (segmentIntersectsRect(pts[j], pts[j + 1], rect)) {
+        result.push(conn);
+        break;
+      }
+    }
+  }
+  return result;
 }
 
 /** Draw hovered object edge anchor dots on the overlay context so users can grab any port to connect. */

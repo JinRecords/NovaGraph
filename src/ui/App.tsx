@@ -1,4 +1,3 @@
-import { FabricObject, Point } from 'preact';
 import { h } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { CanvasController } from '../canvas/controller';
@@ -22,6 +21,7 @@ import { HSeriesConfiguratorModal } from './HSeriesConfiguratorModal';
 import { Icon } from './Icons';
 import { Inspector } from './Inspector';
 import { SidebarLeft } from './SidebarLeft';
+import { hasCompletedTutorial, TutorialModal } from './TutorialModal';
 
 export function App({ onClose }: { onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -56,6 +56,10 @@ export function App({ onClose }: { onClose: () => void }) {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isCustomProdOpen, setIsCustomProdOpen] = useState(false);
   const [isHSeriesOpen, setIsHSeriesOpen] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  // Auto-open the tutorial the first time NovaGraph is opened
+  const [isTutorialOpen, setIsTutorialOpen] = useState(() => !hasCompletedTutorial());
+  const [tutorialRunId, setTutorialRunId] = useState(0);
   const [toasts, setToasts] = useState<Array<{ id: number; text: string; kind: 'info' | 'warn' | 'ok' }>>([]);
 
   const showToast = (text: string, kind: 'info' | 'warn' | 'ok' = 'info') => {
@@ -83,6 +87,7 @@ export function App({ onClose }: { onClose: () => void }) {
     ctrl.setToastHandler(showToast);
     ctrl.onOpenContextMenu = (info) => setContextMenu(info);
     controllerRef.current = ctrl;
+    (window as any).__novaGraphController = ctrl;
     setController(ctrl);
 
     // Load active board
@@ -92,7 +97,8 @@ export function App({ onClose }: { onClose: () => void }) {
       ctrl.loadBoardDocument(currentDoc);
     }
 
-    // Auto-save on change
+    // Auto-save on change (debounced to avoid heavy serialization on every minor event)
+    let autoSaveTimer: number | null = null;
     const unsub = ctrl.onChange(() => {
       const state = ctrl.getSelectionState();
       setSelection({
@@ -104,12 +110,15 @@ export function App({ onClose }: { onClose: () => void }) {
       // Do not auto-save when switching boards or during board load
       if (isSwitchingBoardRef.current) return;
 
-      // Save board using current board id ref
-      const curId = activeBoardIdRef.current;
-      const all = loadAllBoards();
-      const curName = all.find((b) => b.id === curId)?.name || 'Untitled Diagram';
-      const curDoc = ctrl.serializeBoard(curId, curName);
-      setBoards(upsertBoard(curDoc));
+      if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
+      autoSaveTimer = window.setTimeout(() => {
+        if (isSwitchingBoardRef.current) return;
+        const curId = activeBoardIdRef.current;
+        const all = loadAllBoards();
+        const curName = all.find((b) => b.id === curId)?.name || 'Untitled Diagram';
+        const curDoc = ctrl.serializeBoard(curId, curName);
+        setBoards(upsertBoard(curDoc));
+      }, 500);
     });
 
     // Resize observer
@@ -158,6 +167,21 @@ export function App({ onClose }: { onClose: () => void }) {
         if (editingObj) {
           editingObj.exitEditing();
           ctrl.canvas.requestRenderAll();
+          return;
+        }
+        let changed = false;
+        if (ctrl.canvas.getActiveObject()) {
+          ctrl.canvas.discardActiveObject();
+          changed = true;
+        }
+        if (ctrl.selectedConnectorId || ctrl.multiSelectedConnectorIds.size > 0) {
+          ctrl.selectedConnectorId = null;
+          ctrl.multiSelectedConnectorIds.clear();
+          changed = true;
+        }
+        if (changed) {
+          ctrl.canvas.requestRenderAll();
+          ctrl.notifyChange(false);
         }
         return;
       }
@@ -226,6 +250,16 @@ export function App({ onClose }: { onClose: () => void }) {
     window.addEventListener('novagraph:add-hseries', handleExternalHSeries);
 
     return () => {
+      if (autoSaveTimer) {
+        window.clearTimeout(autoSaveTimer);
+        if (!isSwitchingBoardRef.current) {
+          const curId = activeBoardIdRef.current;
+          const all = loadAllBoards();
+          const curName = all.find((b) => b.id === curId)?.name || 'Untitled Diagram';
+          const curDoc = ctrl.serializeBoard(curId, curName);
+          upsertBoard(curDoc);
+        }
+      }
       unsub();
       ro.disconnect();
       window.removeEventListener('resize', handleWinResize);
@@ -382,7 +416,7 @@ export function App({ onClose }: { onClose: () => void }) {
   const currentBoard = boards.find((b) => b.id === activeBoardId) || boards[0];
 
   return (
-    <div className="ng-overlay">
+    <div className="ng-overlay" ref={overlayRef}>
       {/* Top Header */}
       <div className="ng-header">
         <div className="ng-header-left">
@@ -618,10 +652,32 @@ export function App({ onClose }: { onClose: () => void }) {
       {/* Footer / Shortcuts Help */}
       <div className="ng-footer-bar">
         <span>{t('shortcutsHint')}</span>
-        <span>
-          {currentBoard?.name} • NovaStar System Topology Designer
+        <span className="ng-footer-right">
+          <span>
+            {currentBoard?.name} • NovaStar System Topology Designer
+          </span>
+          <button
+            type="button"
+            className="ng-tutorial-trigger"
+            onClick={() => {
+              setTutorialRunId((n) => n + 1);
+              setIsTutorialOpen(true);
+            }}
+            title={t('tutorialLinkTitle')}
+          >
+            {t('tutorialLink')}
+          </button>
         </span>
       </div>
+
+      {/* Interactive Tutorial */}
+      {isTutorialOpen && (
+        <TutorialModal
+          key={tutorialRunId}
+          rootEl={overlayRef.current}
+          onClose={() => setIsTutorialOpen(false)}
+        />
+      )}
 
       {/* Modals */}
       <CustomProductModal
@@ -671,6 +727,7 @@ export function App({ onClose }: { onClose: () => void }) {
           y={contextMenu.y}
           scenePt={contextMenu.scenePt}
           targetType={contextMenu.targetType}
+          targetConnector={contextMenu.targetConnector}
           controller={controller}
           onClose={() => setContextMenu(null)}
         />

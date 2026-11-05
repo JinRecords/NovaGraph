@@ -1,4 +1,5 @@
 import { ActiveSelection, Canvas, FabricObject, Group, Point, util } from 'fabric';
+import type { IText, Rect } from 'fabric';
 import {
   BoardDocument,
   CanvasSettings,
@@ -17,6 +18,7 @@ import {
   findNearestAnchorPort,
   getConnectorEndpoints,
   hitTestConnector,
+  connectorsIntersectingRect,
   renderAnchorPortsOverlay,
   renderConnectorsOnContext,
 } from './connectors';
@@ -56,6 +58,7 @@ export type ActiveTool = 'select' | 'pan' | 'connect';
 export interface SelectionState {
   activeObject: FabricObject | null;
   activeConnector: ConnectorConfig | null;
+  selectedConnectors?: ConnectorConfig[];
   compatResult: CompatibilityResult | null;
 }
 
@@ -66,6 +69,9 @@ export class CanvasController {
   public settings: CanvasSettings = { ...DEFAULT_CANVAS_SETTINGS };
   public connectors: ConnectorConfig[] = [];
   public selectedConnectorId: string | null = null;
+  /** Connectors that are part of a multi-selection (marquee or shift+click). */
+  public multiSelectedConnectorIds = new Set<string>();
+  private marqueeStart: { x: number; y: number } | null = null;
   public activeTool: ActiveTool = 'select';
   public onEditStickyNote?: (
     group: Group,
@@ -185,7 +191,7 @@ export class CanvasController {
     this.onToastCallback = fn;
   }
 
-  private notifyChange(scheduleAutosave = true) {
+  public notifyChange(scheduleAutosave = true) {
     this.onChangeCallbacks.forEach((fn) => fn());
     if (scheduleAutosave && !this.historyLocked) {
       if (this.saveTimer) window.clearTimeout(this.saveTimer);
@@ -197,6 +203,18 @@ export class CanvasController {
 
   /** Hook into Fabric's render pipeline so grid, connectors, smart guides, and anchor ports draw cleanly. */
   private installRenderHooks() {
+    // Shift+clicking a connector on empty canvas should add it to the selection instead of
+    // making Fabric discard the currently selected objects.
+    const canvasAny = this.canvas as any;
+    const origShouldClear = canvasAny._shouldClearSelection.bind(this.canvas);
+    canvasAny._shouldClearSelection = (e: MouseEvent, target?: FabricObject) => {
+      if (!target && e?.shiftKey && this.activeTool === 'select') {
+        const pt = this.canvas.getScenePoint(e);
+        if (hitTestConnector(this.connectors, this.canvas.getObjects(), pt, 9)) return false;
+      }
+      return origShouldClear(e, target);
+    };
+
     const origRenderBg = this.canvas._renderBackground.bind(this.canvas);
     this.canvas._renderBackground = (ctx: CanvasRenderingContext2D) => {
       origRenderBg(ctx);
@@ -215,7 +233,7 @@ export class CanvasController {
         ctx,
         this.connectors,
         visibleObjects,
-        this.isExporting ? null : this.selectedConnectorId,
+        this.isExporting ? null : this.getHighlightedConnectorIds(),
         this.isExporting ? null : this.draftConnector,
         this.isExporting ? null : this.repositioningConnector
       );
@@ -387,7 +405,7 @@ export class CanvasController {
         if (e.buttons === 0 && !this.spacePressed && this.activeTool !== 'pan') {
           this.isPanning = false;
           this.canvas.selection = this.activeTool === 'select';
-          this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
+          this.canvas.defaultCursor = 'default';
           this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
           this.canvas.requestRenderAll();
           return;
@@ -481,7 +499,9 @@ export class CanvasController {
       }
 
       // Check if clicking an endpoint of any connector (or selected connector) to reposition it
-      const targetConns = this.selectedConnectorId
+      const targetConns = ev.shiftKey
+        ? [] // Shift+click is reserved for adding connectors to a multi-selection
+        : this.selectedConnectorId
         ? this.connectors.filter((c) => c.id === this.selectedConnectorId)
         : this.connectors;
       const zoom = this.canvas.getZoom();
@@ -494,6 +514,7 @@ export class CanvasController {
           (this.canvas as any)._currentTransform = null;
           (this.canvas as any)._groupSelector = null;
           this.canvas.discardActiveObject();
+          this.multiSelectedConnectorIds.clear();
           this.selectedConnectorId = conn.id;
           this.repositioningConnector = {
             connId: conn.id,
@@ -545,6 +566,7 @@ export class CanvasController {
         (this.canvas as any)._currentTransform = null;
         (this.canvas as any)._groupSelector = null;
         this.selectedConnectorId = null;
+        this.multiSelectedConnectorIds.clear();
         this.draftConnector = {
           from: startingAnchor,
           toPt: { x: scenePt.x, y: scenePt.y },
@@ -559,17 +581,40 @@ export class CanvasController {
       if (!target) {
         const hitConn = hitTestConnector(this.connectors, this.canvas.getObjects(), scenePt, 9);
         if (hitConn) {
-          this.canvas.discardActiveObject();
-          this.selectedConnectorId = hitConn.id;
+          (this.canvas as any)._groupSelector = null;
+          if (ev.shiftKey) {
+            this.toggleConnectorInSelection(hitConn.id);
+          } else {
+            this.canvas.discardActiveObject();
+            this.multiSelectedConnectorIds.clear();
+            this.selectedConnectorId = hitConn.id;
+          }
           this.canvas.requestRenderAll();
           this.notifyChange(false);
           return;
         }
       }
 
-      if (this.selectedConnectorId) {
+      // Clicking on an object (without shift) resets connector multi-selection, unless the
+      // user is grabbing the current multi-selection to drag it.
+      const activeNow = this.canvas.getActiveObject();
+      const grabbingActiveSelection =
+        !!target && target === activeNow && activeNow instanceof ActiveSelection;
+      if (!ev.shiftKey && !grabbingActiveSelection) {
+        if (this.selectedConnectorId || this.multiSelectedConnectorIds.size > 0) {
+          this.selectedConnectorId = null;
+          this.multiSelectedConnectorIds.clear();
+          this.canvas.requestRenderAll();
+        }
+      } else if (ev.shiftKey && this.selectedConnectorId) {
+        // Keep a single-selected connector as part of the growing multi-selection
+        this.multiSelectedConnectorIds.add(this.selectedConnectorId);
         this.selectedConnectorId = null;
-        this.canvas.requestRenderAll();
+      }
+
+      // Start tracking a marquee drag so connectors inside it can be selected too
+      if (!target && this.activeTool === 'select' && this.canvas.selection) {
+        this.marqueeStart = { x: scenePt.x, y: scenePt.y };
       }
       this.altCloneDoneForDrag = false;
     });
@@ -583,7 +628,7 @@ export class CanvasController {
         if (ev.buttons === 0 && !this.spacePressed && this.activeTool !== 'pan') {
           this.isPanning = false;
           this.canvas.selection = this.activeTool === 'select';
-          this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
+          this.canvas.defaultCursor = 'default';
           this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
           this.canvas.requestRenderAll();
           return;
@@ -736,7 +781,8 @@ export class CanvasController {
         typeof (activeObj as any)._findTargetCorner === 'function' &&
         Boolean((activeObj as any)._findTargetCorner(vPt));
 
-      const excludeId = this.draftConnector ? this.draftConnector.from.objectId : undefined;
+      // Draft connector dragging returns early above, so no object is excluded here
+      const excludeId = undefined;
       const nearAnchor = isOverControl
         ? null
         : findNearestAnchorPort(
@@ -775,6 +821,29 @@ export class CanvasController {
     this.canvas.on('mouse:up', (opt) => {
       const ev = opt.e as MouseEvent;
       const scenePt = this.canvas.getScenePoint(ev);
+
+      if (this.marqueeStart) {
+        const start = this.marqueeStart;
+        this.marqueeStart = null;
+        const minDrag = 3 / Math.max(0.01, this.canvas.getZoom());
+        if (
+          Math.abs(scenePt.x - start.x) > minDrag ||
+          Math.abs(scenePt.y - start.y) > minDrag
+        ) {
+          const hits = connectorsIntersectingRect(this.connectors, this.canvas.getObjects(), {
+            left: Math.min(start.x, scenePt.x),
+            right: Math.max(start.x, scenePt.x),
+            top: Math.min(start.y, scenePt.y),
+            bottom: Math.max(start.y, scenePt.y),
+          });
+          if (hits.length > 0) {
+            for (const c of hits) this.multiSelectedConnectorIds.add(c.id);
+            this.normalizeConnectorSelection();
+            this.canvas.requestRenderAll();
+            this.notifyChange(false);
+          }
+        }
+      }
 
       if (this.repositioningConnector) {
         const { connId, endpoint, targetAnchor } = this.repositioningConnector;
@@ -1139,32 +1208,42 @@ export class CanvasController {
 
         if ((target as any).ngType === 'frame') {
           const group = target as Group;
-          const items = group.getObjects();
-          const bg = items[0] as any;
           const sx = group.scaleX || 1;
           const sy = group.scaleY || 1;
-          const baseW = bg ? bg.width : group.width;
-          const baseH = bg ? bg.height : group.height;
-          const finalW = Math.max(120, Math.round(baseW * sx));
-          const finalH = Math.max(80, Math.round(baseH * sy));
-          updateFrameDimensions(group, finalW, finalH);
+          if (Math.abs(sx - 1) > 0.001 || Math.abs(sy - 1) > 0.001) {
+            const items = group.getObjects();
+            const bg = items[0] as any;
+            const baseW = bg ? bg.width : group.width;
+            const baseH = bg ? bg.height : group.height;
+            const finalW = Math.max(120, Math.round(baseW * sx));
+            const finalH = Math.max(80, Math.round(baseH * sy));
+            updateFrameDimensions(group, finalW, finalH);
+          }
         }
       }
       this.ensureFramesAtBack();
       this.smartGuides = [];
       this.notifyChange(true);
     });
-    this.canvas.on('selection:created', () => {
+    // Shift-adding an object to the selection keeps any selected connector(s) selected too.
+    const keepConnectorOnShift = (opt: { e?: Event }) => {
+      const e = opt?.e as MouseEvent | undefined;
+      if (e?.shiftKey && this.selectedConnectorId) {
+        this.multiSelectedConnectorIds.add(this.selectedConnectorId);
+      }
       this.selectedConnectorId = null;
+    };
+    this.canvas.on('selection:created', (opt) => {
+      keepConnectorOnShift(opt as { e?: Event });
       this.notifyChange(false);
     });
-    this.canvas.on('selection:updated', () => {
+    this.canvas.on('selection:updated', (opt) => {
       const editingObj = this.canvas.getObjects().find((o: any) => o.isEditing) as any;
       if (editingObj && editingObj !== this.canvas.getActiveObject()) {
         editingObj.exitEditing();
         this.canvas.requestRenderAll();
       }
-      this.selectedConnectorId = null;
+      keepConnectorOnShift(opt as { e?: Event });
       this.notifyChange(false);
     });
     this.canvas.on('selection:cleared', () => {
@@ -1198,10 +1277,52 @@ export class CanvasController {
     return null;
   }
 
+  /** IDs of every connector that should be drawn as selected. */
+  private getHighlightedConnectorIds(): Set<string> {
+    const ids = new Set(this.multiSelectedConnectorIds);
+    if (this.selectedConnectorId) ids.add(this.selectedConnectorId);
+    return ids;
+  }
+
+  /** Shift+click on a connector: add/remove it from the current multi-selection. */
+  private toggleConnectorInSelection(connId: string) {
+    if (this.selectedConnectorId) {
+      this.multiSelectedConnectorIds.add(this.selectedConnectorId);
+      this.selectedConnectorId = null;
+    }
+    if (this.multiSelectedConnectorIds.has(connId)) {
+      this.multiSelectedConnectorIds.delete(connId);
+    } else {
+      this.multiSelectedConnectorIds.add(connId);
+    }
+    this.normalizeConnectorSelection();
+  }
+
+  /**
+   * If exactly one connector is selected and no objects are, treat it as a regular single
+   * selection (so the inspector shows its properties). Otherwise keep it in the multi set.
+   */
+  private normalizeConnectorSelection() {
+    if (
+      this.multiSelectedConnectorIds.size === 1 &&
+      !this.selectedConnectorId &&
+      this.canvas.getActiveObjects().length === 0
+    ) {
+      this.selectedConnectorId = [...this.multiSelectedConnectorIds][0];
+      this.multiSelectedConnectorIds.clear();
+    } else if (this.selectedConnectorId && this.multiSelectedConnectorIds.size > 0) {
+      this.multiSelectedConnectorIds.add(this.selectedConnectorId);
+      this.selectedConnectorId = null;
+    }
+  }
+
   public getSelectionState(): SelectionState {
     const activeObject = this.canvas.getActiveObject() || null;
+    const highlightedIds = this.getHighlightedConnectorIds();
+    const selectedConnectors = this.connectors.filter((c) => highlightedIds.has(c.id));
     const activeConnector =
-      this.connectors.find((c) => c.id === this.selectedConnectorId) || null;
+      this.connectors.find((c) => c.id === this.selectedConnectorId) ||
+      (selectedConnectors.length === 1 ? selectedConnectors[0] : null);
     let compatResult: CompatibilityResult | null = null;
     if (activeConnector) {
       const map = new Map<string, FabricObject>();
@@ -1211,7 +1332,7 @@ export class CanvasController {
       }
       compatResult = evaluateConnectorCompatibility(activeConnector, map);
     }
-    return { activeObject, activeConnector, compatResult };
+    return { activeObject, activeConnector, selectedConnectors, compatResult };
   }
 
   public addConnector(conn: ConnectorConfig) {
@@ -1244,6 +1365,18 @@ export class CanvasController {
     const conn = this.connectors.find((c) => c.id === id);
     if (!conn) return;
     Object.assign(conn, patch);
+    this.canvas.requestRenderAll();
+    this.notifyChange(true);
+  }
+
+  public updateSelectedConnectors(patch: Partial<ConnectorConfig>) {
+    const ids = this.getHighlightedConnectorIds();
+    if (ids.size === 0) return;
+    for (const conn of this.connectors) {
+      if (ids.has(conn.id)) {
+        Object.assign(conn, patch);
+      }
+    }
     this.canvas.requestRenderAll();
     this.notifyChange(true);
   }
@@ -1371,21 +1504,47 @@ export class CanvasController {
   }
 
   public deleteSelected() {
+    let changed = false;
     if (this.selectedConnectorId) {
       this.connectors = this.connectors.filter((c) => c.id !== this.selectedConnectorId);
       this.selectedConnectorId = null;
-      this.canvas.requestRenderAll();
-      this.notifyChange(true);
+      changed = true;
+    }
+    if (this.multiSelectedConnectorIds.size > 0) {
+      const ids = this.multiSelectedConnectorIds;
+      this.connectors = this.connectors.filter((c) => !ids.has(c.id));
+      this.multiSelectedConnectorIds = new Set();
+      changed = true;
+    }
+
+    const active = this.canvas.getActiveObject();
+    const activeObjects = this.canvas.getActiveObjects();
+
+    // Check if active object is an orphaned ActiveSelection stuck on the canvas
+    if (active && (active instanceof ActiveSelection || (active as any).type === 'activeselection' || (active as any).type === 'ActiveSelection')) {
+      if (this.canvas.getObjects().includes(active)) {
+        this.canvas.remove(active);
+      }
+    }
+
+    if (activeObjects.length === 0 && !active) {
+      if (changed) {
+        this.canvas.requestRenderAll();
+        this.notifyChange(true);
+      }
       return;
     }
-    const activeObjects = this.canvas.getActiveObjects();
-    if (activeObjects.length === 0) return;
     const removedIds = new Set<string>();
     this.canvas.discardActiveObject();
     for (const obj of activeObjects) {
       const rec = obj as unknown as Record<string, unknown>;
       if (rec.ngId) removedIds.add(String(rec.ngId));
       this.canvas.remove(obj);
+    }
+    if (active && this.canvas.getObjects().includes(active)) {
+      const rec = active as unknown as Record<string, unknown>;
+      if (rec.ngId) removedIds.add(String(rec.ngId));
+      this.canvas.remove(active);
     }
     this.connectors = this.connectors.filter(
       (c) => !removedIds.has(c.fromId) && !removedIds.has(c.toId)
@@ -1479,9 +1638,11 @@ export class CanvasController {
       return;
     }
 
-    if (this.selectedConnectorId) {
-      const conn = this.connectors.find((c) => c.id === this.selectedConnectorId);
-      if (conn) {
+    const targetConns = this.connectors.filter(
+      (c) => this.selectedConnectorId === c.id || this.multiSelectedConnectorIds.has(c.id)
+    );
+    if (targetConns.length > 0) {
+      for (const conn of targetConns) {
         if (conn.routing === 'elbow') {
           conn.elbowOffset = (conn.elbowOffset || 0) + (dx !== 0 ? dx : dy);
         } else {
@@ -1493,9 +1654,9 @@ export class CanvasController {
             conn.toRatio = Math.max(0.05, Math.min(0.95, (conn.toRatio ?? 0.5) + dy * 0.01));
           }
         }
-        this.canvas.requestRenderAll();
-        this.notifyChange(true);
       }
+      this.canvas.requestRenderAll();
+      this.notifyChange(true);
     }
   }
 
@@ -1507,10 +1668,21 @@ export class CanvasController {
     }
     const active = this.canvas.getActiveObject();
     if (active) {
-      this.clipboardData = {
-        type: 'object',
-        json: active.toObject(NG_CUSTOM_PROPS),
-      };
+      if (active instanceof ActiveSelection || (active as any).type === 'activeselection' || (active as any).type === 'ActiveSelection') {
+        this.clipboardData = {
+          type: 'activeSelection',
+          json: (active as any).toObject(NG_CUSTOM_PROPS),
+          origLeft: active.left,
+          origTop: active.top,
+        };
+      } else {
+        this.clipboardData = {
+          type: 'object',
+          json: (active as any).toObject(NG_CUSTOM_PROPS),
+          origLeft: active.left,
+          origTop: active.top,
+        };
+      }
     }
   }
 
@@ -1522,15 +1694,55 @@ export class CanvasController {
   public async pasteAt(pt?: { x: number; y: number }) {
     if (!this.clipboardData) return;
     const dest = pt || this.getViewportCenter();
+    if (this.clipboardData.type === 'activeSelection') {
+      const clonedArr = await util.enlivenObjects([this.clipboardData.json]);
+      if (clonedArr.length > 0) {
+        const selObj = clonedArr[0] as ActiveSelection;
+        const origLeft = this.clipboardData.origLeft ?? selObj.left;
+        const origTop = this.clipboardData.origTop ?? selObj.top;
+        const targetLeft = pt ? dest.x : origLeft + 24;
+        const targetTop = pt ? dest.y : origTop + 24;
+        this.clipboardData.origLeft = targetLeft;
+        this.clipboardData.origTop = targetTop;
+
+        selObj.set({
+          left: targetLeft,
+          top: targetTop,
+        });
+        selObj.canvas = this.canvas;
+        this.canvas.discardActiveObject();
+        let hasFrame = false;
+        selObj.forEachObject((child) => {
+          const rec = child as unknown as Record<string, unknown>;
+          rec.ngId = genNgId(String(rec.ngType || 'obj'));
+          if (rec.ngType === 'frame') hasFrame = true;
+          this.canvas.add(child);
+        });
+        selObj.setCoords();
+        if (hasFrame) {
+          this.ensureFramesAtBack();
+        }
+        this.canvas.setActiveObject(selObj);
+        this.canvas.requestRenderAll();
+        this.notifyChange(true);
+        return;
+      }
+    }
     if (this.clipboardData.type === 'object') {
       const clonedArr = await util.enlivenObjects([this.clipboardData.json]);
       if (clonedArr.length > 0) {
         const obj = clonedArr[0] as FabricObject;
         const rec = obj as unknown as Record<string, unknown>;
         rec.ngId = genNgId(String(rec.ngType || 'obj'));
+        const origLeft = this.clipboardData.origLeft ?? obj.left;
+        const origTop = this.clipboardData.origTop ?? obj.top;
+        const targetLeft = pt ? dest.x : origLeft + 20;
+        const targetTop = pt ? dest.y : origTop + 20;
+        this.clipboardData.origLeft = targetLeft;
+        this.clipboardData.origTop = targetTop;
         obj.set({
-          left: dest.x + 20,
-          top: dest.y + 20,
+          left: targetLeft,
+          top: targetTop,
         });
         obj.setCoords();
         this.canvas.add(obj);
@@ -1607,6 +1819,7 @@ export class CanvasController {
         this.canvas.setActiveObject(target);
       }
       this.selectedConnectorId = null;
+      this.multiSelectedConnectorIds.clear();
       const rec = target as unknown as Record<string, unknown>;
       const targetType =
         rec.ngType === 'frame'
@@ -1642,6 +1855,7 @@ export class CanvasController {
 
     this.canvas.discardActiveObject();
     this.selectedConnectorId = null;
+    this.multiSelectedConnectorIds.clear();
     this.canvas.requestRenderAll();
     this.onOpenContextMenu?.({
       x: ev.clientX,
@@ -1654,6 +1868,30 @@ export class CanvasController {
   public async duplicateSelected() {
     const active = this.canvas.getActiveObject();
     if (!active) return;
+    if (active instanceof ActiveSelection || (active as any).type === 'activeselection' || (active as any).type === 'ActiveSelection') {
+      const cloned = await (active as ActiveSelection).clone(NG_CUSTOM_PROPS);
+      cloned.set({
+        left: (active.left || 200) + 24,
+        top: (active.top || 200) + 24,
+      });
+      cloned.canvas = this.canvas;
+      this.canvas.discardActiveObject();
+      let hasFrame = false;
+      cloned.forEachObject((child) => {
+        const rec = child as unknown as Record<string, unknown>;
+        rec.ngId = genNgId(String(rec.ngType || 'dup'));
+        if (rec.ngType === 'frame') hasFrame = true;
+        this.canvas.add(child);
+      });
+      cloned.setCoords();
+      if (hasFrame) {
+        this.ensureFramesAtBack();
+      }
+      this.canvas.setActiveObject(cloned);
+      this.canvas.requestRenderAll();
+      this.notifyChange(true);
+      return;
+    }
     const cloned = await active.clone(NG_CUSTOM_PROPS);
     const rec = cloned as unknown as Record<string, unknown>;
     rec.ngId = genNgId('dup');
@@ -1732,9 +1970,12 @@ export class CanvasController {
       this.settings = { ...DEFAULT_CANVAS_SETTINGS, ...(doc.settings || {}) };
       this.connectors = JSON.parse(JSON.stringify(doc.connectors || []));
       this.selectedConnectorId = null;
+      this.multiSelectedConnectorIds.clear();
       await this.canvas.loadFromJSON(doc.fabricJson);
       for (const obj of this.canvas.getObjects()) {
-        if (obj instanceof Group) {
+        if (obj instanceof ActiveSelection || (obj as any).type === 'activeselection' || (obj as any).type === 'ActiveSelection') {
+          this.canvas.remove(obj);
+        } else if (obj instanceof Group) {
           obj.set({ subTargetCheck: false });
         }
       }
@@ -1755,7 +1996,7 @@ export class CanvasController {
     if (this.historyIndex >= 0 && this.history[this.historyIndex] === snap) return;
     this.history = this.history.slice(0, this.historyIndex + 1);
     this.history.push(snap);
-    if (this.history.length > 40) this.history.shift();
+    if (this.history.length > 20) this.history.shift();
     this.historyIndex = this.history.length - 1;
   }
 
@@ -1899,6 +2140,7 @@ export class CanvasController {
     this.canvas.clear();
     this.connectors = [];
     this.selectedConnectorId = null;
+    this.multiSelectedConnectorIds.clear();
 
     const findProd = (name: string, fallbackSeries: string): ProductItem => {
       const norm = name.toLowerCase().replace(/[^a-z0-9]+/g, '');

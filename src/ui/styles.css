@@ -777,3 +777,183 @@
   background: rgba(239, 68, 68, 0.18);
   color: #fca5a5;
 }
+
+/* Footer right group + tutorial re-launch link */
+.ng-footer-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ng-tutorial-trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 11px;
+  color: #64748b;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.ng-tutorial-trigger:hover,
+.ng-tutorial-trigger:focus-visible {
+  color: #ff6a2b;
+  outline: none;
+}
+
+/* Interactive tutorial */
+.ng-tutorial-root {
+  position: absolute;
+  inset: 0;
+  z-index: 1500;
+  animation: ngFadeIn 0.2s ease-out;
+}
+
+.ng-tutorial-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+/* When a spotlight is shown, the spotlight's box-shadow provides the dimming */
+.ng-tutorial-backdrop.with-spot {
+  background: transparent;
+}
+
+.ng-tutorial-spotlight {
+  position: absolute;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.55), 0 0 0 2px #ff6a2b, 0 0 18px 4px rgba(255, 106, 43, 0.45);
+  pointer-events: none;
+  transition: top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease;
+}
+
+.ng-tutorial-card {
+  position: absolute;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  padding: 16px 18px 14px;
+  box-sizing: border-box;
+  color: #0f172a;
+  animation: ngTutorialIn 0.22s ease-out;
+}
+
+@keyframes ngTutorialIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ng-tutorial-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ng-tutorial-step-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ff6a2b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ng-tutorial-skip {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.ng-tutorial-skip:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.ng-tutorial-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ng-tutorial-body {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.ng-tutorial-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ng-tutorial-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.ng-tutorial-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #cbd5e1;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.ng-tutorial-dot.active {
+  background: #ff6a2b;
+  transform: scale(1.25);
+}
+
+.ng-tutorial-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Responsive header: collapse secondary button labels to icon-only so the
+   right-hand actions (Export, language, close) never overflow off-screen.
+   Buttons keep their title tooltips. */
+.ng-header-left,
+.ng-header-right {
+  flex-shrink: 0;
+}
+
+.ng-header-center {
+  min-width: 0;
+}
+
+@media (max-width: 1600px) {
+  .ng-header-center .ng-btn-secondary > span,
+  .ng-header-right .ng-btn-secondary > span {
+    display: none;
+  }
+  .ng-header-center .ng-btn-secondary,
+  .ng-header-right .ng-btn-secondary {
+    padding: 6px 8px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .ng-tool-tab > span,
+  .ng-header-right .ng-btn-accent > span {
+    display: none;
+  }
+  .ng-logo-title > span {
+    display: none;
+  }
+}

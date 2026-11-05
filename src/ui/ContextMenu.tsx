@@ -7,11 +7,12 @@ export interface ContextMenuProps {
   y: number;
   scenePt?: { x: number; y: number };
   targetType: 'object' | 'connector' | 'canvas' | 'frame' | 'product';
+  targetConnector?: any;
   controller: CanvasController;
   onClose: () => void;
 }
 
-export function ContextMenu({ x, y, scenePt, targetType, controller, onClose }: ContextMenuProps) {
+export function ContextMenu({ x, y, scenePt, targetType, targetConnector, controller, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Position adjustment so menu never goes outside the viewport
@@ -120,8 +121,15 @@ export function ContextMenu({ x, y, scenePt, targetType, controller, onClose }: 
             className="ng-ctx-item"
             onClick={() =>
               act(() => {
-                const conn = controller.connectors.find((c) => c.id === controller.selectedConnectorId);
-                if (conn) controller.updateConnector(conn.id, { routing: 'straight' });
+                const conns = controller.connectors.filter(
+                  (c) =>
+                    controller.selectedConnectorId === c.id ||
+                    controller.multiSelectedConnectorIds.has(c.id) ||
+                    targetConnector?.id === c.id
+                );
+                for (const conn of conns) {
+                  controller.updateConnector(conn.id, { routing: 'straight' });
+                }
               })
             }
           >
@@ -131,8 +139,15 @@ export function ContextMenu({ x, y, scenePt, targetType, controller, onClose }: 
             className="ng-ctx-item"
             onClick={() =>
               act(() => {
-                const conn = controller.connectors.find((c) => c.id === controller.selectedConnectorId);
-                if (conn) controller.updateConnector(conn.id, { routing: 'elbow' });
+                const conns = controller.connectors.filter(
+                  (c) =>
+                    controller.selectedConnectorId === c.id ||
+                    controller.multiSelectedConnectorIds.has(c.id) ||
+                    targetConnector?.id === c.id
+                );
+                for (const conn of conns) {
+                  controller.updateConnector(conn.id, { routing: 'elbow' });
+                }
               })
             }
           >
@@ -142,8 +157,15 @@ export function ContextMenu({ x, y, scenePt, targetType, controller, onClose }: 
             className="ng-ctx-item"
             onClick={() =>
               act(() => {
-                const conn = controller.connectors.find((c) => c.id === controller.selectedConnectorId);
-                if (conn) controller.updateConnector(conn.id, { routing: 'curved' });
+                const conns = controller.connectors.filter(
+                  (c) =>
+                    controller.selectedConnectorId === c.id ||
+                    controller.multiSelectedConnectorIds.has(c.id) ||
+                    targetConnector?.id === c.id
+                );
+                for (const conn of conns) {
+                  controller.updateConnector(conn.id, { routing: 'curved' });
+                }
               })
             }
           >
@@ -153,8 +175,13 @@ export function ContextMenu({ x, y, scenePt, targetType, controller, onClose }: 
             className="ng-ctx-item"
             onClick={() =>
               act(() => {
-                const conn = controller.connectors.find((c) => c.id === controller.selectedConnectorId);
-                if (conn) {
+                const conns = controller.connectors.filter(
+                  (c) =>
+                    controller.selectedConnectorId === c.id ||
+                    controller.multiSelectedConnectorIds.has(c.id) ||
+                    targetConnector?.id === c.id
+                );
+                for (const conn of conns) {
                   controller.updateConnector(conn.id, {
                     fromId: conn.toId,
                     toId: conn.fromId,
