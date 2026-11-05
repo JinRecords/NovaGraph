@@ -5,12 +5,13 @@ import { CanvasController } from '../canvas/controller';
 export interface ContextMenuProps {
   x: number;
   y: number;
+  scenePt?: { x: number; y: number };
   targetType: 'object' | 'connector' | 'canvas' | 'frame' | 'product';
   controller: CanvasController;
   onClose: () => void;
 }
 
-export function ContextMenu({ x, y, targetType, controller, onClose }: ContextMenuProps) {
+export function ContextMenu({ x, y, scenePt, targetType, controller, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Position adjustment so menu never goes outside the viewport
@@ -18,24 +19,17 @@ export function ContextMenu({ x, y, targetType, controller, onClose }: ContextMe
   const winH = typeof window !== 'undefined' ? window.innerHeight : 900;
   const menuW = 210;
   const menuH = 340;
-  const left = Math.min(x, winW - menuW - 12);
-  const top = Math.min(y, winH - menuH - 12);
+  const left = Math.max(10, Math.min(x, winW - menuW - 14));
+  const top = Math.max(10, Math.min(y, winH - menuH - 14));
 
   useEffect(() => {
-    const handleDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
 
-    window.addEventListener('mousedown', handleDown, true);
-    window.addEventListener('keydown', handleKey, true);
+    window.addEventListener('keydown', handleKey);
     return () => {
-      window.removeEventListener('mousedown', handleDown, true);
-      window.removeEventListener('keydown', handleKey, true);
+      window.removeEventListener('keydown', handleKey);
     };
   }, [onClose]);
 
@@ -48,30 +42,54 @@ export function ContextMenu({ x, y, targetType, controller, onClose }: ContextMe
   const isConnector = targetType === 'connector';
 
   return (
-    <div
-      ref={menuRef}
-      className="ng-context-menu"
-      style={{
-        position: 'fixed',
-        left: `${left}px`,
-        top: `${top}px`,
-        zIndex: 1000000,
-        width: `${menuW}px`,
-        background: '#18181b',
-        color: '#f4f4f5',
-        border: '1px solid #27272a',
-        borderRadius: '8px',
-        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3)',
-        padding: '5px',
-        fontSize: '12px',
-        userSelect: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1px',
-      }}
-      onClick={(e) => e.stopPropagation()}
-      onContextMenu={(e) => e.preventDefault()}
-    >
+    <>
+      {/* Invisible backdrop to dismiss menu on any outside click without Shadow DOM retargeting issues */}
+      <div
+        className="ng-context-menu-backdrop"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999998,
+          background: 'transparent',
+          cursor: 'default',
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }}
+      />
+
+      <div
+        ref={menuRef}
+        className="ng-context-menu"
+        style={{
+          position: 'fixed',
+          left: `${left}px`,
+          top: `${top}px`,
+          zIndex: 9999999,
+          width: `${menuW}px`,
+          background: '#18181b',
+          color: '#f4f4f5',
+          border: '1px solid #27272a',
+          borderRadius: '8px',
+          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3)',
+          padding: '5px',
+          fontSize: '12px',
+          userSelect: 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1px',
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onContextMenu={(e) => e.preventDefault()}
+      >
       {/* Object & Frame Actions */}
       {isObject && (
         <>
@@ -180,7 +198,7 @@ export function ContextMenu({ x, y, targetType, controller, onClose }: ContextMe
       )}
 
       {/* Canvas actions */}
-      <div className="ng-ctx-item" onClick={() => act(() => controller.pasteAt())}>
+      <div className="ng-ctx-item" onClick={() => act(() => controller.pasteAt(scenePt))}>
         <span>Paste</span>
         <span className="ng-ctx-key">⌘V</span>
       </div>
@@ -217,5 +235,7 @@ export function ContextMenu({ x, y, targetType, controller, onClose }: ContextMe
         </>
       )}
     </div>
+    </>
   );
 }
+

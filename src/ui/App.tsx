@@ -47,6 +47,7 @@ export function App({ onClose }: { onClose: () => void }) {
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
+    scenePt?: { x: number; y: number };
     targetType: 'object' | 'connector' | 'canvas' | 'frame' | 'product';
     targetObject?: any;
     targetConnector?: any;
@@ -668,6 +669,7 @@ export function App({ onClose }: { onClose: () => void }) {
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
+          scenePt={contextMenu.scenePt}
           targetType={contextMenu.targetType}
           controller={controller}
           onClose={() => setContextMenu(null)}

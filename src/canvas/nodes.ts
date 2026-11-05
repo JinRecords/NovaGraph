@@ -360,6 +360,7 @@ export function createFrameNode(options: {
     stroke,
     strokeWidth: 1.5,
     strokeDashArray: [6, 4],
+    strokeUniform: true,
     rx: 6,
     ry: 6,
     originX: 'center',
@@ -376,6 +377,7 @@ export function createFrameNode(options: {
     originY: 'bottom',
     left: -w / 2 + 10,
     top: -h / 2 - 4,
+    strokeUniform: true,
   });
 
   const group = new Group([bg, titleBadge], {
@@ -392,6 +394,44 @@ export function createFrameNode(options: {
   rec.ngType = 'frame';
   rec.ngFrameTitle = title;
   return group;
+}
+
+/** Update frame dimensions in-place, keeping unscaled 1:1 typography and uniform dashed borders without distortion. */
+export function updateFrameDimensions(group: Group, finalW: number, finalH: number): Group {
+  const canvas = group.canvas;
+  const rec = group as unknown as Record<string, unknown>;
+  const title = (rec.ngFrameTitle as string) || 'Frame 1';
+  const items = group.getObjects();
+  const bg = items[0] as Rect;
+  const fill = bg ? (bg.fill as string) : 'rgba(241, 245, 249, 0.4)';
+  const stroke = bg ? (bg.stroke as string) : '#94a3b8';
+
+  const newGroup = createFrameNode({
+    left: group.left,
+    top: group.top,
+    width: finalW,
+    height: finalH,
+    title,
+    fill,
+    stroke,
+    ngId: rec.ngId as string,
+  });
+  newGroup.set({
+    angle: group.angle,
+    originX: 'center',
+    originY: 'center',
+  });
+
+  if (canvas) {
+    const wasActive = canvas.getActiveObject() === group;
+    const idx = canvas.getObjects().indexOf(group);
+    canvas.remove(group);
+    if (idx >= 0) canvas.insertAt(idx, newGroup);
+    else canvas.add(newGroup);
+    if (wasActive) canvas.setActiveObject(newGroup);
+    canvas.requestRenderAll();
+  }
+  return newGroup;
 }
 
 /** Create a visual H Series Configured Chassis + Input/Output Cards assembly on the canvas. */

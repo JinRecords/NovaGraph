@@ -44,8 +44,8 @@ export function getObjectAnchorPorts(obj: FabricObject, forceOffset?: number): A
   if (!objectId) return [];
   const br = obj.getBoundingRect();
   const isSelected = obj.canvas ? obj.canvas.getActiveObject() === obj : false;
-  // When selected, push ports 28px outside the bounding box so they have generous distance from resize handles
-  const offset = forceOffset !== undefined ? forceOffset : isSelected ? 28 : 0;
+  // When selected, check both 28px outside and 0px boundary so clicking either is 100% reliable
+  const offsets = forceOffset !== undefined ? [forceOffset] : isSelected ? [28, 0] : [0];
 
   // Space anchor ratios away from the 8 transform handles (corners and midpoints)
   const isWide = br.width > 190;
@@ -53,17 +53,19 @@ export function getObjectAnchorPorts(obj: FabricObject, forceOffset?: number): A
   const vRatios = br.height > 110 ? [0.32, 0.68] : [0.5];
 
   const ports: AnchorPoint[] = [];
-  for (const r of hRatios) {
-    const ptTop = getObjectEdgePoint(obj, 'top', r, offset);
-    ports.push({ objectId, side: 'top', ratio: r, x: ptTop.x, y: ptTop.y });
-    const ptBot = getObjectEdgePoint(obj, 'bottom', r, offset);
-    ports.push({ objectId, side: 'bottom', ratio: r, x: ptBot.x, y: ptBot.y });
-  }
-  for (const r of vRatios) {
-    const ptLeft = getObjectEdgePoint(obj, 'left', r, offset);
-    ports.push({ objectId, side: 'left', ratio: r, x: ptLeft.x, y: ptLeft.y });
-    const ptRight = getObjectEdgePoint(obj, 'right', r, offset);
-    ports.push({ objectId, side: 'right', ratio: r, x: ptRight.x, y: ptRight.y });
+  for (const offset of offsets) {
+    for (const r of hRatios) {
+      const ptTop = getObjectEdgePoint(obj, 'top', r, offset);
+      ports.push({ objectId, side: 'top', ratio: r, x: ptTop.x, y: ptTop.y });
+      const ptBot = getObjectEdgePoint(obj, 'bottom', r, offset);
+      ports.push({ objectId, side: 'bottom', ratio: r, x: ptBot.x, y: ptBot.y });
+    }
+    for (const r of vRatios) {
+      const ptLeft = getObjectEdgePoint(obj, 'left', r, offset);
+      ports.push({ objectId, side: 'left', ratio: r, x: ptLeft.x, y: ptLeft.y });
+      const ptRight = getObjectEdgePoint(obj, 'right', r, offset);
+      ports.push({ objectId, side: 'right', ratio: r, x: ptRight.x, y: ptRight.y });
+    }
   }
   return ports;
 }
@@ -631,7 +633,8 @@ export function renderAnchorPortsOverlay(
 
   // In normal mode, draw discrete anchor port handles. When holding Option (isAltFreeMode), handles disappear!
   if (!isAltFreeMode) {
-    const ports = getObjectAnchorPorts(obj);
+    const isSelected = obj.canvas ? obj.canvas.getActiveObject() === obj : false;
+    const ports = getObjectAnchorPorts(obj, isSelected ? 28 : 0);
     for (const p of ports) {
       const isHit =
         activeAnchor &&
