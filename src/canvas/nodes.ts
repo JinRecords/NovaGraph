@@ -900,12 +900,17 @@ export async function createSvgNodeFromString(
   top = 280
 ): Promise<FabricObject | null> {
   try {
-    const res = await loadSVGFromString(svgString);
+    const processedSvg = svgString.includes('currentColor')
+      ? svgString.replace(/currentColor/g, '#1e293b')
+      : svgString;
+
+    const res = await loadSVGFromString(processedSvg);
     const validObjs = (res.objects || []).filter((o): o is FabricObject => Boolean(o));
     if (validObjs.length === 0) return null;
     const grp = util.groupSVGElements(validObjs, res.options);
     const maxDim = Math.max(grp.width || 100, grp.height || 100, 1);
-    const scale = maxDim > 260 ? 220 / maxDim : 1;
+    const targetDim = maxDim < 48 ? 64 : maxDim > 260 ? 220 : maxDim;
+    const scale = targetDim / maxDim;
     grp.set({
       left,
       top,

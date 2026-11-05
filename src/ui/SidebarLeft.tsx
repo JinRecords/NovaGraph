@@ -1,11 +1,38 @@
 import { h } from 'preact';
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { CanvasController } from '../canvas/controller';
 import { ShapeKind } from '../canvas/nodes';
 import { searchProducts } from '../data/search';
 import { t } from '../i18n';
 import { ProductItem } from '../types';
 import { Icon } from './Icons';
+
+const POPULAR_AV_ICONS = [
+  'mdi:server',
+  'mdi:monitor',
+  'mdi:projector',
+  'mdi:router-wireless',
+  'mdi:ethernet',
+  'mdi:video-input-hdmi',
+  'mdi:cctv',
+  'mdi:television',
+  'mdi:laptop',
+  'mdi:speaker',
+  'mdi:microphone',
+  'mdi:power-plug',
+  'mdi:network',
+  'mdi:cloud-outline',
+  'mdi:cpu-64-bit',
+  'mdi:switch',
+  'mdi:camera',
+  'mdi:volume-high',
+  'solar:server-bold',
+  'solar:display-bold',
+  'solar:videocamera-bold',
+  'solar:tv-bold',
+  'solar:wifi-router-bold',
+  'solar:headphones-round-sound-bold',
+];
 
 export function SidebarLeft({
   controller,
@@ -24,6 +51,74 @@ export function SidebarLeft({
   const [query, setQuery] = useState('');
   const [seriesFilter, setSeriesFilter] = useState('ALL');
   const [failedImgs, setFailedImgs] = useState<Set<string>>(new Set());
+
+  // Feat #3: Online Icon search & grid
+  const [iconQuery, setIconQuery] = useState('');
+  const [iconList, setIconList] = useState<string[]>(POPULAR_AV_ICONS);
+  const [isLoadingIcons, setIsLoadingIcons] = useState(false);
+  const iconCache = useRef<Map<string, string>>(new Map());
+
+  // Debounced search for icons on Iconify open source repo
+  useEffect(() => {
+    const trimmed = iconQuery.trim();
+    if (!trimmed) {
+      setIconList(POPULAR_AV_ICONS);
+      setIsLoadingIcons(false);
+      return;
+    }
+
+    setIsLoadingIcons(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(trimmed)}&limit=36`);
+        if (res.ok) {
+          const data = await res.json();
+          setIconList(Array.isArray(data.icons) ? data.icons : []);
+        } else {
+          setIconList([]);
+        }
+      } catch (err) {
+        console.warn('[NovaGraph] Iconify search error:', err);
+        setIconList([]);
+      } finally {
+        setIsLoadingIcons(false);
+      }
+    }, 260);
+
+    return () => clearTimeout(timer);
+  }, [iconQuery]);
+
+  const fetchIconSvg = async (iconKey: string): Promise<string> => {
+    if (iconCache.current.has(iconKey)) {
+      return iconCache.current.get(iconKey)!;
+    }
+    try {
+      const cleanKey = iconKey.replace(':', '/');
+      const res = await fetch(`https://api.iconify.design/${cleanKey}.svg?color=%231e293b`);
+      const svg = await res.text();
+      iconCache.current.set(iconKey, svg);
+      return svg;
+    } catch {
+      return '';
+    }
+  };
+
+  const handleSelectIcon = async (iconKey: string) => {
+    const svg = await fetchIconSvg(iconKey);
+    if (svg) {
+      await controller.addSvgFromString(svg);
+    }
+  };
+
+  const handleIconDragStart = (e: DragEvent, iconKey: string) => {
+    e.dataTransfer?.setData('application/novagraph-icon-key', iconKey);
+    const cachedSvg = iconCache.current.get(iconKey);
+    if (cachedSvg) {
+      e.dataTransfer?.setData('application/novagraph-icon', cachedSvg);
+    }
+    e.dataTransfer!.effectAllowed = 'copy';
+    fetchIconSvg(iconKey);
+  };
 
   const filteredProducts = useMemo(() => {
     return searchProducts(products, query, seriesFilter);
@@ -275,6 +370,81 @@ export function SidebarLeft({
                 }}
               />
             </label>
+
+            {/* Feat #3: Icon Search Bar & Dynamic Grid */}
+            <div style={{ marginTop: '14px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Online Icons
+                </div>
+                <span style={{ fontSize: '10px', color: '#94a3b8' }}>Iconify</span>
+              </div>
+
+              <div className="ng-search-wrapper" style={{ marginBottom: '8px' }}>
+                <Icon name="search" size={13} />
+                <input
+                  type="text"
+                  className="ng-search-input"
+                  placeholder="Search icons (e.g. server, camera)..."
+                  value={iconQuery}
+                  onInput={(e) => setIconQuery((e.target as HTMLInputElement).value)}
+                />
+                {iconQuery && (
+                  <button
+                    className="ng-search-clear"
+                    onClick={() => setIconQuery('')}
+                    title="Clear"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              {isLoadingIcons ? (
+                <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '12px', color: '#64748b' }}>
+                  Searching icons...
+                </div>
+              ) : iconList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '12px', color: '#94a3b8' }}>
+                  No icons found
+                </div>
+              ) : (
+                <div
+                  className="ng-icon-grid"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: '6px',
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    padding: '2px',
+                  }}
+                >
+                  {iconList.map((iconKey) => {
+                    const cleanKey = iconKey.replace(':', '/');
+                    const imgUrl = `https://api.iconify.design/${cleanKey}.svg?color=%231e293b`;
+                    return (
+                      <div
+                        key={iconKey}
+                        className="ng-icon-cell"
+                        title={`${iconKey} (click or drag to canvas)`}
+                        draggable={true}
+                        onDragStart={(e) => handleIconDragStart(e, iconKey)}
+                        onClick={() => handleSelectIcon(iconKey)}
+                        onMouseEnter={() => fetchIconSvg(iconKey)}
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={iconKey}
+                          loading="lazy"
+                          style={{ width: '22px', height: '22px', pointerEvents: 'none' }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

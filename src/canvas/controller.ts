@@ -193,6 +193,20 @@ export class CanvasController {
     this.onToastCallback = fn;
   }
 
+  public showToast(msg: string, kind?: 'info' | 'warn' | 'ok') {
+    if (this.onToastCallback) {
+      this.onToastCallback(msg, kind);
+    }
+  }
+
+  public hasClipboardData(): boolean {
+    return Boolean(this.clipboardData);
+  }
+
+  public setClipboardData(data: any) {
+    this.clipboardData = data;
+  }
+
   public notifyChange(scheduleAutosave = true) {
     this.onChangeCallbacks.forEach((fn) => fn());
     if (scheduleAutosave && !this.historyLocked) {
@@ -1496,8 +1510,8 @@ export class CanvasController {
     this.notifyChange(true);
   }
 
-  public addText(text?: string) {
-    const center = this.getViewportCenter();
+  public addText(text?: string, pt?: { x: number; y: number }) {
+    const center = pt || this.getViewportCenter();
     const node = createTextNode({
       left: center.x,
       top: center.y,
@@ -1527,8 +1541,8 @@ export class CanvasController {
     this.notifyChange(true);
   }
 
-  public async addSvgFromString(svgText: string) {
-    const center = this.getViewportCenter();
+  public async addSvgFromString(svgText: string, pt?: { x: number; y: number }) {
+    const center = pt || this.getViewportCenter();
     const node = await createSvgNodeFromString(svgText, center.x, center.y);
     if (node) {
       this.canvas.add(node);
@@ -1761,6 +1775,17 @@ export class CanvasController {
         connectors: JSON.parse(JSON.stringify(connsToCopy)),
       };
     }
+
+    if (this.clipboardData && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(
+          JSON.stringify({
+            __novagraph_clip__: true,
+            clipboardData: this.clipboardData,
+          })
+        )
+        .catch(() => {});
+    }
   }
 
   public cutSelected() {
@@ -1769,6 +1794,57 @@ export class CanvasController {
   }
 
   public async pasteAt(pt?: { x: number; y: number }) {
+    // Check system clipboard for image or external text
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        if (typeof navigator.clipboard.read === 'function') {
+          try {
+            const items = await navigator.clipboard.read();
+            for (const item of items) {
+              const imgType = item.types.find((t) => t.startsWith('image/'));
+              if (imgType) {
+                const blob = await item.getType(imgType);
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const dataUrl = reader.result as string;
+                  if (dataUrl) {
+                    this.addImageFromDataUrl(dataUrl, undefined, pt);
+                    this.showToast('Image pasted to canvas', 'ok');
+                  }
+                };
+                reader.readAsDataURL(blob);
+                return;
+              }
+            }
+          } catch {}
+        }
+
+        if (typeof navigator.clipboard.readText === 'function') {
+          try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+              try {
+                const parsed = JSON.parse(text);
+                if (parsed && parsed.__novagraph_clip__) {
+                  this.clipboardData = parsed.clipboardData;
+                } else if (text.trim()) {
+                  this.addText(text.trim(), pt);
+                  this.showToast('Text pasted to canvas', 'ok');
+                  return;
+                }
+              } catch {
+                if (text.trim()) {
+                  this.addText(text.trim(), pt);
+                  this.showToast('Text pasted to canvas', 'ok');
+                  return;
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+
     if (!this.clipboardData) return;
     const dest = pt || this.getViewportCenter();
 

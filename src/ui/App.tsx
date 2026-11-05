@@ -219,7 +219,17 @@ export function App({ onClose }: { onClose: () => void }) {
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
         ctrl.cutSelected();
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
-        ctrl.pasteAt();
+        let nativePasteTriggered = false;
+        const markHandled = () => {
+          nativePasteTriggered = true;
+        };
+        window.addEventListener('paste', markHandled, { once: true });
+        setTimeout(() => {
+          window.removeEventListener('paste', markHandled);
+          if (!nativePasteTriggered) {
+            ctrl.pasteAt();
+          }
+        }, 60);
       } else if ((e.metaKey || e.ctrlKey) && e.key === ']') {
         e.preventDefault();
         if (e.shiftKey) ctrl.bringToFront();
@@ -245,8 +255,77 @@ export function App({ onClose }: { onClose: () => void }) {
       }
     };
 
+    const handlePaste = async (e: ClipboardEvent) => {
+      const pathTarget = (e.composedPath?.()[0] || e.target) as HTMLElement | null;
+      const hostEl = document.getElementById('novagraph-extension-root');
+      const shadowActive = hostEl?.shadowRoot?.activeElement;
+      const isInput = Boolean(
+        pathTarget?.tagName === 'INPUT' ||
+        pathTarget?.tagName === 'TEXTAREA' ||
+        pathTarget?.tagName === 'SELECT' ||
+        pathTarget?.isContentEditable === true ||
+        pathTarget?.getAttribute?.('contenteditable') === 'true' ||
+        pathTarget?.closest?.('input, textarea, select, [contenteditable="true"]') ||
+        shadowActive?.tagName === 'INPUT' ||
+        shadowActive?.tagName === 'TEXTAREA' ||
+        shadowActive?.tagName === 'SELECT'
+      );
+      if (isInput) return;
+
+      const clipData = e.clipboardData;
+      if (!clipData) return;
+
+      // 1. Check for image
+      const items = Array.from(clipData.items || []);
+      const imgItem = items.find((item) => item.type.startsWith('image/'));
+      if (imgItem) {
+        e.preventDefault();
+        const file = imgItem.getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            if (dataUrl) {
+              ctrl.addImageFromDataUrl(dataUrl);
+              showToast('Image pasted to canvas', 'ok');
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+        return;
+      }
+
+      // 2. Check for text
+      const text = clipData.getData('text/plain');
+      if (text) {
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && parsed.__novagraph_clip__) {
+            e.preventDefault();
+            ctrl.setClipboardData(parsed.clipboardData);
+            await ctrl.pasteAt();
+            return;
+          }
+        } catch {}
+
+        if (text.trim()) {
+          e.preventDefault();
+          ctrl.addText(text.trim());
+          showToast('Text pasted to canvas', 'ok');
+          return;
+        }
+      }
+
+      // 3. Fallback to internal ctrl.pasteAt()
+      if (ctrl.hasClipboardData()) {
+        e.preventDefault();
+        await ctrl.pasteAt();
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('paste', handlePaste);
     window.addEventListener('novagraph:add-hseries', handleExternalHSeries);
 
     return () => {
@@ -265,6 +344,7 @@ export function App({ onClose }: { onClose: () => void }) {
       window.removeEventListener('resize', handleWinResize);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('paste', handlePaste);
       window.removeEventListener('novagraph:add-hseries', handleExternalHSeries);
       ctrl.canvas.dispose();
       setController(null);
@@ -365,6 +445,22 @@ export function App({ onClose }: { onClose: () => void }) {
       try {
         const prod = JSON.parse(rawProd) as ProductItem;
         await controllerRef.current.addProduct(prod, { x: pt.x, y: pt.y });
+        return;
+      } catch {}
+    }
+
+    // 1.5. Icon drag from left sidebar (Iconify SVG)
+    const rawIconSvg = e.dataTransfer?.getData('application/novagraph-icon');
+    const rawIconKey = e.dataTransfer?.getData('application/novagraph-icon-key');
+    if (rawIconSvg) {
+      await controllerRef.current.addSvgFromString(rawIconSvg, { x: pt.x, y: pt.y });
+      return;
+    } else if (rawIconKey) {
+      try {
+        const cleanKey = rawIconKey.replace(':', '/');
+        const res = await fetch(`https://api.iconify.design/${cleanKey}.svg?color=%231e293b`);
+        const svg = await res.text();
+        await controllerRef.current.addSvgFromString(svg, { x: pt.x, y: pt.y });
         return;
       } catch {}
     }
@@ -690,19 +786,17 @@ export function App({ onClose }: { onClose: () => void }) {
         }}
       />
 
-      {catalog && (
-        <HSeriesConfiguratorModal
-          isOpen={isHSeriesOpen}
-          onClose={() => setIsHSeriesOpen(false)}
-          hosts={catalog.hSeriesHosts}
-          inputCards={catalog.hSeriesInputCards}
-          outputCards={catalog.hSeriesOutputCards}
-          onAddConfig={(cfg) => {
-            controllerRef.current?.addHSeriesConfigured(cfg);
-            showToast(`Added ${cfg.host.name} system to canvas`, 'ok');
-          }}
-        />
-      )}
+      <HSeriesConfiguratorModal
+        isOpen={isHSeriesOpen}
+        onClose={() => setIsHSeriesOpen(false)}
+        hosts={catalog?.hSeriesHosts || []}
+        inputCards={catalog?.hSeriesInputCards || []}
+        outputCards={catalog?.hSeriesOutputCards || []}
+        onAddConfig={(cfg) => {
+          controllerRef.current?.addHSeriesConfigured(cfg);
+          showToast(`Added ${cfg.host.name} system to canvas`, 'ok');
+        }}
+      />
 
       <ExportModal
         isOpen={isExportOpen}

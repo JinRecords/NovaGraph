@@ -37,7 +37,16 @@ Select any device, connector, or multi-selection to inspect hardware parameters,
   - Instant access to NovaStar Independent Controllers (MCTRL series, MX series), All-in-One Processors (TU series, VX series), Fiber Converters (CVT4K, CVT310/320), Receiving Cards, and Video Processors.
   - Accurate port counts, loading capacities, resolution limits, and chassis imagery.
 - **Interactive Modular Chassis Builder (H-Series)**
-  - Configure NovaStar H2, H5, H9, and H15 chassis with custom input and output expansion cards.
+  - Configure NovaStar H2, H5, H9, H9 Enhanced, H15, H15 Enhanced, and H20 chassis with custom input and output expansion cards.
+  - **Dynamic Smart Auto-Selection**: Automatically upgrades to the optimal chassis model (e.g. H2 → H5) as you add more input/output cards beyond the current chassis slot limits.
+- **Direct Image & Plain Text Clipboard Paste**
+  - Copy images directly from screenshots, Finder, or other browser tabs and paste (`⌘V`) straight onto the canvas as image nodes.
+  - Copy plain text from external documents or editors and paste (`⌘V`) as editable text boxes.
+  - Preserves internal diagram copy/cut/paste with automatic connector re-linking.
+- **Online Open-Source Icon Search & Drag-and-Drop (Iconify)**
+  - Dynamic vector icon search right in the Shapes tab querying open-source repositories via Iconify.
+  - Pre-populated with popular AV, IT, and staging icons (servers, routers, monitors, cameras, projectors).
+  - Instant click-to-add or drag-and-drop icons directly onto the canvas.
 - **Custom Product Creator**
   - Add proprietary 3rd-party gear (media servers, matrix switchers, cameras, stage consoles) with custom model names, categories, specs, and uploaded images.
 - **Smart Magnetic Connectors**
@@ -150,3 +159,4 @@ npm run watch
 ## License
 
 This project is licensed under the MIT License.
+

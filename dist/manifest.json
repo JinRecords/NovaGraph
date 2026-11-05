@@ -23,10 +23,13 @@
   },
   "permissions": [
     "storage",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "clipboardRead",
+    "clipboardWrite"
   ],
   "host_permissions": [
-    "*://novastar.show/*"
+    "*://novastar.show/*",
+    "https://api.iconify.design/*"
   ],
   "content_scripts": [
     {
