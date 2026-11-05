@@ -171,9 +171,6 @@ export function SidebarLeft({
       {activeTab === 'products' && (
         <div className="ng-sidebar-body">
           <div className="ng-search-wrapper">
-            <span className="ng-search-icon">
-              <Icon name="search" size={14} />
-            </span>
             <input
               type="text"
               className="ng-search-input"
@@ -381,7 +378,6 @@ export function SidebarLeft({
               </div>
 
               <div className="ng-search-wrapper" style={{ marginBottom: '8px' }}>
-                <Icon name="search" size={13} />
                 <input
                   type="text"
                   className="ng-search-input"
