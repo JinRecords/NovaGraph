@@ -947,6 +947,7 @@ export async function createImageNodeFromDataUrl(
     originY: 'center',
     scaleX: scale,
     scaleY: scale,
+    strokeUniform: true,
   });
   const rec = img as unknown as Record<string, unknown>;
   rec.ngId = genNgId('img');

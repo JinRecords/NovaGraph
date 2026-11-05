@@ -110,6 +110,7 @@ const dict = {
     createLedScreen: 'Add LED Screen to Canvas',
     // Inspector - Shapes & Text & Sticky Note
     shapeProps: 'Shape & Style',
+    imageProps: 'Image Properties',
     fillColor: 'Fill Color',
     strokeColor: 'Border Color',
     strokeWidth: 'Border Width',
@@ -292,6 +293,7 @@ const dict = {
     showSpecsOnScreen: '显示分辨率与尺寸信息',
     createLedScreen: '添加 LED 屏幕到画布',
     shapeProps: '图形与样式',
+    imageProps: '图片与边框',
     fillColor: '填充颜色',
     strokeColor: '边框颜色',
     strokeWidth: '边框粗细',

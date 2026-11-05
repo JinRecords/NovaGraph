@@ -271,6 +271,11 @@ export class CanvasController {
         }
 
         // Edge anchor ports on source and target objects
+        if (this.hoveredObject && !this.canvas.getObjects().includes(this.hoveredObject)) {
+          this.hoveredObject = null;
+          this.hoveredAnchor = null;
+        }
+
         if (this.draftConnector) {
           const fromObj = this.findObjectById(this.draftConnector.from.objectId);
           if (fromObj) {
@@ -1321,6 +1326,12 @@ export class CanvasController {
       }
       this.notifyChange(false);
     });
+    this.canvas.on('object:removed', (opt: any) => {
+      if (opt.target && opt.target === this.hoveredObject) {
+        this.hoveredObject = null;
+        this.hoveredAnchor = null;
+      }
+    });
   }
 
   public setSpacePressed(pressed: boolean) {
@@ -1616,6 +1627,8 @@ export class CanvasController {
     this.connectors = this.connectors.filter(
       (c) => !removedIds.has(c.fromId) && !removedIds.has(c.toId)
     );
+    this.hoveredObject = null;
+    this.hoveredAnchor = null;
     this.canvas.requestRenderAll();
     this.notifyChange(true);
   }

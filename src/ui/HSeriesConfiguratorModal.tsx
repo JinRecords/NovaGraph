@@ -1,5 +1,5 @@
 import { h } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { HSeriesCard, HSeriesConfiguration, HSeriesHost } from '../types';
 import { t } from '../i18n';
 import { Icon } from './Icons';
@@ -93,16 +93,19 @@ export function HSeriesConfiguratorModal({
     return [...allHosts].sort((a, b) => b.unit - a.unit)[0] || null;
   };
 
+  const selectedHostIdRef = useRef(selectedHostId);
+  selectedHostIdRef.current = selectedHostId;
+
+  // Auto-upgrade or downgrade chassis host as cards are added or removed
   useEffect(() => {
-    if (!currentHost) return;
-    if (totalInSlots > currentHost.baseInputCapacity || totalOutSlots > currentHost.baseOutputCapacity) {
-      const best = findBestHost(totalInSlots, totalOutSlots);
-      if (best && best.id !== selectedHostId) {
-        setSelectedHostId(best.id);
-        setAutoUpgradeMsg(`Auto-selected ${best.name} (${best.unit}U) to fit ${totalInSlots} in / ${totalOutSlots} out slots`);
-      }
+    const best = findBestHost(totalInSlots, totalOutSlots);
+    if (best && best.id !== selectedHostIdRef.current) {
+      setSelectedHostId(best.id);
+      setAutoUpgradeMsg(
+        `Auto-selected ${best.name} (${best.unit}U) to fit ${totalInSlots} in / ${totalOutSlots} out slots`
+      );
     }
-  }, [totalInSlots, totalOutSlots, selectedHostId, currentHost]);
+  }, [totalInSlots, totalOutSlots]);
 
   const updateIn = (id: string, delta: number) => {
     setInCounts((prev) => {

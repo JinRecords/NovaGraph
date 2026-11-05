@@ -22,6 +22,7 @@ import { Icon } from './Icons';
 import { Inspector } from './Inspector';
 import { SidebarLeft } from './SidebarLeft';
 import { hasCompletedTutorial, TutorialModal } from './TutorialModal';
+import { EGG_IMAGE_DATA_URL } from '../canvas/eggData';
 
 export function App({ onClose }: { onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -143,6 +144,11 @@ export function App({ onClose }: { onClose: () => void }) {
     window.addEventListener('resize', handleWinResize);
 
     // Keyboard shortcuts: Space for pan, V for select, C for connect, Cmd+Z for undo, Backspace for delete, etc.
+    let eggKeyBuffer = '';
+    ctrl.canvas.on('selection:cleared', () => {
+      eggKeyBuffer = '';
+    });
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Inside Shadow DOM, document.activeElement is the host element.
       // Check composedPath, closest, and shadowRoot.activeElement so typing in inputs never deletes nodes
@@ -161,6 +167,27 @@ export function App({ onClose }: { onClose: () => void }) {
         shadowActive?.tagName === 'SELECT'
       );
       if (isInput) return;
+
+      const hasSelection = Boolean(
+        ctrl.canvas.getActiveObject() ||
+        ctrl.selectedConnectorId ||
+        ctrl.multiSelectedConnectorIds.size > 0
+      );
+
+      if (!hasSelection && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (/^[0-9]$/.test(e.key)) {
+          eggKeyBuffer += e.key;
+          if (eggKeyBuffer.length > 16) eggKeyBuffer = eggKeyBuffer.slice(-16);
+          if (eggKeyBuffer.endsWith('666888')) {
+            eggKeyBuffer = '';
+            ctrl.addImageFromDataUrl(EGG_IMAGE_DATA_URL, 'egg.jpg');
+          }
+        } else if (e.key.length === 1 && e.key !== 'Shift') {
+          eggKeyBuffer = '';
+        }
+      } else {
+        eggKeyBuffer = '';
+      }
 
       if (e.key === 'Escape') {
         const editingObj = ctrl.canvas.getObjects().find((o: any) => o.isEditing) as any;
