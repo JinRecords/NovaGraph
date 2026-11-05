@@ -15,6 +15,7 @@ import {
   upsertBoard,
 } from '../storage/boards';
 import { BoardDocument, ProductItem } from '../types';
+import { ContextMenu } from './ContextMenu';
 import { CustomProductModal } from './CustomProductModal';
 import { ExportModal } from './ExportModal';
 import { HSeriesConfiguratorModal } from './HSeriesConfiguratorModal';
@@ -42,6 +43,14 @@ export function App({ onClose }: { onClose: () => void }) {
     activeObject: any;
     activeConnector: any;
   }>({ activeObject: null, activeConnector: null });
+
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    targetType: 'object' | 'connector' | 'canvas' | 'frame' | 'product';
+    targetObject?: any;
+    targetConnector?: any;
+  } | null>(null);
 
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isCustomProdOpen, setIsCustomProdOpen] = useState(false);
@@ -71,6 +80,7 @@ export function App({ onClose }: { onClose: () => void }) {
       containerRef.current
     );
     ctrl.setToastHandler(showToast);
+    ctrl.onOpenContextMenu = (info) => setContextMenu(info);
     controllerRef.current = ctrl;
     setController(ctrl);
 
@@ -151,6 +161,19 @@ export function App({ onClose }: { onClose: () => void }) {
         return;
       }
 
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        let dx = 0;
+        let dy = 0;
+        if (e.key === 'ArrowUp') dy = -step;
+        else if (e.key === 'ArrowDown') dy = step;
+        else if (e.key === 'ArrowLeft') dx = -step;
+        else if (e.key === 'ArrowRight') dx = step;
+        ctrl.nudgeSelected(dx, dy);
+        return;
+      }
+
       if (e.code === 'Space' && !e.repeat) {
         ctrl.setSpacePressed(true);
       } else if ((e.key === 'v' || e.key === 'V') && !e.metaKey && !e.ctrlKey) {
@@ -166,6 +189,20 @@ export function App({ onClose }: { onClose: () => void }) {
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
         e.preventDefault();
         ctrl.duplicateSelected();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
+        ctrl.copySelected();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
+        ctrl.cutSelected();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
+        ctrl.pasteAt();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === ']') {
+        e.preventDefault();
+        if (e.shiftKey) ctrl.bringToFront();
+        else ctrl.bringForward();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === '[') {
+        e.preventDefault();
+        if (e.shiftKey) ctrl.sendToBack();
+        else ctrl.sendBackwards();
       }
     };
 
@@ -625,6 +662,17 @@ export function App({ onClose }: { onClose: () => void }) {
           showToast(`Exported as ${format.toUpperCase()}`, 'ok');
         }}
       />
+
+      {/* Context Menu */}
+      {contextMenu && controller && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          targetType={contextMenu.targetType}
+          controller={controller}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
 
       {/* Toasts */}
       <div className="ng-toast-container">

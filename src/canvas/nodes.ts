@@ -33,6 +33,10 @@ export const NG_CUSTOM_PROPS = [
   'ngShapeKind',
   'ngCornerRadius',
   'ngHConfig',
+  'ngFrameTitle',
+  'ngFrameWidth',
+  'ngFrameHeight',
+  'ngIsCustomImage',
 ];
 
 // Globally disable Fabric's offscreen raster caching to prevent text, stroke, or border clipping on all objects
@@ -289,7 +293,8 @@ export async function createProductNode(
 export async function rebuildProductNodeInPlace(
   oldGroup: Group,
   selectedSpecs: SelectedSpecEntry[],
-  titlePos: SpecPosition
+  titlePos: SpecPosition,
+  newImgDataUrl?: string | null
 ): Promise<Group> {
   const canvas = oldGroup.canvas;
   const rec = oldGroup as unknown as Record<string, unknown>;
@@ -299,14 +304,20 @@ export async function rebuildProductNodeInPlace(
   const oldImg = oldGroup.getObjects()[0];
   const imgCenter = oldImg ? oldImg.getCenterPoint() : oldGroup.getCenterPoint();
 
+  const isResetting = newImgDataUrl === null || newImgDataUrl === '';
+  const isCustom = newImgDataUrl ? true : (isResetting ? false : Boolean(rec.ngIsCustomImage));
+  const finalImgUrl = isResetting ? null : (newImgDataUrl !== undefined ? newImgDataUrl : (rec.ngImgDataUrl as string) || null);
+
   const newGroup = await createProductNode(product, {
     left: imgCenter.x,
     top: imgCenter.y,
     selectedSpecs,
     titlePos,
     ngId: String(rec.ngId),
-    imgDataUrl: (rec.ngImgDataUrl as string) || null,
+    imgDataUrl: finalImgUrl,
   });
+  const newRec = newGroup as unknown as Record<string, unknown>;
+  newRec.ngIsCustomImage = isCustom;
   newGroup.set({
     scaleX: oldGroup.scaleX,
     scaleY: oldGroup.scaleY,
@@ -321,6 +332,66 @@ export async function rebuildProductNodeInPlace(
     canvas.requestRenderAll();
   }
   return newGroup;
+}
+
+/** Create a Frame container node that groups and moves objects placed inside it. */
+export function createFrameNode(options: {
+  left?: number;
+  top?: number;
+  width?: number;
+  height?: number;
+  title?: string;
+  fill?: string;
+  stroke?: string;
+  ngId?: string;
+} = {}): Group {
+  const left = options.left ?? 350;
+  const top = options.top ?? 250;
+  const w = options.width ?? 520;
+  const h = options.height ?? 380;
+  const title = options.title ?? 'Frame 1';
+  const fill = options.fill ?? 'rgba(241, 245, 249, 0.4)';
+  const stroke = options.stroke ?? '#94a3b8';
+
+  const bg = new Rect({
+    width: w,
+    height: h,
+    fill,
+    stroke,
+    strokeWidth: 1.5,
+    strokeDashArray: [6, 4],
+    rx: 6,
+    ry: 6,
+    originX: 'center',
+    originY: 'center',
+  });
+
+  const titleBadge = new IText(` ${title} `, {
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontSize: 10,
+    fontWeight: '700',
+    fill: '#475569',
+    backgroundColor: '#e2e8f0',
+    originX: 'left',
+    originY: 'bottom',
+    left: -w / 2 + 10,
+    top: -h / 2 - 4,
+  });
+
+  const group = new Group([bg, titleBadge], {
+    left,
+    top,
+    originX: 'center',
+    originY: 'center',
+    subTargetCheck: false,
+    objectCaching: false,
+  });
+
+  const rec = group as unknown as Record<string, unknown>;
+  rec.ngId = options.ngId || genNgId('frame');
+  rec.ngType = 'frame';
+  rec.ngFrameTitle = title;
+  return group;
 }
 
 /** Create a visual H Series Configured Chassis + Input/Output Cards assembly on the canvas. */

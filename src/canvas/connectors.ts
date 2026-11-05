@@ -74,10 +74,11 @@ export function findNearestAnchorPort(
   scenePt: Point,
   maxDist = 18,
   excludeObjectId?: string,
-  targetObject?: FabricObject | null
+  targetObject?: FabricObject | null,
+  isAltFreeMode = false
 ): AnchorPoint | null {
   let best: AnchorPoint | null = null;
-  let bestDist = maxDist;
+  let bestDist = isAltFreeMode ? Math.max(maxDist, 40) : maxDist;
 
   // When hovering directly over an object, strictly check ONLY that object.
   // This prevents underlying objects (e.g. products under an LED screen) from ever showing anchor ports.
@@ -93,35 +94,38 @@ export function findNearestAnchorPort(
     const id = String(rec.ngId || '');
     if (!id || id === excludeObjectId || !obj.visible) continue;
 
-    // First check discrete anchor ports
-    for (const port of getObjectAnchorPorts(obj)) {
-      const d = Math.hypot(scenePt.x - port.x, scenePt.y - port.y);
-      if (d < bestDist) {
-        bestDist = d;
-        best = port;
+    // In normal mode, first check discrete anchor ports
+    if (!isAltFreeMode) {
+      for (const port of getObjectAnchorPorts(obj)) {
+        const d = Math.hypot(scenePt.x - port.x, scenePt.y - port.y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = port;
+        }
       }
     }
 
-    // Also allow snapping continuously along any of the 4 edges if very close to the perimeter
+    // Also allow snapping continuously along any of the 4 edges if close to the perimeter (or anywhere on node in Alt mode)
     const br = obj.getBoundingRect();
+    const effectiveDist = isAltFreeMode ? Math.max(maxDist, 32) : maxDist;
     if (
-      scenePt.x >= br.left - maxDist &&
-      scenePt.x <= br.left + br.width + maxDist &&
-      scenePt.y >= br.top - maxDist &&
-      scenePt.y <= br.top + br.height + maxDist
+      scenePt.x >= br.left - effectiveDist &&
+      scenePt.x <= br.left + br.width + effectiveDist &&
+      scenePt.y >= br.top - effectiveDist &&
+      scenePt.y <= br.top + br.height + effectiveDist
     ) {
       const dTop = Math.abs(scenePt.y - br.top);
       const dBot = Math.abs(scenePt.y - (br.top + br.height));
       const dLeft = Math.abs(scenePt.x - br.left);
       const dRight = Math.abs(scenePt.x - (br.left + br.width));
       const minEdge = Math.min(dTop, dBot, dLeft, dRight);
-      if (minEdge < bestDist * 0.85) {
+      if (isAltFreeMode || minEdge < bestDist * 0.85) {
         bestDist = minEdge;
         if (minEdge === dTop) {
-          const ratio = Math.max(0.1, Math.min(0.9, (scenePt.x - br.left) / Math.max(1, br.width)));
+          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.x - br.left) / Math.max(1, br.width)));
           best = { objectId: id, side: 'top', ratio, x: br.left + br.width * ratio, y: br.top };
         } else if (minEdge === dBot) {
-          const ratio = Math.max(0.1, Math.min(0.9, (scenePt.x - br.left) / Math.max(1, br.width)));
+          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.x - br.left) / Math.max(1, br.width)));
           best = {
             objectId: id,
             side: 'bottom',
@@ -130,10 +134,10 @@ export function findNearestAnchorPort(
             y: br.top + br.height,
           };
         } else if (minEdge === dLeft) {
-          const ratio = Math.max(0.1, Math.min(0.9, (scenePt.y - br.top) / Math.max(1, br.height)));
+          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.y - br.top) / Math.max(1, br.height)));
           best = { objectId: id, side: 'left', ratio, x: br.left, y: br.top + br.height * ratio };
         } else {
-          const ratio = Math.max(0.1, Math.min(0.9, (scenePt.y - br.top) / Math.max(1, br.height)));
+          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.y - br.top) / Math.max(1, br.height)));
           best = {
             objectId: id,
             side: 'right',
@@ -262,6 +266,31 @@ export function evaluateConnectorCompatibility(
   return checkCompatibility(prodA.model, prodB.model);
 }
 
+export interface ConnectorRepositioningState {
+  connId: string;
+  endpoint: 'from' | 'to';
+  currentPt: { x: number; y: number };
+  targetAnchor: AnchorPoint | null;
+}
+
+/** Get the endpoint coordinates for a connector in scene space. */
+export function getConnectorEndpoints(
+  conn: ConnectorConfig,
+  objects: FabricObject[]
+): { p1: { x: number; y: number }; p2: { x: number; y: number } } | null {
+  const objMap = new Map<string, FabricObject>();
+  for (const o of objects) {
+    const rec = o as unknown as Record<string, unknown>;
+    if (rec.ngId && o.visible) objMap.set(String(rec.ngId), o);
+  }
+  const fromObj = objMap.get(conn.fromId);
+  const toObj = objMap.get(conn.toId);
+  if (!fromObj || !toObj) return null;
+  const p1 = getObjectEdgePoint(fromObj, conn.fromSide, conn.fromRatio ?? 0.5);
+  const p2 = getObjectEdgePoint(toObj, conn.toSide, conn.toRatio ?? 0.5);
+  return { p1, p2 };
+}
+
 /** Render all connectors onto a 2D context in scene coordinates. */
 export function renderConnectorsOnContext(
   ctx: CanvasRenderingContext2D,
@@ -272,7 +301,8 @@ export function renderConnectorsOnContext(
     from: AnchorPoint;
     toPt: { x: number; y: number };
     toAnchor: AnchorPoint | null;
-  } | null
+  } | null,
+  repositioningConnector?: ConnectorRepositioningState | null
 ) {
   const objMap = new Map<string, FabricObject>();
   for (const o of objects) {
@@ -285,14 +315,33 @@ export function renderConnectorsOnContext(
     const toObj = objMap.get(conn.toId);
     if (!fromObj || !toObj) continue;
 
-    const p1 = getObjectEdgePoint(fromObj, conn.fromSide, conn.fromRatio ?? 0.5);
-    const p2 = getObjectEdgePoint(toObj, conn.toSide, conn.toRatio ?? 0.5);
+    const isRepositioning = repositioningConnector && repositioningConnector.connId === conn.id;
+    let p1 = getObjectEdgePoint(fromObj, conn.fromSide, conn.fromRatio ?? 0.5);
+    let p2 = getObjectEdgePoint(toObj, conn.toSide, conn.toRatio ?? 0.5);
+    let fromSide = conn.fromSide;
+    let toSide = conn.toSide;
+
+    if (isRepositioning) {
+      if (repositioningConnector.endpoint === 'from') {
+        p1 = repositioningConnector.targetAnchor
+          ? { x: repositioningConnector.targetAnchor.x, y: repositioningConnector.targetAnchor.y }
+          : repositioningConnector.currentPt;
+        if (repositioningConnector.targetAnchor) fromSide = repositioningConnector.targetAnchor.side;
+      } else {
+        p2 = repositioningConnector.targetAnchor
+          ? { x: repositioningConnector.targetAnchor.x, y: repositioningConnector.targetAnchor.y }
+          : repositioningConnector.currentPt;
+        if (repositioningConnector.targetAnchor) toSide = repositioningConnector.targetAnchor.side;
+      }
+    }
+
     const isSelected = conn.id === selectedConnectorId;
     const compat = evaluateConnectorCompatibility(conn, objMap);
     const isIncompatible = compat.applicable && compat.status === 0;
 
     const strokeColor = isIncompatible ? '#ef4444' : conn.stroke || '#5b84b1';
     const lineW = conn.strokeWidth || 2;
+    const drawConn = isRepositioning ? { ...conn, fromSide, toSide } : conn;
 
     ctx.save();
     if (isSelected) {
@@ -301,7 +350,7 @@ export function renderConnectorsOnContext(
       ctx.lineWidth = lineW + 6;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      drawConnectorPath(ctx, conn, p1, p2);
+      drawConnectorPath(ctx, drawConn, p1, p2);
       ctx.stroke();
     }
 
@@ -313,7 +362,7 @@ export function renderConnectorsOnContext(
     else if (conn.dash === 'dotted') ctx.setLineDash([lineW * 1.2, lineW * 2.2]);
     else ctx.setLineDash([]);
 
-    const pts = drawConnectorPath(ctx, conn, p1, p2);
+    const pts = drawConnectorPath(ctx, drawConn, p1, p2);
     ctx.stroke();
 
     // Draw end caps
@@ -372,13 +421,18 @@ export function renderConnectorsOnContext(
     }
 
     if (isSelected) {
-      // Draw endpoint handles
-      for (const ep of [p1, p2]) {
-        ctx.fillStyle = '#ffffff';
+      // Draw endpoint handles (highlight if being dragged)
+      const endpoints = [
+        { pt: p1, ep: 'from' as const },
+        { pt: p2, ep: 'to' as const },
+      ];
+      for (const { pt: ep, ep: epType } of endpoints) {
+        const isDraggingThis = isRepositioning && repositioningConnector.endpoint === epType;
+        ctx.fillStyle = isDraggingThis ? '#ff6a2b' : '#ffffff';
         ctx.strokeStyle = '#ff6a2b';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = isDraggingThis ? 3 : 2;
         ctx.beginPath();
-        ctx.arc(ep.x, ep.y, 5, 0, Math.PI * 2);
+        ctx.arc(ep.x, ep.y, isDraggingThis ? 7 : 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
       }
@@ -568,40 +622,45 @@ export function hitTestConnector(
 export function renderAnchorPortsOverlay(
   ctx: CanvasRenderingContext2D,
   obj: FabricObject | null,
-  activeAnchor: AnchorPoint | null
+  activeAnchor: AnchorPoint | null,
+  isAltFreeMode = false
 ) {
   if (!obj) return;
-  const ports = getObjectAnchorPorts(obj);
   ctx.save();
   let activeRendered = false;
-  for (const p of ports) {
-    const isHit =
-      activeAnchor &&
-      activeAnchor.objectId === p.objectId &&
-      activeAnchor.side === p.side &&
-      Math.abs(activeAnchor.ratio - p.ratio) < 0.08;
-    if (isHit) activeRendered = true;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, isHit ? 7 : 4.5, 0, Math.PI * 2);
-    ctx.fillStyle = isHit ? '#ff6a2b' : '#ffffff';
-    ctx.strokeStyle = '#ff6a2b';
-    ctx.lineWidth = isHit ? 2.5 : 1.5;
-    ctx.shadowColor = isHit ? 'rgba(255, 106, 43, 0.6)' : 'rgba(0, 0, 0, 0.15)';
-    ctx.shadowBlur = isHit ? 8 : 2;
-    ctx.fill();
-    ctx.stroke();
+
+  // In normal mode, draw discrete anchor port handles. When holding Option (isAltFreeMode), handles disappear!
+  if (!isAltFreeMode) {
+    const ports = getObjectAnchorPorts(obj);
+    for (const p of ports) {
+      const isHit =
+        activeAnchor &&
+        activeAnchor.objectId === p.objectId &&
+        activeAnchor.side === p.side &&
+        Math.abs(activeAnchor.ratio - p.ratio) < 0.08;
+      if (isHit) activeRendered = true;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, isHit ? 7 : 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = isHit ? '#ff6a2b' : '#ffffff';
+      ctx.strokeStyle = '#ff6a2b';
+      ctx.lineWidth = isHit ? 2.5 : 1.5;
+      ctx.shadowColor = isHit ? 'rgba(255, 106, 43, 0.6)' : 'rgba(0, 0, 0, 0.15)';
+      ctx.shadowBlur = isHit ? 8 : 2;
+      ctx.fill();
+      ctx.stroke();
+    }
   }
 
-  // If activeAnchor is snapped to this object at a continuous ratio not matching a discrete port
+  // Draw continuous activeAnchor indicator (in Alt mode or perimeter snapping)
   const objId = String((obj as unknown as Record<string, unknown>).ngId || '');
-  if (activeAnchor && activeAnchor.objectId === objId && !activeRendered) {
+  if (activeAnchor && activeAnchor.objectId === objId && (isAltFreeMode || !activeRendered)) {
     ctx.beginPath();
-    ctx.arc(activeAnchor.x, activeAnchor.y, 7, 0, Math.PI * 2);
+    ctx.arc(activeAnchor.x, activeAnchor.y, isAltFreeMode ? 8 : 7, 0, Math.PI * 2);
     ctx.fillStyle = '#ff6a2b';
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.shadowColor = 'rgba(255, 106, 43, 0.6)';
-    ctx.shadowBlur = 8;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(255, 106, 43, 0.8)';
+    ctx.shadowBlur = 10;
     ctx.fill();
     ctx.stroke();
   }

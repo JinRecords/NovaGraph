@@ -12,8 +12,10 @@ import {
 } from '../types';
 import {
   AnchorPoint,
+  ConnectorRepositioningState,
   evaluateConnectorCompatibility,
   findNearestAnchorPort,
+  getConnectorEndpoints,
   hitTestConnector,
   renderAnchorPortsOverlay,
   renderConnectorsOnContext,
@@ -27,6 +29,7 @@ import {
 import {
   NG_CUSTOM_PROPS,
   ShapeKind,
+  createFrameNode,
   createHSeriesConfiguredNode,
   createImageNodeFromDataUrl,
   createProductNode,
@@ -88,6 +91,25 @@ export class CanvasController {
     axis: 'v' | 'h';
     index: number;
   } | null = null;
+
+  public altPressed = false;
+  public shiftPressed = false;
+  private repositioningConnector: ConnectorRepositioningState | null = null;
+  private rightClickDownPos: {
+    x: number;
+    y: number;
+    scenePt: { x: number; y: number };
+    target?: FabricObject | null;
+  } | null = null;
+  public onOpenContextMenu?: (menuInfo: {
+    x: number;
+    y: number;
+    scenePt: { x: number; y: number };
+    targetType: 'object' | 'connector' | 'canvas' | 'frame' | 'product';
+    targetObject?: FabricObject | null;
+    targetConnector?: ConnectorConfig | null;
+  }) => void;
+  private clipboardData: any = null;
 
   private isPanning = false;
   private spacePressed = false;
@@ -192,7 +214,8 @@ export class CanvasController {
         this.connectors,
         visibleObjects,
         this.isExporting ? null : this.selectedConnectorId,
-        this.isExporting ? null : this.draftConnector
+        this.isExporting ? null : this.draftConnector,
+        this.isExporting ? null : this.repositioningConnector
       );
 
       if (!this.isExporting) {
@@ -215,16 +238,20 @@ export class CanvasController {
         if (this.draftConnector) {
           const fromObj = this.findObjectById(this.draftConnector.from.objectId);
           if (fromObj) {
-            renderAnchorPortsOverlay(ctx, fromObj, this.draftConnector.from);
+            renderAnchorPortsOverlay(ctx, fromObj, this.draftConnector.from, this.altPressed);
           }
           const toObj = this.draftConnector.toAnchor
             ? this.findObjectById(this.draftConnector.toAnchor.objectId)
             : this.hoveredObject;
           if (toObj && toObj !== fromObj) {
-            renderAnchorPortsOverlay(ctx, toObj, this.draftConnector.toAnchor);
+            renderAnchorPortsOverlay(ctx, toObj, this.draftConnector.toAnchor, this.altPressed);
+          }
+        } else if (this.repositioningConnector) {
+          if (this.hoveredObject) {
+            renderAnchorPortsOverlay(ctx, this.hoveredObject, this.repositioningConnector.targetAnchor, this.altPressed);
           }
         } else {
-          renderAnchorPortsOverlay(ctx, this.hoveredObject, this.hoveredAnchor);
+          renderAnchorPortsOverlay(ctx, this.hoveredObject, this.hoveredAnchor, this.altPressed);
         }
       }
 
@@ -308,7 +335,26 @@ export class CanvasController {
     }
 
     window.addEventListener('mouseup', (e: MouseEvent) => {
-      if (this.isPanning && (e.button === 2 || e.button === 1 || e.buttons === 0)) {
+      if (e.button === 2) {
+        const movedDist = this.rightClickDownPos
+          ? Math.hypot(e.clientX - this.rightClickDownPos.x, e.clientY - this.rightClickDownPos.y)
+          : 0;
+        this.isPanning = false;
+        this.canvas.selection = this.activeTool === 'select';
+        this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
+        this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
+        this.canvas.requestRenderAll();
+
+        if (movedDist < 5 && this.rightClickDownPos) {
+          const scenePt = this.rightClickDownPos.scenePt;
+          const target = this.rightClickDownPos.target || null;
+          this.triggerContextMenu(e, scenePt, target);
+        }
+        this.rightClickDownPos = null;
+        return;
+      }
+
+      if (this.isPanning && (e.button === 1 || e.buttons === 0)) {
         this.isPanning = false;
         this.canvas.selection = this.activeTool === 'select';
         this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
@@ -317,13 +363,74 @@ export class CanvasController {
       }
     });
 
+    window.addEventListener('mousemove', (e: MouseEvent) => {
+      if (this.isPanning) {
+        if (e.buttons === 0 && !this.spacePressed && this.activeTool !== 'pan') {
+          this.isPanning = false;
+          this.canvas.selection = this.activeTool === 'select';
+          this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
+          this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
+          this.canvas.requestRenderAll();
+          return;
+        }
+        const dx = e.clientX - this.lastPanClient.x;
+        const dy = e.clientY - this.lastPanClient.y;
+        this.lastPanClient = { x: e.clientX, y: e.clientY };
+        const vpt = this.canvas.viewportTransform;
+        if (vpt) {
+          vpt[4] += dx;
+          vpt[5] += dy;
+          this.canvas.requestRenderAll();
+        }
+      }
+    });
+
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Alt') {
+        this.altPressed = true;
+        this.canvas.requestRenderAll();
+      }
+      if (e.key === 'Shift') {
+        this.shiftPressed = true;
+      }
+    });
+
+    window.addEventListener('keyup', (e: KeyboardEvent) => {
+      if (e.key === 'Alt') {
+        this.altPressed = false;
+        this.canvas.requestRenderAll();
+      }
+      if (e.key === 'Shift') {
+        this.shiftPressed = false;
+      }
+    });
+
     this.canvas.on('mouse:down', (opt) => {
       const ev = opt.e as MouseEvent;
       const scenePt = this.canvas.getScenePoint(ev);
 
-      // 1. Pan mode (Right click button 2, middle click button 1, Space held, or activeTool === 'pan')
-      // Priority over everything: right click drag always moves the canvas regardless of what is under the cursor
-      if (ev.button === 2 || ev.button === 1 || this.activeTool === 'pan' || this.spacePressed) {
+      if (opt.target && (opt.target as any).ngType === 'frame') {
+        (opt.target as any).__prevLeft = opt.target.left;
+        (opt.target as any).__prevTop = opt.target.top;
+      }
+
+      // 1. Right click: Pan if held/dragged, context menu if clicked without moving
+      if (ev.button === 2) {
+        this.isPanning = true;
+        this.canvas.selection = false;
+        this.lastPanClient = { x: ev.clientX, y: ev.clientY };
+        this.rightClickDownPos = {
+          x: ev.clientX,
+          y: ev.clientY,
+          scenePt: { x: scenePt.x, y: scenePt.y },
+          target: opt.target || null,
+        };
+        this.canvas.defaultCursor = 'grabbing';
+        this.canvas.hoverCursor = 'grabbing';
+        return;
+      }
+
+      if (ev.button === 1 || this.activeTool === 'pan' || this.spacePressed) {
         this.isPanning = true;
         this.canvas.selection = false;
         this.lastPanClient = { x: ev.clientX, y: ev.clientY };
@@ -353,6 +460,39 @@ export class CanvasController {
         }
       }
 
+      // Check if clicking an endpoint of the currently selected connector to reposition it
+      if (this.selectedConnectorId) {
+        const selConn = this.connectors.find((c) => c.id === this.selectedConnectorId);
+        if (selConn) {
+          const endpoints = getConnectorEndpoints(selConn, this.canvas.getObjects());
+          if (endpoints) {
+            const d1 = Math.hypot(scenePt.x - endpoints.p1.x, scenePt.y - endpoints.p1.y);
+            const d2 = Math.hypot(scenePt.x - endpoints.p2.x, scenePt.y - endpoints.p2.y);
+            if (d1 <= 14) {
+              this.repositioningConnector = {
+                connId: selConn.id,
+                endpoint: 'from',
+                currentPt: { x: scenePt.x, y: scenePt.y },
+                targetAnchor: null,
+              };
+              this.canvas.selection = false;
+              this.canvas.requestRenderAll();
+              return;
+            } else if (d2 <= 14) {
+              this.repositioningConnector = {
+                connId: selConn.id,
+                endpoint: 'to',
+                currentPt: { x: scenePt.x, y: scenePt.y },
+                targetAnchor: null,
+              };
+              this.canvas.selection = false;
+              this.canvas.requestRenderAll();
+              return;
+            }
+          }
+        }
+      }
+
       // 2. Check if clicking an LED Screen partition line to slide it
       const target = opt.target;
       if (target && (target as unknown as Record<string, unknown>).ngType === 'ledScreen') {
@@ -369,13 +509,14 @@ export class CanvasController {
         }
       }
 
-      // 3. Check if clicking an edge anchor port (or anywhere in 'connect' tool mode)
+      // 3. Check if clicking an edge anchor port (or anywhere in 'connect' tool mode, or holding Option)
       const nearAnchor = findNearestAnchorPort(
         this.canvas.getObjects(),
         scenePt,
         this.activeTool === 'connect' ? 32 : 16,
         undefined,
-        target
+        target,
+        this.altPressed || ev.altKey
       );
       if (nearAnchor) {
         this.canvas.discardActiveObject();
@@ -433,6 +574,30 @@ export class CanvasController {
         return;
       }
 
+      // 1.5. Repositioning a connector's endpoint
+      if (this.repositioningConnector) {
+        const selConn = this.connectors.find((c) => c.id === this.repositioningConnector!.connId);
+        const excludeId = selConn
+          ? this.repositioningConnector.endpoint === 'from'
+            ? selConn.toId
+            : selConn.fromId
+          : undefined;
+        const snapAnchor = findNearestAnchorPort(
+          this.canvas.getObjects(),
+          scenePt,
+          32,
+          excludeId,
+          null,
+          this.altPressed || ev.altKey
+        );
+        this.repositioningConnector.currentPt = { x: scenePt.x, y: scenePt.y };
+        this.repositioningConnector.targetAnchor = snapAnchor;
+        this.hoveredObject = snapAnchor ? this.findObjectById(snapAnchor.objectId) : null;
+        this.hoveredAnchor = snapAnchor;
+        this.canvas.requestRenderAll();
+        return;
+      }
+
       // 2. Dragging an LED Screen partition line (up/down for horizontal, left/right for vertical)
       if (this.draggingPartition) {
         const { group, axis, index } = this.draggingPartition;
@@ -459,7 +624,9 @@ export class CanvasController {
           this.canvas.getObjects(),
           scenePt,
           32,
-          this.draftConnector.from.objectId
+          this.draftConnector.from.objectId,
+          null,
+          this.altPressed || ev.altKey
         );
         this.draftConnector.toPt = { x: scenePt.x, y: scenePt.y };
         this.draftConnector.toAnchor = snapAnchor;
@@ -533,7 +700,8 @@ export class CanvasController {
             scenePt,
             16,
             excludeId,
-            topObj
+            topObj,
+            this.altPressed || ev.altKey
           );
       const prevHoveredObj = this.hoveredObject;
       const prevHoveredAnchor = this.hoveredAnchor;
@@ -560,7 +728,50 @@ export class CanvasController {
       }
     });
 
-    this.canvas.on('mouse:up', () => {
+    this.canvas.on('mouse:up', (opt) => {
+      const ev = opt.e as MouseEvent;
+      const scenePt = this.canvas.getScenePoint(ev);
+
+      if (this.repositioningConnector) {
+        const { connId, endpoint, targetAnchor } = this.repositioningConnector;
+        this.repositioningConnector = null;
+        this.canvas.selection = this.activeTool === 'select';
+        if (targetAnchor) {
+          const conn = this.connectors.find((c) => c.id === connId);
+          if (conn) {
+            if (endpoint === 'from') {
+              conn.fromId = targetAnchor.objectId;
+              conn.fromSide = targetAnchor.side;
+              conn.fromRatio = targetAnchor.ratio;
+            } else {
+              conn.toId = targetAnchor.objectId;
+              conn.toSide = targetAnchor.side;
+              conn.toRatio = targetAnchor.ratio;
+            }
+            this.notifyChange(true);
+          }
+        }
+        this.canvas.requestRenderAll();
+        return;
+      }
+
+      if (ev?.button === 2) {
+        const movedDist = this.rightClickDownPos
+          ? Math.hypot(ev.clientX - this.rightClickDownPos.x, ev.clientY - this.rightClickDownPos.y)
+          : 0;
+        this.isPanning = false;
+        this.canvas.selection = this.activeTool === 'select';
+        this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
+        this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
+        this.canvas.requestRenderAll();
+
+        if (movedDist < 5) {
+          this.triggerContextMenu(ev, scenePt, this.rightClickDownPos?.target || opt.target);
+        }
+        this.rightClickDownPos = null;
+        return;
+      }
+
       if (this.isPanning) {
         this.isPanning = false;
         this.canvas.selection = this.activeTool === 'select';
@@ -804,11 +1015,61 @@ export class CanvasController {
         }
       }
 
+      if ((obj as any).ngType === 'frame') {
+        const prevL = (obj as any).__prevLeft ?? left;
+        const prevT = (obj as any).__prevTop ?? top;
+        const dx = left - prevL;
+        const dy = top - prevT;
+        (obj as any).__prevLeft = left;
+        (obj as any).__prevTop = top;
+
+        if (dx !== 0 || dy !== 0) {
+          const br = obj.getBoundingRect();
+          const oldBr = {
+            left: br.left - dx,
+            top: br.top - dy,
+            right: br.left + br.width - dx,
+            bottom: br.top + br.height - dy,
+          };
+          for (const other of this.canvas.getObjects()) {
+            if (other === obj || (other as any).ngType === 'frame') continue;
+            const c = other.getCenterPoint();
+            if (
+              c.x >= oldBr.left &&
+              c.x <= oldBr.right &&
+              c.y >= oldBr.top &&
+              c.y <= oldBr.bottom
+            ) {
+              other.set({ left: other.left + dx, top: other.top + dy });
+              other.setCoords();
+            }
+          }
+        }
+      }
+
       obj.set({ left, top });
       obj.setCoords();
     });
 
-    this.canvas.on('object:modified', () => {
+    this.canvas.on('object:rotating', (opt) => {
+      const ev = opt.e as MouseEvent | undefined;
+      const target = opt.target;
+      if (!target) return;
+      if (ev?.shiftKey || this.shiftPressed) {
+        const snap = 15;
+        const normalized = ((target.angle % 360) + 360) % 360;
+        target.angle = Math.round(normalized / snap) * snap;
+      }
+      this.notifyChange(false);
+    });
+
+    this.canvas.on('object:modified', (opt) => {
+      const target = opt?.target;
+      if (target) {
+        (target as any).__prevLeft = undefined;
+        (target as any).__prevTop = undefined;
+      }
+      this.ensureFramesAtBack();
       this.smartGuides = [];
       this.notifyChange(true);
     });
@@ -1052,6 +1313,263 @@ export class CanvasController {
     this.notifyChange(true);
   }
 
+  public ensureFramesAtBack() {
+    const objects = this.canvas.getObjects();
+    const frames = objects.filter((o) => (o as any).ngType === 'frame');
+    for (const f of frames) {
+      this.canvas.sendObjectToBack(f);
+    }
+  }
+
+  public addFrame(title?: string) {
+    const center = this.getViewportCenter();
+    const count = this.canvas.getObjects().filter((o) => (o as any).ngType === 'frame').length;
+    const frame = createFrameNode({
+      left: center.x,
+      top: center.y,
+      title: title || `Frame ${count + 1}`,
+    });
+    this.canvas.add(frame);
+    this.ensureFramesAtBack();
+    this.canvas.setActiveObject(frame);
+    this.canvas.requestRenderAll();
+    this.notifyChange(true);
+    return frame;
+  }
+
+  public async updateProductImage(group: Group, dataUrl: string | null) {
+    const rec = group as unknown as Record<string, unknown>;
+    const specs = (rec.ngSelectedSpecs as SelectedSpecEntry[]) || [];
+    const titlePos = (rec.ngTitlePos as SpecPosition) || 'bottom';
+    await rebuildProductNodeInPlace(group, specs, titlePos, dataUrl);
+    this.notifyChange(true);
+  }
+
+  public updateFrame(
+    group: Group,
+    patch: { title?: string; fill?: string; stroke?: string; strokeWidth?: number }
+  ) {
+    const rec = group as unknown as Record<string, unknown>;
+    const children = group.getObjects();
+    const bg = children[0] as Rect | undefined;
+    const titleBadge = children[1] as IText | undefined;
+
+    if (patch.title !== undefined) {
+      rec.ngFrameTitle = patch.title;
+      if (titleBadge) {
+        titleBadge.set({ text: ` ${patch.title} ` });
+      }
+    }
+    if (bg) {
+      if (patch.fill !== undefined) bg.set({ fill: patch.fill });
+      if (patch.stroke !== undefined) bg.set({ stroke: patch.stroke });
+      if (patch.strokeWidth !== undefined) bg.set({ strokeWidth: patch.strokeWidth });
+    }
+    this.canvas.requestRenderAll();
+    this.notifyChange(true);
+  }
+
+  public nudgeSelected(dx: number, dy: number) {
+    const activeObjects = this.canvas.getActiveObjects();
+    if (activeObjects.length > 0) {
+      for (const obj of activeObjects) {
+        const rec = obj as unknown as Record<string, unknown>;
+        if (rec.ngType === 'frame') {
+          const frameBr = obj.getBoundingRect();
+          for (const inner of this.canvas.getObjects()) {
+            if (inner === obj || (inner as any).ngType === 'frame') continue;
+            const c = inner.getCenterPoint();
+            if (
+              c.x >= frameBr.left &&
+              c.x <= frameBr.left + frameBr.width &&
+              c.y >= frameBr.top &&
+              c.y <= frameBr.top + frameBr.height
+            ) {
+              inner.set({ left: (inner.left || 0) + dx, top: (inner.top || 0) + dy });
+              inner.setCoords();
+            }
+          }
+        }
+        obj.set({ left: (obj.left || 0) + dx, top: (obj.top || 0) + dy });
+        obj.setCoords();
+      }
+      this.canvas.requestRenderAll();
+      this.notifyChange(true);
+      return;
+    }
+
+    if (this.selectedConnectorId) {
+      const conn = this.connectors.find((c) => c.id === this.selectedConnectorId);
+      if (conn) {
+        if (conn.routing === 'elbow') {
+          conn.elbowOffset = (conn.elbowOffset || 0) + (dx !== 0 ? dx : dy);
+        } else {
+          if (dx !== 0) {
+            conn.fromRatio = Math.max(0.05, Math.min(0.95, (conn.fromRatio ?? 0.5) + dx * 0.01));
+            conn.toRatio = Math.max(0.05, Math.min(0.95, (conn.toRatio ?? 0.5) + dx * 0.01));
+          } else {
+            conn.fromRatio = Math.max(0.05, Math.min(0.95, (conn.fromRatio ?? 0.5) + dy * 0.01));
+            conn.toRatio = Math.max(0.05, Math.min(0.95, (conn.toRatio ?? 0.5) + dy * 0.01));
+          }
+        }
+        this.canvas.requestRenderAll();
+        this.notifyChange(true);
+      }
+    }
+  }
+
+  public copySelected() {
+    if (this.selectedConnectorId) {
+      const conn = this.connectors.find((c) => c.id === this.selectedConnectorId);
+      if (conn) this.clipboardData = { type: 'connector', data: JSON.parse(JSON.stringify(conn)) };
+      return;
+    }
+    const active = this.canvas.getActiveObject();
+    if (active) {
+      this.clipboardData = {
+        type: 'object',
+        json: active.toObject(NG_CUSTOM_PROPS),
+      };
+    }
+  }
+
+  public cutSelected() {
+    this.copySelected();
+    this.deleteSelected();
+  }
+
+  public async pasteAt(pt?: { x: number; y: number }) {
+    if (!this.clipboardData) return;
+    const dest = pt || this.getViewportCenter();
+    if (this.clipboardData.type === 'object') {
+      const clonedArr = await util.enlivenObjects([this.clipboardData.json]);
+      if (clonedArr.length > 0) {
+        const obj = clonedArr[0] as FabricObject;
+        const rec = obj as unknown as Record<string, unknown>;
+        rec.ngId = genNgId(String(rec.ngType || 'obj'));
+        obj.set({
+          left: dest.x + 20,
+          top: dest.y + 20,
+        });
+        obj.setCoords();
+        this.canvas.add(obj);
+        if (rec.ngType === 'frame') {
+          this.ensureFramesAtBack();
+        }
+        this.canvas.setActiveObject(obj);
+        this.canvas.requestRenderAll();
+        this.notifyChange(true);
+      }
+    }
+  }
+
+  public async copyAsPng(): Promise<boolean> {
+    const active = this.canvas.getActiveObject();
+    if (!active) return false;
+    const dataUrl = active.toDataURL({
+      format: 'png',
+      multiplier: 2,
+    });
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob }),
+      ]);
+      this.onToastCallback?.('Copied selection to clipboard as PNG', 'ok');
+      return true;
+    } catch {
+      this.onToastCallback?.('Unable to write image to system clipboard', 'warn');
+      return false;
+    }
+  }
+
+  public resetSelectedProperties() {
+    const active = this.canvas.getActiveObject();
+    if (active) {
+      active.set({
+        angle: 0,
+        scaleX: 1,
+        scaleY: 1,
+        skewX: 0,
+        skewY: 0,
+      });
+      active.setCoords();
+      this.canvas.requestRenderAll();
+      this.notifyChange(true);
+      this.onToastCallback?.('Reset object transform properties', 'info');
+    }
+  }
+
+  public bringForward() {
+    const active = this.canvas.getActiveObject();
+    if (active) {
+      this.canvas.bringObjectForward(active);
+      this.canvas.requestRenderAll();
+      this.notifyChange(true);
+    }
+  }
+
+  public sendBackwards() {
+    const active = this.canvas.getActiveObject();
+    if (active) {
+      this.canvas.sendObjectBackwards(active);
+      this.ensureFramesAtBack();
+      this.canvas.requestRenderAll();
+      this.notifyChange(true);
+    }
+  }
+
+  private triggerContextMenu(ev: MouseEvent, scenePt: Point, target?: FabricObject | null) {
+    if (target) {
+      if (this.canvas.getActiveObject() !== target) {
+        this.canvas.setActiveObject(target);
+      }
+      this.selectedConnectorId = null;
+      const rec = target as unknown as Record<string, unknown>;
+      const targetType =
+        rec.ngType === 'frame'
+          ? 'frame'
+          : rec.ngType === 'product'
+          ? 'product'
+          : 'object';
+      this.canvas.requestRenderAll();
+      this.onOpenContextMenu?.({
+        x: ev.clientX,
+        y: ev.clientY,
+        scenePt: { x: scenePt.x, y: scenePt.y },
+        targetType,
+        targetObject: target,
+      });
+      return;
+    }
+
+    const hitConn = hitTestConnector(this.connectors, this.canvas.getObjects(), scenePt, 12);
+    if (hitConn) {
+      this.selectedConnectorId = hitConn.id;
+      this.canvas.discardActiveObject();
+      this.canvas.requestRenderAll();
+      this.onOpenContextMenu?.({
+        x: ev.clientX,
+        y: ev.clientY,
+        scenePt: { x: scenePt.x, y: scenePt.y },
+        targetType: 'connector',
+        targetConnector: hitConn,
+      });
+      return;
+    }
+
+    this.canvas.discardActiveObject();
+    this.selectedConnectorId = null;
+    this.canvas.requestRenderAll();
+    this.onOpenContextMenu?.({
+      x: ev.clientX,
+      y: ev.clientY,
+      scenePt: { x: scenePt.x, y: scenePt.y },
+      targetType: 'canvas',
+    });
+  }
+
   public async duplicateSelected() {
     const active = this.canvas.getActiveObject();
     if (!active) return;
@@ -1063,6 +1581,9 @@ export class CanvasController {
       top: (active.top || 200) + 28,
     });
     this.canvas.add(cloned);
+    if (rec.ngType === 'frame') {
+      this.ensureFramesAtBack();
+    }
     this.canvas.setActiveObject(cloned);
     this.canvas.requestRenderAll();
     this.notifyChange(true);
@@ -1080,6 +1601,7 @@ export class CanvasController {
     const active = this.canvas.getActiveObject();
     if (!active) return;
     this.canvas.sendObjectToBack(active);
+    this.ensureFramesAtBack();
     this.canvas.requestRenderAll();
     this.notifyChange(true);
   }

@@ -254,6 +254,10 @@ export function SidebarLeft({
               <Icon name="sticky" size={14} />
               {t('addStickyNote')}
             </button>
+            <button className="ng-btn ng-btn-secondary" onClick={() => controller.addFrame()} title="Add container Frame for grouping nodes">
+              <Icon name="frame" size={14} />
+              <span>Frame</span>
+            </button>
 
             {/* SVG File Upload / Import */}
             <label className="ng-btn ng-btn-secondary" style={{ cursor: 'pointer' }}>

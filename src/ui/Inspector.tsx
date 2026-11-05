@@ -3,7 +3,7 @@ import { h } from 'preact';
 import { useMemo, useState } from 'preact/hooks';
 import { CanvasController } from '../canvas/controller';
 import { makeEqualPartitions } from '../canvas/ledScreen';
-import { ShapeKind } from '../canvas/nodes';
+import { ShapeKind, buildHardwareFallbackSvg } from '../canvas/nodes';
 import { t } from '../i18n';
 import {
   AnchorSide,
@@ -261,6 +261,77 @@ export function Inspector({
               <option value="left">{t('posLeft')}</option>
               <option value="right">{t('posRight')}</option>
             </select>
+          </div>
+        </div>
+
+        {/* Feat #3: Change image of product */}
+        <div className="ng-inspector-section">
+          <span className="ng-section-title">Product Image</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+            <div
+              style={{
+                width: '60px',
+                height: '40px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                padding: '2px',
+              }}
+            >
+              <img
+                src={
+                  (rec.ngImgDataUrl as string) ||
+                  product.imageUrl ||
+                  buildHardwareFallbackSvg(product.model, product.series)
+                }
+                alt={product.model}
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+              <label
+                className="ng-btn ng-btn-secondary"
+                style={{
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  fontSize: '11px',
+                  padding: '4px 8px',
+                  display: 'inline-block',
+                }}
+              >
+                <span>Upload Image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === 'string') {
+                        controller.updateProductImage(activeObject as Group, reader.result);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+              {Boolean(rec.ngIsCustomImage) && (
+                <button
+                  type="button"
+                  className="ng-btn ng-btn-secondary"
+                  style={{ fontSize: '10.5px', padding: '3px 6px', color: '#dc2626' }}
+                  onClick={() => controller.updateProductImage(activeObject as Group, null)}
+                >
+                  Reset to default
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -648,6 +719,116 @@ export function Inspector({
     );
   }
 
+  // 4.5. FRAME SELECTED (Feat #2)
+  if (activeObject && rec.ngType === 'frame') {
+    const frameTitle = (rec.ngFrameTitle as string) || 'Frame';
+    const children = (activeObject as Group).getObjects ? (activeObject as Group).getObjects() : [];
+    const bg = children[0] as Rect | undefined;
+    const currentFill = (bg?.fill as string) || 'rgba(241, 245, 249, 0.4)';
+    const currentStroke = (bg?.stroke as string) || '#94a3b8';
+    const currentStrokeWidth = bg?.strokeWidth || 1.5;
+
+    return (
+      <div className="ng-sidebar-right">
+        <div className="ng-inspector-header">
+          <span>Frame Properties</span>
+          <button className="ng-btn-icon" onClick={() => controller.deleteSelected()}>
+            <Icon name="trash" size={14} />
+          </button>
+        </div>
+
+        <div className="ng-inspector-section">
+          <span className="ng-section-title">Frame Header</span>
+          <div className="ng-field-row">
+            <span className="ng-field-label">Title</span>
+            <input
+              type="text"
+              className="ng-input-text"
+              style={{ width: '130px' }}
+              value={frameTitle}
+              onInput={(e) => {
+                controller.updateFrame(activeObject as Group, {
+                  title: (e.target as HTMLInputElement).value,
+                });
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="ng-inspector-section">
+          <span className="ng-section-title">Style & Colors</span>
+          <div className="ng-field-row">
+            <span className="ng-field-label">Fill Color</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <input
+                type="color"
+                className="ng-input-color"
+                value={typeof currentFill === 'string' && currentFill.startsWith('#') ? currentFill : '#f1f5f9'}
+                onInput={(e) => {
+                  controller.updateFrame(activeObject as Group, {
+                    fill: (e.target as HTMLInputElement).value,
+                  });
+                }}
+              />
+              <button
+                type="button"
+                className={`ng-btn ng-btn-secondary ${currentFill === 'transparent' ? 'active' : ''}`}
+                style={{
+                  padding: '3px 8px',
+                  fontSize: '11px',
+                  background: currentFill === 'transparent' ? '#fee2e2' : undefined,
+                  borderColor: currentFill === 'transparent' ? '#ef4444' : undefined,
+                  color: currentFill === 'transparent' ? '#b91c1c' : undefined,
+                  fontWeight: currentFill === 'transparent' ? 700 : 400,
+                }}
+                onClick={() => {
+                  controller.updateFrame(activeObject as Group, { fill: 'transparent' });
+                }}
+              >
+                Transparent
+              </button>
+            </div>
+          </div>
+
+          <div className="ng-field-row">
+            <span className="ng-field-label">Border Color</span>
+            <input
+              type="color"
+              className="ng-input-color"
+              value={typeof currentStroke === 'string' && currentStroke.startsWith('#') ? currentStroke : '#94a3b8'}
+              onInput={(e) => {
+                controller.updateFrame(activeObject as Group, {
+                  stroke: (e.target as HTMLInputElement).value,
+                });
+              }}
+            />
+          </div>
+
+          <div className="ng-field-row">
+            <span className="ng-field-label">Border Width</span>
+            <input
+              type="number"
+              min="1"
+              max="12"
+              className="ng-input-text"
+              style={{ width: '60px' }}
+              value={currentStrokeWidth}
+              onInput={(e) => {
+                controller.updateFrame(activeObject as Group, {
+                  strokeWidth: Number((e.target as HTMLInputElement).value),
+                });
+              }}
+            />
+          </div>
+
+          <div style={{ marginTop: '8px', fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
+            💡 Objects inside this frame will move along with it. Frame stays layered behind objects and connectors.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 5. SHAPE OR TEXT SELECTED
   if (activeObject && (rec.ngType === 'shape' || rec.ngType === 'text')) {
     const isText = rec.ngType === 'text';
@@ -665,6 +846,35 @@ export function Inspector({
         {isText ? (
           <div className="ng-inspector-section">
             <span className="ng-section-title">Font & Typography</span>
+            {/* Feat #5: Font Family dropdown */}
+            <div className="ng-field-row">
+              <span className="ng-field-label">Font Family</span>
+              <select
+                className="ng-input-select"
+                value={(activeObject as IText).fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'}
+                onChange={(e) => {
+                  const ff = (e.target as HTMLSelectElement).value;
+                  (activeObject as IText).set({ fontFamily: ff });
+                  controller.canvas.requestRenderAll();
+                  controller.notifyChange(true);
+                }}
+              >
+                <option value='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'>Inter / System</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Helvetica, sans-serif">Helvetica</option>
+                <option value="Roboto, sans-serif">Roboto</option>
+                <option value="'Segoe UI', sans-serif">Segoe UI</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="'Courier New', monospace">Courier New</option>
+                <option value="monospace">Monospace</option>
+                <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value="Impact, sans-serif">Impact</option>
+                <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+              </select>
+            </div>
+
             <div className="ng-field-row">
               <span className="ng-field-label">{t('fontSize')}</span>
               <input
@@ -745,17 +955,82 @@ export function Inspector({
         ) : (
           <div className="ng-inspector-section">
             <span className="ng-section-title">Colors & Stroke</span>
+            {/* Bug #2: Transparent shape fill */}
             <div className="ng-field-row">
               <span className="ng-field-label">{t('fillColor')}</span>
-              <input
-                type="color"
-                className="ng-input-color"
-                value={(activeObject.fill as string) || '#ffffff'}
-                onInput={(e) => {
-                  activeObject.set({ fill: (e.target as HTMLInputElement).value });
-                  controller.canvas.requestRenderAll();
-                }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input
+                  type="color"
+                  className="ng-input-color"
+                  value={
+                    typeof activeObject.fill === 'string' && activeObject.fill.startsWith('#')
+                      ? activeObject.fill
+                      : '#ffffff'
+                  }
+                  onInput={(e) => {
+                    activeObject.set({ fill: (e.target as HTMLInputElement).value });
+                    controller.canvas.requestRenderAll();
+                    controller.notifyChange(true);
+                  }}
+                />
+                <button
+                  type="button"
+                  className={`ng-btn ng-btn-secondary ${activeObject.fill === 'transparent' ? 'active' : ''}`}
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: '11px',
+                    background: activeObject.fill === 'transparent' ? '#fee2e2' : undefined,
+                    borderColor: activeObject.fill === 'transparent' ? '#ef4444' : undefined,
+                    color: activeObject.fill === 'transparent' ? '#b91c1c' : undefined,
+                    fontWeight: activeObject.fill === 'transparent' ? 700 : 400,
+                  }}
+                  onClick={() => {
+                    activeObject.set({ fill: 'transparent' });
+                    controller.canvas.requestRenderAll();
+                    controller.notifyChange(true);
+                  }}
+                >
+                  Transparent
+                </button>
+              </div>
+            </div>
+            <div className="ng-color-presets" style={{ marginTop: '4px', marginBottom: '8px' }}>
+              {['transparent', '#ffffff', '#f8fafc', '#fee2e2', '#fef3c7', '#dcfce7', '#e0f2fe', '#ede9fe', '#18181b'].map((c) => (
+                <div
+                  key={c}
+                  className={`ng-color-dot ${activeObject.fill === c ? 'active' : ''}`}
+                  style={{
+                    background:
+                      c === 'transparent'
+                        ? 'linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%)'
+                        : c,
+                    backgroundSize: c === 'transparent' ? '6px 6px' : undefined,
+                    backgroundColor: c === 'transparent' ? '#fff' : undefined,
+                    position: 'relative',
+                  }}
+                  title={c === 'transparent' ? 'Transparent' : c}
+                  onClick={() => {
+                    activeObject.set({ fill: c });
+                    controller.canvas.requestRenderAll();
+                    controller.notifyChange(true);
+                  }}
+                >
+                  {c === 'transparent' && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '0',
+                        width: '100%',
+                        height: '1.5px',
+                        background: '#ef4444',
+                        transform: 'rotate(-45deg)',
+                        display: 'block',
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
 
             <div className="ng-field-row">
