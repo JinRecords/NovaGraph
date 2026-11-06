@@ -234,6 +234,31 @@ export class CanvasController {
       return origShouldClear(e, target);
     };
 
+    // When a connector is selected, its endpoint anchor handles sit on top of any underlying
+    // object in z-index. Intercept findTarget so the underlying object move hitbox is not triggered.
+    const origFindTarget = this.canvas.findTarget.bind(this.canvas);
+    this.canvas.findTarget = (e: MouseEvent) => {
+      const activeConnId =
+        this.selectedConnectorId ||
+        (this.multiSelectedConnectorIds.size === 1 ? [...this.multiSelectedConnectorIds][0] : null);
+      if (activeConnId && !e.shiftKey) {
+        const selConn = this.connectors.find((c) => c.id === activeConnId);
+        if (selConn) {
+          const endpoints = getConnectorEndpoints(selConn, this.canvas.getObjects());
+          if (endpoints) {
+            const scenePt = this.canvas.getScenePoint(e);
+            const zoom = this.canvas.getZoom();
+            const d1 = Math.hypot(scenePt.x - endpoints.p1.x, scenePt.y - endpoints.p1.y) * zoom;
+            const d2 = Math.hypot(scenePt.x - endpoints.p2.x, scenePt.y - endpoints.p2.y) * zoom;
+            if (d1 <= 36 || d2 <= 36) {
+              return undefined;
+            }
+          }
+        }
+      }
+      return origFindTarget(e);
+    };
+
     const origRenderBg = this.canvas._renderBackground.bind(this.canvas);
     this.canvas._renderBackground = (ctx: CanvasRenderingContext2D) => {
       origRenderBg(ctx);
@@ -642,6 +667,48 @@ export class CanvasController {
         this.canvas.requestRenderAll();
       }
 
+      // 1. Prioritize selected connector's endpoint handles over connected node resize handles,
+      // node movement, and connected node line anchor handles.
+      const activeConnId =
+        this.selectedConnectorId ||
+        (this.multiSelectedConnectorIds.size === 1 ? [...this.multiSelectedConnectorIds][0] : null);
+      if (activeConnId && !ev.shiftKey && ev.button === 0) {
+        const selConn = this.connectors.find((c) => c.id === activeConnId);
+        if (selConn) {
+          const endpoints = getConnectorEndpoints(selConn, this.canvas.getObjects());
+          if (endpoints) {
+            const zoom = this.canvas.getZoom();
+            const d1 = Math.hypot(scenePt.x - endpoints.p1.x, scenePt.y - endpoints.p1.y) * zoom;
+            const d2 = Math.hypot(scenePt.x - endpoints.p2.x, scenePt.y - endpoints.p2.y) * zoom;
+            if (d1 <= 36 || d2 <= 36) {
+              (this.canvas as any)._currentTransform = null;
+              (this.canvas as any)._groupSelector = null;
+              this.canvas.discardActiveObject();
+              this.multiSelectedConnectorIds.clear();
+              this.selectedConnectorId = selConn.id;
+              this.hoveredAnchor = null;
+              this.hoveredObject = null;
+              this.hoveredPartition = null;
+              this.repositioningConnector = {
+                connId: selConn.id,
+                endpoint: d1 <= d2 ? 'from' : 'to',
+                currentPt: { x: scenePt.x, y: scenePt.y },
+                targetAnchor: null,
+              };
+              this.canvas.selection = false;
+              this.canvas.defaultCursor = 'grabbing';
+              this.canvas.hoverCursor = 'grabbing';
+              (this.canvas as any).setCursor?.('grabbing');
+              if ((this.canvas as any).upperCanvasEl) {
+                (this.canvas as any).upperCanvasEl.style.cursor = 'grabbing';
+              }
+              this.canvas.requestRenderAll();
+              return;
+            }
+          }
+        }
+      }
+
       // Check if user clicked a transform handle (resize / rotate) on the active object
       const activeObj = this.canvas.getActiveObject();
       if (activeObj) {
@@ -659,8 +726,6 @@ export class CanvasController {
       // Check if clicking an endpoint of any connector (or selected connector) to reposition it
       const targetConns = ev.shiftKey
         ? [] // Shift+click is reserved for adding connectors to a multi-selection
-        : this.selectedConnectorId
-        ? this.connectors.filter((c) => c.id === this.selectedConnectorId)
         : this.connectors;
       const zoom = this.canvas.getZoom();
       for (const conn of targetConns) {
@@ -869,19 +934,29 @@ export class CanvasController {
       }
 
       // 3.5 Hover feedback for endpoint handles of selected connector
-      if (this.selectedConnectorId && !this.draftConnector && !this.repositioningConnector) {
-        const selConn = this.connectors.find((c) => c.id === this.selectedConnectorId);
+      const hoverConnId =
+        this.selectedConnectorId ||
+        (this.multiSelectedConnectorIds.size === 1 ? [...this.multiSelectedConnectorIds][0] : null);
+      if (hoverConnId && !this.draftConnector && !this.repositioningConnector) {
+        const selConn = this.connectors.find((c) => c.id === hoverConnId);
         if (selConn) {
           const endpoints = getConnectorEndpoints(selConn, this.canvas.getObjects());
           if (endpoints) {
             const zoom = this.canvas.getZoom();
             const d1 = Math.hypot(scenePt.x - endpoints.p1.x, scenePt.y - endpoints.p1.y) * zoom;
             const d2 = Math.hypot(scenePt.x - endpoints.p2.x, scenePt.y - endpoints.p2.y) * zoom;
-            if (d1 <= 20 || d2 <= 20) {
+            if (d1 <= 36 || d2 <= 36) {
               this.canvas.defaultCursor = 'grab';
               this.canvas.hoverCursor = 'grab';
+              (this.canvas as any).setCursor?.('grab');
+              if ((this.canvas as any).upperCanvasEl) {
+                (this.canvas as any).upperCanvasEl.style.cursor = 'grab';
+              }
+              const hadHover = !!(this.hoveredAnchor || this.hoveredObject || this.hoveredPartition);
               this.hoveredAnchor = null;
               this.hoveredObject = null;
+              this.hoveredPartition = null;
+              if (hadHover) this.canvas.requestRenderAll();
               return;
             }
           }
@@ -1658,6 +1733,7 @@ export class CanvasController {
     this.canvas.setActiveObject(node);
     this.canvas.requestRenderAll();
     this.notifyChange(true);
+    return node;
   }
 
   public addText(text?: string, pt?: { x: number; y: number }) {
