@@ -1,5 +1,6 @@
 import {
   Circle,
+  Control,
   FabricImage,
   FabricObject,
   Group,
@@ -9,6 +10,7 @@ import {
   Rect,
   Textbox,
   Triangle,
+  controlsUtils,
   loadSVGFromString,
   util,
 } from 'fabric';
@@ -30,6 +32,8 @@ export const NG_CUSTOM_PROPS = [
   'ngNoteColor',
   'ngNoteText',
   'ngIncludeInExport',
+  'ngStickyWidth',
+  'ngStickyHeight',
   'ngShapeKind',
   'ngCornerRadius',
   'ngHConfig',
@@ -38,6 +42,7 @@ export const NG_CUSTOM_PROPS = [
   'ngFrameHeight',
   'ngIsCustomImage',
   'verticalAlign',
+  'customHeight',
 ];
 
 // Patch Fabric Textbox and IText to support verticalAlign ('top' | 'middle' | 'bottom')
@@ -822,12 +827,14 @@ export function createStickyNoteNode(options: {
   color?: string;
   includeInExport?: boolean;
   ngId?: string;
+  width?: number;
+  height?: number;
 } = {}): Group {
   const color = options.color || '#fef08a';
   const text = options.text ?? 'Double-click or use inspector to edit sticky note...';
   const includeInExport = options.includeInExport ?? true;
-  const w = 180;
-  const h = 150;
+  const w = Math.max(120, options.width ?? 180);
+  const h = Math.max(80, options.height ?? 150);
 
   const bg = new Rect({
     width: w,
@@ -843,9 +850,9 @@ export function createStickyNoteNode(options: {
 
   const fold = new Polygon(
     [
-      { x: w / 2 - 22, y: h / 2 },
-      { x: w / 2, y: h / 2 - 22 },
-      { x: w / 2 - 22, y: h / 2 - 22 },
+      { x: 0, y: 22 },
+      { x: 22, y: 0 },
+      { x: 0, y: 0 },
     ],
     {
       fill: 'rgba(0,0,0,0.12)',
@@ -868,7 +875,7 @@ export function createStickyNoteNode(options: {
   });
 
   const tb = new Textbox(text, {
-    width: w - 24,
+    width: Math.max(40, w - 24),
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     fontSize: 13,
     fill: '#1c1917',
@@ -882,6 +889,8 @@ export function createStickyNoteNode(options: {
   const group = new Group([bg, fold, badge, tb], {
     left: options.left ?? 260,
     top: options.top ?? 220,
+    width: w,
+    height: h,
     originX: 'center',
     originY: 'center',
     subTargetCheck: false,
@@ -893,15 +902,80 @@ export function createStickyNoteNode(options: {
   rec.ngNoteColor = color;
   rec.ngNoteText = text;
   rec.ngIncludeInExport = includeInExport;
+  rec.ngStickyWidth = w;
+  rec.ngStickyHeight = h;
+  return group;
+}
+
+/** Update sticky note dimensions in-place, keeping unscaled 1:1 typography without stretching text. */
+export function updateStickyNoteDimensions(
+  group: Group,
+  finalW: number,
+  finalH: number
+): Group {
+  const items = group.getObjects();
+  const bg = items[0] as Rect | undefined;
+  const fold = items[1] as Polygon | undefined;
+  const badge = items[2] as IText | undefined;
+  const tb = items[3] as Textbox | undefined;
+
+  if (bg) {
+    bg.set({
+      width: finalW,
+      height: finalH,
+    });
+  }
+  if (fold) {
+    fold.set({
+      scaleX: 1,
+      scaleY: 1,
+      left: finalW / 2 - 11,
+      top: finalH / 2 - 11,
+    });
+  }
+  if (badge) {
+    badge.set({
+      scaleX: 1,
+      scaleY: 1,
+      left: -finalW / 2 + 12,
+      top: -finalH / 2 + 10,
+    });
+  }
+  if (tb) {
+    tb.set({
+      scaleX: 1,
+      scaleY: 1,
+      width: Math.max(40, finalW - 24),
+      left: -finalW / 2 + 12,
+      top: -finalH / 2 + 28,
+    });
+    tb.initDimensions?.();
+  }
+
+  group.set({
+    scaleX: 1,
+    scaleY: 1,
+    width: finalW,
+    height: finalH,
+  });
+  const rec = group as unknown as Record<string, unknown>;
+  rec.ngStickyWidth = finalW;
+  rec.ngStickyHeight = finalH;
+  group.setCoords();
+  if (group.canvas) {
+    group.canvas.requestRenderAll();
+  }
   return group;
 }
 
 export function updateStickyNoteInPlace(
   oldGroup: Group,
-  updates: { text?: string; color?: string; includeInExport?: boolean }
+  updates: { text?: string; color?: string; includeInExport?: boolean; width?: number; height?: number }
 ): Group {
   const canvas = oldGroup.canvas;
   const rec = oldGroup as unknown as Record<string, unknown>;
+  const w = updates.width ?? (rec.ngStickyWidth as number) ?? 180;
+  const h = updates.height ?? (rec.ngStickyHeight as number) ?? 150;
   const newGroup = createStickyNoteNode({
     left: oldGroup.left,
     top: oldGroup.top,
@@ -909,10 +983,12 @@ export function updateStickyNoteInPlace(
     color: updates.color ?? String(rec.ngNoteColor || '#fef08a'),
     includeInExport: updates.includeInExport ?? Boolean(rec.ngIncludeInExport ?? true),
     ngId: String(rec.ngId),
+    width: w,
+    height: h,
   });
   newGroup.set({
-    scaleX: oldGroup.scaleX,
-    scaleY: oldGroup.scaleY,
+    scaleX: 1,
+    scaleY: 1,
     angle: oldGroup.angle,
   });
   if (canvas) {
@@ -1087,6 +1163,126 @@ export function createShapeNode(
   return obj;
 }
 
+/** Configure Textbox controls to resize width and height directly without scaling/stretching font glyphs. */
+export function setupTextboxControls(textbox: Textbox): void {
+  const isCentered = (t: any) => Boolean(t?.centered) || (t?.originX === 'center' && t?.originY === 'center');
+
+  const changeObjectDimensions = (_eventData: any, transform: any, x: number, y: number) => {
+    const localPoint = controlsUtils.getLocalPoint(transform, transform.originX, transform.originY, x, y);
+    const target = transform.target as Textbox;
+    let changed = false;
+
+    // Change width
+    const multX = isCentered(transform) ? 2 : 1;
+    const strokePaddingX = target.strokeWidth / (target.strokeUniform ? target.scaleX : 1);
+    const newWidth = Math.max(40, Math.abs(localPoint.x * multX / (target.scaleX || 1)) - strokePaddingX);
+    if (Math.abs(newWidth - target.width) > 0.5) {
+      target.set('width', newWidth);
+      changed = true;
+    }
+
+    // Change height
+    const multY = isCentered(transform) ? 2 : 1;
+    const strokePaddingY = target.strokeWidth / (target.strokeUniform ? target.scaleY : 1);
+    const newHeight = Math.max(30, Math.abs(localPoint.y * multY / (target.scaleY || 1)) - strokePaddingY);
+    if (Math.abs(newHeight - target.height) > 0.5) {
+      (target as any).customHeight = newHeight;
+      target.set('height', newHeight);
+      changed = true;
+    }
+
+    if (changed) {
+      target.initDimensions?.();
+    }
+    return changed;
+  };
+
+  const changeObjectHeight = (_eventData: any, transform: any, x: number, y: number) => {
+    const localPoint = controlsUtils.getLocalPoint(transform, transform.originX, transform.originY, x, y);
+    const target = transform.target as Textbox;
+    const multY = isCentered(transform) ? 2 : 1;
+    const strokePaddingY = target.strokeWidth / (target.strokeUniform ? target.scaleY : 1);
+    const newHeight = Math.max(30, Math.abs(localPoint.y * multY / (target.scaleY || 1)) - strokePaddingY);
+    if (Math.abs(newHeight - target.height) > 0.5) {
+      (target as any).customHeight = newHeight;
+      target.set('height', newHeight);
+      target.initDimensions?.();
+      return true;
+    }
+    return false;
+  };
+
+  const changeDimensions = controlsUtils.wrapWithFireEvent(
+    'resizing',
+    controlsUtils.wrapWithFixedAnchor(changeObjectDimensions)
+  );
+
+  const changeHeight = controlsUtils.wrapWithFireEvent(
+    'resizing',
+    controlsUtils.wrapWithFixedAnchor(changeObjectHeight)
+  );
+
+  textbox.controls = {
+    ...textbox.controls,
+    tl: new Control({
+      x: -0.5,
+      y: -0.5,
+      cursorStyleHandler: controlsUtils.scaleCursorStyleHandler,
+      actionHandler: changeDimensions,
+      actionName: 'resizing',
+    }),
+    tr: new Control({
+      x: 0.5,
+      y: -0.5,
+      cursorStyleHandler: controlsUtils.scaleCursorStyleHandler,
+      actionHandler: changeDimensions,
+      actionName: 'resizing',
+    }),
+    bl: new Control({
+      x: -0.5,
+      y: 0.5,
+      cursorStyleHandler: controlsUtils.scaleCursorStyleHandler,
+      actionHandler: changeDimensions,
+      actionName: 'resizing',
+    }),
+    br: new Control({
+      x: 0.5,
+      y: 0.5,
+      cursorStyleHandler: controlsUtils.scaleCursorStyleHandler,
+      actionHandler: changeDimensions,
+      actionName: 'resizing',
+    }),
+    mt: new Control({
+      x: 0,
+      y: -0.5,
+      cursorStyleHandler: controlsUtils.scaleSkewCursorStyleHandler,
+      actionHandler: changeHeight,
+      actionName: 'resizing',
+    }),
+    mb: new Control({
+      x: 0,
+      y: 0.5,
+      cursorStyleHandler: controlsUtils.scaleSkewCursorStyleHandler,
+      actionHandler: changeHeight,
+      actionName: 'resizing',
+    }),
+    ml: new Control({
+      x: -0.5,
+      y: 0,
+      cursorStyleHandler: controlsUtils.scaleSkewCursorStyleHandler,
+      actionHandler: controlsUtils.changeWidth,
+      actionName: 'resizing',
+    }),
+    mr: new Control({
+      x: 0.5,
+      y: 0,
+      cursorStyleHandler: controlsUtils.scaleSkewCursorStyleHandler,
+      actionHandler: controlsUtils.changeWidth,
+      actionName: 'resizing',
+    }),
+  };
+}
+
 export function createTextNode(options: {
   left?: number;
   top?: number;
@@ -1113,16 +1309,19 @@ export function createTextNode(options: {
     splitByGrapheme: true,
   });
 
-  // Ensure textbox has a generous minimum height (at least 90px tall, ~4.5x taller than 19px)
+  // Ensure textbox minimum height is respected and allows vertical alignment
   const origInitDims = textbox.initDimensions.bind(textbox);
   textbox.initDimensions = function () {
     origInitDims();
-    if (this.height < 90) {
-      this.height = 90;
+    const minH = (this as any).customHeight || 90;
+    if (this.height < minH) {
+      this.height = minH;
       this.setCoords();
     }
   };
+  (textbox as any).customHeight = 90;
   textbox.height = 90;
+  setupTextboxControls(textbox);
   textbox.setCoords();
 
   if (options.containerEl) {
@@ -1133,6 +1332,7 @@ export function createTextNode(options: {
   rec.ngId = genNgId('text');
   rec.ngType = 'text';
   rec.verticalAlign = 'top';
+  rec.customHeight = 90;
   return textbox;
 }
 

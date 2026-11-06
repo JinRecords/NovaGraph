@@ -1,4 +1,4 @@
-import { ActiveSelection, Canvas, FabricObject, Group, Point, util } from 'fabric';
+import { ActiveSelection, Canvas, FabricObject, Group, Point, Textbox, util } from 'fabric';
 import type { IText, Rect } from 'fabric';
 import {
   BoardDocument,
@@ -43,7 +43,9 @@ import {
   createTextNode,
   genNgId,
   rebuildProductNodeInPlace,
+  setupTextboxControls,
   updateFrameDimensions,
+  updateStickyNoteDimensions,
   updateStickyNoteInPlace,
 } from './nodes';
 import {
@@ -1496,6 +1498,44 @@ export class CanvasController {
             strokeDashArray: [6 / sx, 4 / sy],
           });
         }
+      } else if ((target as any).ngType === 'stickyNote') {
+        const group = target as Group;
+        const items = group.getObjects();
+        const bg = items[0] as any;
+        const fold = items[1] as any;
+        const badge = items[2] as any;
+        const tb = items[3] as any;
+        const sx = Math.max(0.001, group.scaleX || 1);
+        const sy = Math.max(0.001, group.scaleY || 1);
+        const baseW = (group as any).ngStickyWidth || (bg ? bg.width : 180);
+        const baseH = (group as any).ngStickyHeight || (bg ? bg.height : 150);
+
+        if (tb) {
+          tb.set({
+            scaleX: 1 / sx,
+            scaleY: 1 / sy,
+            width: Math.max(40, baseW * sx - 24),
+            left: -baseW / 2 + 12 / sx,
+            top: -baseH / 2 + 28 / sy,
+          });
+          tb.initDimensions?.();
+        }
+        if (badge) {
+          badge.set({
+            scaleX: 1 / sx,
+            scaleY: 1 / sy,
+            left: -baseW / 2 + 12 / sx,
+            top: -baseH / 2 + 10 / sy,
+          });
+        }
+        if (fold) {
+          fold.set({
+            scaleX: 1 / sx,
+            scaleY: 1 / sy,
+            left: baseW / 2 - 11 / sx,
+            top: baseH / 2 - 11 / sy,
+          });
+        }
       }
     });
 
@@ -1518,6 +1558,38 @@ export class CanvasController {
             const finalH = Math.max(80, Math.round(baseH * sy));
             updateFrameDimensions(group, finalW, finalH);
           }
+        } else if ((target as any).ngType === 'stickyNote') {
+          const group = target as Group;
+          const sx = group.scaleX || 1;
+          const sy = group.scaleY || 1;
+          if (Math.abs(sx - 1) > 0.001 || Math.abs(sy - 1) > 0.001) {
+            const items = group.getObjects();
+            const bg = items[0] as any;
+            const baseW = (group as any).ngStickyWidth || (bg ? bg.width : 180);
+            const baseH = (group as any).ngStickyHeight || (bg ? bg.height : 150);
+            const finalW = Math.max(120, Math.round(baseW * sx));
+            const finalH = Math.max(80, Math.round(baseH * sy));
+            updateStickyNoteDimensions(group, finalW, finalH);
+          }
+        } else if ((target as any).ngType === 'text' || target instanceof Textbox) {
+          const tb = target as Textbox;
+          const sx = tb.scaleX || 1;
+          const sy = tb.scaleY || 1;
+          if (Math.abs(sx - 1) > 0.001 || Math.abs(sy - 1) > 0.001) {
+            const curW = tb.width || 100;
+            const curH = tb.height || 90;
+            const newW = Math.max(40, Math.round(curW * sx));
+            const newH = Math.max(30, Math.round(curH * sy));
+            (tb as any).customHeight = newH;
+            tb.set({
+              width: newW,
+              height: newH,
+              scaleX: 1,
+              scaleY: 1,
+            });
+            tb.initDimensions?.();
+            tb.setCoords();
+          }
         }
       }
       this.ensureFramesAtBack();
@@ -1533,10 +1605,18 @@ export class CanvasController {
       this.selectedConnectorId = null;
     };
     this.canvas.on('selection:created', (opt) => {
+      const active = this.canvas.getActiveObject();
+      if (active instanceof Textbox || (active as any)?.ngType === 'text') {
+        setupTextboxControls(active as Textbox);
+      }
       keepConnectorOnShift(opt as { e?: Event });
       this.notifyChange(false);
     });
     this.canvas.on('selection:updated', (opt) => {
+      const active = this.canvas.getActiveObject();
+      if (active instanceof Textbox || (active as any)?.ngType === 'text') {
+        setupTextboxControls(active as Textbox);
+      }
       const editingObj = this.canvas.getObjects().find((o: any) => o.isEditing) as any;
       if (editingObj && editingObj !== this.canvas.getActiveObject()) {
         editingObj.exitEditing();
@@ -2705,6 +2785,8 @@ export class CanvasController {
           this.canvas.remove(obj);
         } else if (obj instanceof Group) {
           obj.set({ subTargetCheck: false });
+        } else if (obj instanceof Textbox || (obj as any).ngType === 'text') {
+          setupTextboxControls(obj as Textbox);
         }
       }
       this.canvas.requestRenderAll();
