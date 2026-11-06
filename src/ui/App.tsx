@@ -1,7 +1,7 @@
 import { h } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { CanvasController } from '../canvas/controller';
-import { CatalogBundleData, loadCatalogData } from '../data/catalog';
+import { CatalogBundleData, getCachedCatalog, loadCatalogData } from '../data/catalog';
 import { extractBoardFromFile } from '../export/metadata';
 import { getLocale, onLocaleChange, setLocale, t } from '../i18n';
 import {
@@ -36,7 +36,7 @@ export function App({ onClose }: { onClose: () => void }) {
   const activeBoardIdRef = useRef(activeBoardId);
   activeBoardIdRef.current = activeBoardId;
   const isSwitchingBoardRef = useRef(false);
-  const [catalog, setCatalog] = useState<CatalogBundleData | null>(null);
+  const [catalog, setCatalog] = useState<CatalogBundleData>(getCachedCatalog);
   const [customProducts, setCustomProducts] = useState<ProductItem[]>(loadCustomProducts);
 
   const [controller, setController] = useState<CanvasController | null>(null);

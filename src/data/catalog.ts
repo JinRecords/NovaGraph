@@ -1,15 +1,23 @@
 import {
+  CompatDevice,
   CompatibilityResult,
+  CompatRule,
   HSeriesCard,
   HSeriesHost,
   ProductItem,
   ProductSpecMap,
 } from '../types';
+export type { CompatDevice, CompatRule };
 import { extractAssignedLiteral } from './literal';
 import {
   STATIC_COMPAT_CONVERTERS,
   STATIC_COMPAT_CONTROLLERS,
   STATIC_COMPAT_RULES,
+  STATIC_H_SERIES_HOSTS,
+  STATIC_H_SERIES_INPUT_CARDS,
+  STATIC_H_SERIES_OUTPUT_CARDS,
+  STATIC_PRODUCTS,
+  STATIC_SERIES_LIST,
 } from './compatFallback';
 
 const IMG_CDN = 'https://img.novastar.show';
@@ -49,18 +57,6 @@ export function fallbackSlugImageUrl(model: string): string {
   return `/api/img?path=${encodeURIComponent(`/products/${base}.webp`)}&v=1`;
 }
 
-export interface CompatDevice {
-  id: string;
-  name: string;
-  category: 'converter' | 'controller';
-  brand?: string;
-}
-
-export interface CompatRule {
-  status: 0 | 1 | 2;
-  text: string;
-}
-
 export interface CatalogBundleData {
   version: string;
   products: ProductItem[];
@@ -77,19 +73,45 @@ export interface CatalogBundleData {
 const CACHE_KEY = 'novagraph_catalog_cache_v1';
 
 export const DEFAULT_BUNDLE_FALLBACK: CatalogBundleData = {
-  version: 'offline-matrix',
-  products: [],
-  seriesList: [],
+  version: 'offline-static-matrix',
+  products: [
+    ...STATIC_PRODUCTS.map((p) => ({
+      ...p,
+      imageUrl: p.imageUrl || fallbackSlugImageUrl(p.model),
+    })),
+    ...[...STATIC_H_SERIES_INPUT_CARDS, ...STATIC_H_SERIES_OUTPUT_CARDS].map((c) => {
+      const ifaceText = c.interfaces
+        ? c.interfaces.map((i) => `${i.count}× ${i.type}`).join(', ')
+        : '';
+      const specs: ProductSpecMap = {
+        'Card Type': c.type === 'input' ? 'Input Card' : 'Output Card',
+        'Occupancy Slots': `${c.slots} Slot${c.slots > 1 ? 's' : ''}`,
+      };
+      if (ifaceText) specs['Interfaces'] = ifaceText;
+      if (c.note) specs['Note'] = c.note;
+      return {
+        id: `hcard::${c.id}`,
+        model: c.name,
+        series: 'H Series Cards',
+        imageUrl: c.image || null,
+        specs,
+        isHSeriesCard: true,
+        cardType: c.type,
+        slots: c.slots,
+      };
+    }),
+  ],
+  seriesList: [...STATIC_SERIES_LIST, 'H Series Cards'],
   imageMap: {},
-  hSeriesHosts: [],
-  hSeriesInputCards: [],
-  hSeriesOutputCards: [],
+  hSeriesHosts: STATIC_H_SERIES_HOSTS,
+  hSeriesInputCards: STATIC_H_SERIES_INPUT_CARDS,
+  hSeriesOutputCards: STATIC_H_SERIES_OUTPUT_CARDS,
   compatConverters: STATIC_COMPAT_CONVERTERS,
   compatControllers: STATIC_COMPAT_CONTROLLERS,
   compatRules: STATIC_COMPAT_RULES,
 };
 
-let cachedBundle: CatalogBundleData | null = DEFAULT_BUNDLE_FALLBACK;
+let cachedBundle: CatalogBundleData | null = null;
 let loadingPromise: Promise<CatalogBundleData> | null = null;
 
 /** Discover the site's main index-*.js script URL from the live document. */
@@ -374,7 +396,7 @@ export function checkCompatibility(
 
 /** Load the full dynamic catalog + bundle assets from novastar.show with hash validation. */
 export async function loadCatalogData(forceRefresh = false): Promise<CatalogBundleData> {
-  if (cachedBundle && !forceRefresh) return cachedBundle;
+  if (cachedBundle && !forceRefresh && cachedBundle.products.length > 0) return cachedBundle;
   if (loadingPromise && !forceRefresh) return loadingPromise;
 
   loadingPromise = (async () => {
@@ -406,18 +428,28 @@ export async function loadCatalogData(forceRefresh = false): Promise<CatalogBund
     }
 
     // 1. Fetch product catalog from public API v1
-    const prodRes = await fetch('/api/v1/products', { credentials: 'same-origin' });
-    if (!prodRes.ok) {
-      if (cached) {
+    let catalogData: Record<string, Array<Record<string, unknown>>> | null = null;
+    let version = remoteVersion || String(Date.now());
+    try {
+      const prodRes = await fetch('/api/v1/products', { credentials: 'same-origin' });
+      if (prodRes.ok) {
+        const prodJson = await prodRes.json();
+        version =
+          prodJson?.meta?.hash || prodJson?.meta?.version || remoteVersion || String(Date.now());
+        catalogData = prodJson?.data || null;
+      }
+    } catch (e) {
+      console.warn('[NovaGraph] /api/v1/products fetch warning:', e);
+    }
+
+    if (!catalogData || Object.keys(catalogData).length === 0) {
+      if (cached && cached.products && cached.products.length > 0) {
         cachedBundle = cached;
         return cached;
       }
-      throw new Error(`Failed to fetch /api/v1/products: ${prodRes.status}`);
+      cachedBundle = DEFAULT_BUNDLE_FALLBACK;
+      return DEFAULT_BUNDLE_FALLBACK;
     }
-    const prodJson = await prodRes.json();
-    const version: string =
-      prodJson?.meta?.hash || prodJson?.meta?.version || remoteVersion || String(Date.now());
-    const catalogData: Record<string, Array<Record<string, unknown>>> = prodJson?.data || {};
 
     // 2. Fetch and parse main JS bundle for image map, H-series hosts & cards, and compat chunk URL
     let imageMap: Record<string, string> = {};
@@ -552,6 +584,19 @@ export async function loadCatalogData(forceRefresh = false): Promise<CatalogBund
   }
 }
 
-export function getCachedCatalog(): CatalogBundleData | null {
-  return cachedBundle;
+export function getCachedCatalog(): CatalogBundleData {
+  if (cachedBundle && cachedBundle.products && cachedBundle.products.length > 0) {
+    return cachedBundle;
+  }
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as CatalogBundleData;
+      if (parsed && Array.isArray(parsed.products) && parsed.products.length > 0) {
+        cachedBundle = parsed;
+        return parsed;
+      }
+    }
+  } catch {}
+  return DEFAULT_BUNDLE_FALLBACK;
 }

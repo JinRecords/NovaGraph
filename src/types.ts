@@ -121,3 +121,15 @@ export interface BoardDocument {
   fabricJson: Record<string, unknown>;
   connectors: ConnectorConfig[];
 }
+
+export interface CompatDevice {
+  id: string;
+  name: string;
+  category: 'converter' | 'controller';
+  brand?: string;
+}
+
+export interface CompatRule {
+  status: 0 | 1 | 2;
+  text: string;
+}
