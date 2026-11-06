@@ -46,9 +46,14 @@ function readU32BE(arr: Uint8Array, offset: number): number {
 export function embedMetadataInPng(pngBytes: Uint8Array, doc: BoardDocument): Uint8Array {
   const enc = new TextEncoder();
   const jsonBytes = enc.encode(JSON.stringify(doc));
-  // iTXt data layout: keyword + \0 + compressionFlag(0) + compressionMethod(0) + langTag(\0) + translatedKeyword(\0) + text
   const kwBytes = enc.encode(KEYWORD);
-  const dataLen = kwBytes.length + 5 + jsonBytes.length;
+  const langBytes = enc.encode('en');
+  const transKwBytes = enc.encode(KEYWORD);
+
+  // iTXt data layout:
+  // Keyword + \0 + compressionFlag(0) + compressionMethod(0) + langTag + \0 + translatedKeyword + \0 + text
+  const dataLen =
+    kwBytes.length + 1 + 1 + 1 + langBytes.length + 1 + transKwBytes.length + 1 + jsonBytes.length;
   const chunk = new Uint8Array(12 + dataLen);
 
   writeU32BE(chunk, 0, dataLen);
@@ -64,8 +69,12 @@ export function embedMetadataInPng(pngBytes: Uint8Array, doc: BoardDocument): Ui
   chunk[p++] = 0; // null separator after keyword
   chunk[p++] = 0; // compression flag = 0 (uncompressed)
   chunk[p++] = 0; // compression method = 0
-  chunk[p++] = 0; // language tag null terminator
-  chunk[p++] = 0; // translated keyword null terminator
+  chunk.set(langBytes, p);
+  p += langBytes.length;
+  chunk[p++] = 0; // null separator after language tag
+  chunk.set(transKwBytes, p);
+  p += transKwBytes.length;
+  chunk[p++] = 0; // null separator after translated keyword
   chunk.set(jsonBytes, p);
 
   const crc = crc32(chunk.subarray(4, 8 + dataLen));
@@ -125,7 +134,9 @@ export function extractMetadataFromPng(pngBytes: Uint8Array): BoardDocument | nu
           p++;
           while (p < data.length && data[p] !== 0) p++;
           p++;
-          const jsonStr = dec.decode(data.subarray(p));
+          const raw = dec.decode(data.subarray(p));
+          // Strip any leading null bytes or whitespace
+          const jsonStr = raw.replace(/^[\0\s]+/, '');
           return JSON.parse(jsonStr) as BoardDocument;
         }
       }

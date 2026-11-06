@@ -8,6 +8,7 @@ import {
   createEmptyBoard,
   deleteBoardById,
   getActiveBoardId,
+  initStorage,
   loadAllBoards,
   loadCustomProducts,
   setActiveBoardId,
@@ -91,7 +92,19 @@ export function App({ onClose }: { onClose: () => void }) {
     (window as any).__novaGraphController = ctrl;
     setController(ctrl);
 
-    // Load active board
+    // Load active board and restore from chrome.storage.local backup if needed
+    initStorage().then(() => {
+      const fresh = loadAllBoards();
+      setBoards(fresh);
+      const activeId = getActiveBoardId();
+      if (activeId) {
+        const doc = fresh.find((b) => b.id === activeId) || fresh[0];
+        if (doc && ctrl && !ctrl.canvas.getObjects().length) {
+          ctrl.loadBoardDocument(doc);
+        }
+      }
+    });
+
     const all = loadAllBoards();
     const currentDoc = all.find((b) => b.id === activeBoardId) || all[0];
     if (currentDoc) {
@@ -360,7 +373,20 @@ export function App({ onClose }: { onClose: () => void }) {
     window.addEventListener('paste', handlePaste);
     window.addEventListener('novagraph:add-hseries', handleExternalHSeries);
 
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'novagraph_boards_v1' || e.key === 'novagraph_active_board_v1') {
+        const fresh = loadAllBoards();
+        setBoards(fresh);
+        const curActive = getActiveBoardId();
+        if (!fresh.some((b) => b.id === activeBoardIdRef.current)) {
+          if (fresh[0]) switchBoard(fresh[0].id);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageEvent);
+
     return () => {
+      window.removeEventListener('storage', handleStorageEvent);
       if (autoSaveTimer) {
         window.clearTimeout(autoSaveTimer);
         if (!isSwitchingBoardRef.current) {

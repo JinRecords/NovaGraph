@@ -6,6 +6,11 @@ import {
   ProductSpecMap,
 } from '../types';
 import { extractAssignedLiteral } from './literal';
+import {
+  STATIC_COMPAT_CONVERTERS,
+  STATIC_COMPAT_CONTROLLERS,
+  STATIC_COMPAT_RULES,
+} from './compatFallback';
 
 const IMG_CDN = 'https://img.novastar.show';
 
@@ -71,7 +76,20 @@ export interface CatalogBundleData {
 
 const CACHE_KEY = 'novagraph_catalog_cache_v1';
 
-let cachedBundle: CatalogBundleData | null = null;
+export const DEFAULT_BUNDLE_FALLBACK: CatalogBundleData = {
+  version: 'offline-matrix',
+  products: [],
+  seriesList: [],
+  imageMap: {},
+  hSeriesHosts: [],
+  hSeriesInputCards: [],
+  hSeriesOutputCards: [],
+  compatConverters: STATIC_COMPAT_CONVERTERS,
+  compatControllers: STATIC_COMPAT_CONTROLLERS,
+  compatRules: STATIC_COMPAT_RULES,
+};
+
+let cachedBundle: CatalogBundleData | null = DEFAULT_BUNDLE_FALLBACK;
 let loadingPromise: Promise<CatalogBundleData> | null = null;
 
 /** Discover the site's main index-*.js script URL from the live document. */
@@ -284,13 +302,21 @@ export function checkCompatibility(
   modelB: string,
   bundle: CatalogBundleData | null = cachedBundle
 ): CompatibilityResult {
-  if (!bundle || !modelA || !modelB) {
+  if (!modelA || !modelB) {
     return { applicable: false, status: 1, portText: '' };
   }
-  const { compatConverters, compatControllers, compatRules } = bundle;
-  if (!compatConverters.length || !compatControllers.length) {
-    return { applicable: false, status: 1, portText: '' };
-  }
+  const compatConverters =
+    bundle?.compatConverters && bundle.compatConverters.length > 0
+      ? bundle.compatConverters
+      : STATIC_COMPAT_CONVERTERS;
+  const compatControllers =
+    bundle?.compatControllers && bundle.compatControllers.length > 0
+      ? bundle.compatControllers
+      : STATIC_COMPAT_CONTROLLERS;
+  const compatRules =
+    bundle?.compatRules && Object.keys(bundle.compatRules).length > 0
+      ? bundle.compatRules
+      : STATIC_COMPAT_RULES;
 
   // Try (A = converter, B = controller) and (B = converter, A = controller).
   // Prefer pairing where one is specifically a dedicated CVT converter if possible.
@@ -418,17 +444,28 @@ export async function loadCatalogData(forceRefresh = false): Promise<CatalogBund
         hSeriesOutputCards = parsedMain.hSeriesOutputCards;
 
         if (parsedMain.compatChunkPath) {
-          const compatSrc = await (
-            await fetch(parsedMain.compatChunkPath, { credentials: 'same-origin' })
-          ).text();
-          const parsedCompat = parseCompatBundleSource(compatSrc);
-          compatConverters = parsedCompat.compatConverters;
-          compatControllers = parsedCompat.compatControllers;
-          compatRules = parsedCompat.compatRules;
+          try {
+            const compatSrc = await (
+              await fetch(parsedMain.compatChunkPath, { credentials: 'same-origin' })
+            ).text();
+            const parsedCompat = parseCompatBundleSource(compatSrc);
+            compatConverters = parsedCompat.compatConverters;
+            compatControllers = parsedCompat.compatControllers;
+            compatRules = parsedCompat.compatRules;
+          } catch (e) {
+            console.warn('[NovaGraph] Compat chunk fetch warning:', e);
+          }
         }
       }
     } catch (e) {
       console.warn('[NovaGraph] Bundle parse warning:', e);
+    }
+
+    // Fall back to static offline compat matrix if dynamic fetch was empty or failed
+    if (!compatConverters || compatConverters.length === 0) {
+      compatConverters = STATIC_COMPAT_CONVERTERS;
+      compatControllers = STATIC_COMPAT_CONTROLLERS;
+      compatRules = STATIC_COMPAT_RULES;
     }
 
     // 3. Build unified ProductItem list from API data

@@ -14,6 +14,7 @@ import {
 import {
   AnchorPoint,
   ConnectorRepositioningState,
+  computeElbowPoints,
   evaluateConnectorCompatibility,
   findNearestAnchorPort,
   getConnectorEndpoints,
@@ -24,6 +25,7 @@ import {
 } from './connectors';
 import {
   createLedScreenNode,
+  getLedVisualSize,
   hitTestLedPartitionLine,
   scenePointToLedRatio,
   updateLedScreenInPlace,
@@ -92,6 +94,7 @@ export class CanvasController {
     group: Group;
     axis: 'v' | 'h';
     index: number;
+    currentRatio: number;
   } | null = null;
   private hoveredPartition: {
     group: Group;
@@ -306,10 +309,98 @@ export class CanvasController {
             renderAnchorPortsOverlay(ctx, targetObj, this.hoveredAnchor, this.altPressed);
           }
         }
+
+        // LED Screen partition line hover & drag guidelines (smooth 60fps rendering)
+        this.renderLedPartitionOverlay(ctx);
       }
 
       ctx.restore();
     };
+  }
+
+  private renderLedPartitionOverlay(ctx: CanvasRenderingContext2D) {
+    const zoom = Math.max(0.25, this.canvas.getZoom());
+    if (this.draggingPartition) {
+      const { group, axis, currentRatio } = this.draggingPartition;
+      if (this.canvas.getObjects().includes(group)) {
+        const line = this.getPartitionSceneLine(group, axis, currentRatio);
+        ctx.save();
+        ctx.strokeStyle = '#ff6a2b';
+        ctx.lineWidth = 2.5 / zoom;
+        ctx.setLineDash([5 / zoom, 3 / zoom]);
+        ctx.beginPath();
+        ctx.moveTo(line.p1.x, line.p1.y);
+        ctx.lineTo(line.p2.x, line.p2.y);
+        ctx.stroke();
+
+        // Draw readout badge near center of line
+        const midX = (line.p1.x + line.p2.x) / 2;
+        const midY = (line.p1.y + line.p2.y) / 2;
+        const rec = group as unknown as Record<string, unknown>;
+        const cfg = rec.ngLedConfig as LedScreenConfig;
+        const pxTotal = axis === 'v' ? cfg.resWidth : cfg.resHeight;
+        const pxVal = pxTotal ? Math.round(currentRatio * pxTotal) : 0;
+        const pctText = `${(currentRatio * 100).toFixed(1)}%`;
+        const label = pxVal > 0 ? `${pxVal}px (${pctText})` : pctText;
+
+        ctx.font = `600 ${11 / zoom}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        const textWidth = ctx.measureText(label).width;
+        const padX = 6 / zoom;
+        const badgeW = textWidth + padX * 2;
+        const badgeH = 18 / zoom;
+
+        ctx.fillStyle = '#ff6a2b';
+        ctx.beginPath();
+        ctx.roundRect(midX - badgeW / 2, midY - badgeH / 2, badgeW, badgeH, 4 / zoom);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, midX, midY);
+        ctx.restore();
+      }
+    } else if (this.hoveredPartition) {
+      const { group, axis, index } = this.hoveredPartition;
+      if (this.canvas.getObjects().includes(group)) {
+        const rec = group as unknown as Record<string, unknown>;
+        const cfg = rec.ngLedConfig as LedScreenConfig;
+        const r = axis === 'v' ? cfg.verticalPartitions[index] : cfg.horizontalPartitions[index];
+        if (typeof r === 'number') {
+          const line = this.getPartitionSceneLine(group, axis, r);
+          ctx.save();
+          ctx.strokeStyle = '#ff6a2b';
+          ctx.lineWidth = 2.0 / zoom;
+          ctx.beginPath();
+          ctx.moveTo(line.p1.x, line.p1.y);
+          ctx.lineTo(line.p2.x, line.p2.y);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+  }
+
+  private getPartitionSceneLine(
+    group: Group,
+    axis: 'v' | 'h',
+    ratio: number
+  ): { p1: Point; p2: Point } {
+    const rec = group as unknown as Record<string, unknown>;
+    const cfg = rec.ngLedConfig as LedScreenConfig;
+    const { innerW, innerH } = getLedVisualSize(cfg);
+    const matrix = group.calcTransformMatrix();
+    if (axis === 'v') {
+      const x = -innerW / 2 + ratio * innerW;
+      const p1 = util.transformPoint(new Point(x, -innerH / 2), matrix);
+      const p2 = util.transformPoint(new Point(x, innerH / 2), matrix);
+      return { p1, p2 };
+    } else {
+      const y = -innerH / 2 + ratio * innerH;
+      const p1 = util.transformPoint(new Point(-innerW / 2, y), matrix);
+      const p2 = util.transformPoint(new Point(innerW / 2, y), matrix);
+      return { p1, p2 };
+    }
   }
 
   private drawCanvasBackground(ctx: CanvasRenderingContext2D) {
@@ -600,10 +691,19 @@ export class CanvasController {
       if (target && (target as unknown as Record<string, unknown>).ngType === 'ledScreen') {
         const hitLine = hitTestLedPartitionLine(target as Group, scenePt);
         if (hitLine) {
+          const cfg = (target as any).ngLedConfig as LedScreenConfig;
+          const currentRatio =
+            hitLine.axis === 'v'
+              ? cfg?.verticalPartitions[hitLine.index]
+              : cfg?.horizontalPartitions[hitLine.index];
           this.draggingPartition = {
             group: target as Group,
             axis: hitLine.axis,
             index: hitLine.index,
+            currentRatio:
+              typeof currentRatio === 'number'
+                ? currentRatio
+                : scenePointToLedRatio(target as Group, scenePt, hitLine.axis),
           };
           target.set({ lockMovementX: true, lockMovementY: true });
           this.canvas.selection = false;
@@ -745,21 +845,10 @@ export class CanvasController {
 
       // 2. Dragging an LED Screen partition line (up/down for horizontal, left/right for vertical)
       if (this.draggingPartition) {
-        const { group, axis, index } = this.draggingPartition;
-        const rec = group as unknown as Record<string, unknown>;
-        const cfg = rec.ngLedConfig as LedScreenConfig;
+        const { group, axis } = this.draggingPartition;
         const newRatio = scenePointToLedRatio(group, scenePt, axis);
-        const nextCfg: LedScreenConfig = {
-          ...cfg,
-          verticalPartitions: [...cfg.verticalPartitions],
-          horizontalPartitions: [...cfg.horizontalPartitions],
-        };
-        if (axis === 'v') nextCfg.verticalPartitions[index] = newRatio;
-        else nextCfg.horizontalPartitions[index] = newRatio;
-
-        const updatedGroup = updateLedScreenInPlace(group, nextCfg, { axis, index });
-        updatedGroup.set({ lockMovementX: true, lockMovementY: true });
-        this.draggingPartition.group = updatedGroup;
+        this.draggingPartition.currentRatio = newRatio;
+        this.canvas.requestRenderAll();
         return;
       }
 
@@ -822,31 +911,26 @@ export class CanvasController {
           this.canvas.hoverCursor = cursor;
           if (
             !this.hoveredPartition ||
+            this.hoveredPartition.group !== topObj ||
             this.hoveredPartition.axis !== hitLine.axis ||
             this.hoveredPartition.index !== hitLine.index
           ) {
-            const cfg = (topObj as unknown as Record<string, unknown>).ngLedConfig as LedScreenConfig;
-            const updated = updateLedScreenInPlace(topObj as Group, cfg, hitLine);
             this.hoveredPartition = {
-              group: updated,
+              group: topObj as Group,
               axis: hitLine.axis,
               index: hitLine.index,
             };
-            this.hoveredObject = updated;
+            this.canvas.requestRenderAll();
           }
           return;
         }
       }
 
       if (this.hoveredPartition) {
-        const prevGrp = this.hoveredPartition.group;
         this.hoveredPartition = null;
-        if (this.canvas.getObjects().includes(prevGrp)) {
-          const cfg = (prevGrp as unknown as Record<string, unknown>).ngLedConfig as LedScreenConfig;
-          updateLedScreenInPlace(prevGrp, cfg, null);
-        }
         this.canvas.defaultCursor = this.activeTool === 'pan' ? 'grab' : 'default';
         this.canvas.hoverCursor = 'move';
+        this.canvas.requestRenderAll();
       }
 
       // If hovering directly over a resize or rotate control handle, do not snap to anchor ports
@@ -979,10 +1063,23 @@ export class CanvasController {
       }
 
       if (this.draggingPartition) {
-        this.draggingPartition.group.set({ lockMovementX: false, lockMovementY: false });
+        const { group, axis, index, currentRatio } = this.draggingPartition;
+        const rec = group as unknown as Record<string, unknown>;
+        const cfg = rec.ngLedConfig as LedScreenConfig;
+        const nextCfg: LedScreenConfig = {
+          ...cfg,
+          verticalPartitions: [...cfg.verticalPartitions],
+          horizontalPartitions: [...cfg.horizontalPartitions],
+        };
+        if (axis === 'v') nextCfg.verticalPartitions[index] = currentRatio;
+        else nextCfg.horizontalPartitions[index] = currentRatio;
+
+        group.set({ lockMovementX: false, lockMovementY: false });
+        updateLedScreenInPlace(group, nextCfg, null);
         this.draggingPartition = null;
         this.canvas.selection = this.activeTool === 'select';
         this.notifyChange(true);
+        this.canvas.requestRenderAll();
         return;
       }
 
@@ -2356,8 +2453,98 @@ export class CanvasController {
     this.notifyChange(false);
   }
 
+  /** Compute the Axis-Aligned Bounding Box (AABB) in scene coordinates of target objects + connectors. */
+  public computeSceneBounds(
+    targetObjects?: FabricObject[],
+    includeConnectors = true
+  ): {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    width: number;
+    height: number;
+  } | null {
+    const objs = (targetObjects || this.canvas.getObjects()).filter((o) => o.visible);
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const obj of objs) {
+      const br = obj.getBoundingRect();
+      if (br.left < minX) minX = br.left;
+      if (br.top < minY) minY = br.top;
+      if (br.left + br.width > maxX) maxX = br.left + br.width;
+      if (br.top + br.height > maxY) maxY = br.top + br.height;
+    }
+
+    if (includeConnectors) {
+      const allCanvasObjs = this.canvas.getObjects();
+      const relevantSet = targetObjects
+        ? new Set(targetObjects.map((o) => (o as any).ngId).filter(Boolean))
+        : null;
+
+      for (const c of this.connectors) {
+        if (relevantSet && (!relevantSet.has(c.fromId) || !relevantSet.has(c.toId))) continue;
+        const endpoints = getConnectorEndpoints(c, allCanvasObjs);
+        if (!endpoints) continue;
+        const pts = computeElbowPoints(
+          endpoints.p1,
+          c.fromSide,
+          endpoints.p2,
+          c.toSide,
+          c.elbowOffset || 0
+        );
+        for (const p of pts) {
+          if (p.x < minX) minX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y > maxY) maxY = p.y;
+        }
+      }
+    }
+
+    if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+      return null;
+    }
+
+    return {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  }
+
   public zoomToFit() {
-    this.canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    const bounds = this.computeSceneBounds();
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
+      this.canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+      this.canvas.requestRenderAll();
+      this.notifyChange(false);
+      return;
+    }
+
+    const padding = 60;
+    const canvasWidth = this.canvas.width || 1200;
+    const canvasHeight = this.canvas.height || 800;
+
+    const availableWidth = Math.max(100, canvasWidth - padding * 2);
+    const availableHeight = Math.max(100, canvasHeight - padding * 2);
+
+    let zoom = Math.min(availableWidth / bounds.width, availableHeight / bounds.height);
+    zoom = Math.max(0.1, Math.min(2.0, zoom));
+
+    const centerX = bounds.minX + bounds.width / 2;
+    const centerY = bounds.minY + bounds.height / 2;
+
+    const panX = canvasWidth / 2 - centerX * zoom;
+    const panY = canvasHeight / 2 - centerY * zoom;
+
+    this.canvas.setViewportTransform([zoom, 0, 0, zoom, panX, panY]);
     this.canvas.requestRenderAll();
     this.notifyChange(false);
   }
@@ -2514,6 +2701,30 @@ export class CanvasController {
 
     this.canvas.discardActiveObject();
     this.isExporting = true;
+
+    // Calculate crop bounds for diagram export so all diagram objects and connectors are captured
+    const exportObjects = this.canvas.getObjects().filter((o) => o.visible);
+    const bounds = this.computeSceneBounds(exportObjects, true);
+
+    const prevVp = [...(this.canvas.viewportTransform || [1, 0, 0, 1, 0, 0])];
+    const prevWidth = this.canvas.width || 1200;
+    const prevHeight = this.canvas.height || 800;
+
+    let cropLeft = 0;
+    let cropTop = 0;
+    let cropWidth = prevWidth;
+    let cropHeight = prevHeight;
+
+    if (bounds && bounds.width > 0 && bounds.height > 0) {
+      const padding = 40;
+      cropLeft = Math.floor(bounds.minX - padding);
+      cropTop = Math.floor(bounds.minY - padding);
+      cropWidth = Math.ceil(bounds.width + padding * 2);
+      cropHeight = Math.ceil(bounds.height + padding * 2);
+      this.canvas.setDimensions({ width: cropWidth, height: cropHeight });
+      this.canvas.setViewportTransform([1, 0, 0, 1, -cropLeft, -cropTop]);
+    }
+
     this.canvas.requestRenderAll();
 
     try {
@@ -2535,14 +2746,16 @@ export class CanvasController {
         const pngWithMeta = embedMetadataInPng(rawBytes, exportDoc);
         const pdfBytes = await generatePdfWithMetadata(
           pngWithMeta,
-          (this.canvas.width || 1200) * 2,
-          (this.canvas.height || 800) * 2,
+          cropWidth * 2,
+          cropHeight * 2,
           exportDoc
         );
         triggerDownload(pdfBytes, `${safeFilename}.pdf`, 'application/pdf');
       }
     } finally {
       this.isExporting = false;
+      this.canvas.setDimensions({ width: prevWidth, height: prevHeight });
+      this.canvas.setViewportTransform(prevVp as any);
       for (const obj of hiddenForExport) {
         obj.visible = true;
       }
