@@ -238,21 +238,6 @@ export function SidebarLeft({
                       <div className="ng-product-model">{prod.model}</div>
                       <div className="ng-product-series">{prod.series}</div>
                     </div>
-
-                    {/* Hover Thumbnail Preview Popup */}
-                    <div className="ng-hover-preview">
-                      {hasPhoto && (
-                        <img
-                          src={prod.imageUrl!}
-                          alt={prod.model}
-                          onError={() => markImgFailed(prod.id)}
-                        />
-                      )}
-                      <div className="ng-hover-preview-title">{prod.model}</div>
-                      <div className="ng-hover-preview-desc">
-                        {prod.series} • {Object.keys(prod.specs || {}).length} specifications
-                      </div>
-                    </div>
                   </div>
                 );
               })
