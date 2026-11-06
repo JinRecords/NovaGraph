@@ -281,6 +281,69 @@ export function Icon({
         <path d="m12 3 1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3Z" />
       );
       break;
+    case 'align-left':
+      path = (
+        <>
+          <line x1="21" x2="3" y1="6" y2="6" />
+          <line x1="15" x2="3" y1="12" y2="12" />
+          <line x1="17" x2="3" y1="18" y2="18" />
+        </>
+      );
+      break;
+    case 'align-center':
+      path = (
+        <>
+          <line x1="21" x2="3" y1="6" y2="6" />
+          <line x1="17" x2="7" y1="12" y2="12" />
+          <line x1="19" x2="5" y1="18" y2="18" />
+        </>
+      );
+      break;
+    case 'align-right':
+      path = (
+        <>
+          <line x1="21" x2="3" y1="6" y2="6" />
+          <line x1="21" x2="9" y1="12" y2="12" />
+          <line x1="21" x2="7" y1="18" y2="18" />
+        </>
+      );
+      break;
+    case 'align-justify':
+      path = (
+        <>
+          <line x1="21" x2="3" y1="6" y2="6" />
+          <line x1="21" x2="3" y1="12" y2="12" />
+          <line x1="21" x2="3" y1="18" y2="18" />
+        </>
+      );
+      break;
+    case 'align-top':
+      path = (
+        <>
+          <line x1="4" x2="20" y1="4" y2="4" />
+          <rect width="6" height="12" x="6" y="8" rx="1" />
+          <rect width="6" height="8" x="14" y="8" rx="1" />
+        </>
+      );
+      break;
+    case 'align-middle':
+      path = (
+        <>
+          <line x1="2" x2="22" y1="12" y2="12" />
+          <rect width="6" height="14" x="6" y="5" rx="1" />
+          <rect width="6" height="10" x="14" y="7" rx="1" />
+        </>
+      );
+      break;
+    case 'align-bottom':
+      path = (
+        <>
+          <line x1="4" x2="20" y1="20" y2="20" />
+          <rect width="6" height="12" x="6" y="4" rx="1" />
+          <rect width="6" height="8" x="14" y="8" rx="1" />
+        </>
+      );
+      break;
     default:
       path = <circle cx="12" cy="12" r="10" />;
   }

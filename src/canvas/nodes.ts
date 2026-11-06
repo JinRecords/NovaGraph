@@ -37,7 +37,45 @@ export const NG_CUSTOM_PROPS = [
   'ngFrameWidth',
   'ngFrameHeight',
   'ngIsCustomImage',
+  'verticalAlign',
 ];
+
+// Patch Fabric Textbox and IText to support verticalAlign ('top' | 'middle' | 'bottom')
+const origTextboxGetTopOffset = Textbox.prototype._getTopOffset;
+if (origTextboxGetTopOffset) {
+  Textbox.prototype._getTopOffset = function () {
+    const base = origTextboxGetTopOffset.call(this);
+    const vAlign = (this as any).verticalAlign;
+    if (!vAlign || vAlign === 'top') return base;
+    const contentHeight = typeof this.calcTextHeight === 'function' ? this.calcTextHeight() : 0;
+    const extra = Math.max(0, (this.height || 0) - contentHeight);
+    if (vAlign === 'middle' || vAlign === 'center') {
+      return base + extra / 2;
+    }
+    if (vAlign === 'bottom') {
+      return base + extra;
+    }
+    return base;
+  };
+}
+
+const origITextGetTopOffset = IText.prototype._getTopOffset;
+if (origITextGetTopOffset) {
+  IText.prototype._getTopOffset = function () {
+    const base = origITextGetTopOffset.call(this);
+    const vAlign = (this as any).verticalAlign;
+    if (!vAlign || vAlign === 'top') return base;
+    const contentHeight = typeof this.calcTextHeight === 'function' ? this.calcTextHeight() : 0;
+    const extra = Math.max(0, (this.height || 0) - contentHeight);
+    if (vAlign === 'middle' || vAlign === 'center') {
+      return base + extra / 2;
+    }
+    if (vAlign === 'bottom') {
+      return base + extra;
+    }
+    return base;
+  };
+}
 
 // Globally disable Fabric's offscreen raster caching to prevent text, stroke, or border clipping on all objects
 FabricObject.ownDefaults.objectCaching = false;
@@ -1069,6 +1107,7 @@ export function createTextNode(options: {
     fontSize: options.fontSize || 16,
     fontWeight: '500',
     fill: options.fill || '#18181b',
+    textAlign: 'left',
     lineHeight: 1.35,
     objectCaching: false,
     splitByGrapheme: true,
@@ -1093,6 +1132,7 @@ export function createTextNode(options: {
   const rec = textbox as unknown as Record<string, unknown>;
   rec.ngId = genNgId('text');
   rec.ngType = 'text';
+  rec.verticalAlign = 'top';
   return textbox;
 }
 

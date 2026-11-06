@@ -1051,49 +1051,119 @@ export function Inspector({
             {/* B / I / U / S buttons */}
             <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
               <button
-                className="ng-btn ng-btn-secondary"
+                className={`ng-btn ${((activeObject as IText).fontWeight === 'bold' || (activeObject as IText).fontWeight === '700') ? 'ng-btn-accent' : 'ng-btn-secondary'}`}
                 style={{ flex: 1, fontWeight: 'bold' }}
                 onClick={() => {
                   const it = activeObject as IText;
                   it.set({ fontWeight: it.fontWeight === 'bold' || it.fontWeight === '700' ? 'normal' : 'bold' });
                   controller.canvas.requestRenderAll();
+                  controller.notifyChange(true);
                 }}
               >
                 B
               </button>
               <button
-                className="ng-btn ng-btn-secondary"
+                className={`ng-btn ${(activeObject as IText).fontStyle === 'italic' ? 'ng-btn-accent' : 'ng-btn-secondary'}`}
                 style={{ flex: 1, fontStyle: 'italic' }}
                 onClick={() => {
                   const it = activeObject as IText;
                   it.set({ fontStyle: it.fontStyle === 'italic' ? 'normal' : 'italic' });
                   controller.canvas.requestRenderAll();
+                  controller.notifyChange(true);
                 }}
               >
                 I
               </button>
               <button
-                className="ng-btn ng-btn-secondary"
+                className={`ng-btn ${(activeObject as IText).underline ? 'ng-btn-accent' : 'ng-btn-secondary'}`}
                 style={{ flex: 1, textDecoration: 'underline' }}
                 onClick={() => {
                   const it = activeObject as IText;
                   it.set({ underline: !it.underline });
                   controller.canvas.requestRenderAll();
+                  controller.notifyChange(true);
                 }}
               >
                 U
               </button>
               <button
-                className="ng-btn ng-btn-secondary"
+                className={`ng-btn ${(activeObject as IText).linethrough ? 'ng-btn-accent' : 'ng-btn-secondary'}`}
                 style={{ flex: 1, textDecoration: 'line-through' }}
                 onClick={() => {
                   const it = activeObject as IText;
                   it.set({ linethrough: !it.linethrough });
                   controller.canvas.requestRenderAll();
+                  controller.notifyChange(true);
                 }}
               >
                 S
               </button>
+            </div>
+
+            {/* Horizontal Text Alignment (Left, Center, Right, Justify) */}
+            <div style={{ marginTop: '12px' }}>
+              <span className="ng-field-label" style={{ marginBottom: '6px', display: 'block' }}>
+                Text Alignment
+              </span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[
+                  { id: 'left', title: 'Align Left', icon: 'align-left' },
+                  { id: 'center', title: 'Align Center', icon: 'align-center' },
+                  { id: 'right', title: 'Align Right', icon: 'align-right' },
+                  { id: 'justify', title: 'Justify', icon: 'align-justify' },
+                ].map((a) => {
+                  const isCurrent = ((activeObject as Textbox).textAlign || 'left') === a.id;
+                  return (
+                    <button
+                      key={a.id}
+                      className={`ng-btn ${isCurrent ? 'ng-btn-accent' : 'ng-btn-secondary'}`}
+                      style={{ flex: 1, padding: '7px 4px', justifyContent: 'center' }}
+                      title={a.title}
+                      onClick={() => {
+                        (activeObject as Textbox).set({ textAlign: a.id });
+                        (activeObject as Textbox).initDimensions?.();
+                        controller.canvas.requestRenderAll();
+                        controller.notifyChange(true);
+                      }}
+                    >
+                      <Icon name={a.icon} size={15} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Vertical Alignment (Top, Center Vertically / Middle, Bottom) */}
+            <div style={{ marginTop: '12px' }}>
+              <span className="ng-field-label" style={{ marginBottom: '6px', display: 'block' }}>
+                Vertical Alignment
+              </span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[
+                  { id: 'top', title: 'Align Top', icon: 'align-top' },
+                  { id: 'middle', title: 'Center Vertically', icon: 'align-middle' },
+                  { id: 'bottom', title: 'Align Bottom', icon: 'align-bottom' },
+                ].map((v) => {
+                  const currentV = (activeObject as any).verticalAlign || 'top';
+                  const isCurrent = currentV === v.id || (v.id === 'middle' && currentV === 'center');
+                  return (
+                    <button
+                      key={v.id}
+                      className={`ng-btn ${isCurrent ? 'ng-btn-accent' : 'ng-btn-secondary'}`}
+                      style={{ flex: 1, padding: '7px 4px', justifyContent: 'center' }}
+                      title={v.title}
+                      onClick={() => {
+                        (activeObject as any).verticalAlign = v.id;
+                        (activeObject as any).initDimensions?.();
+                        controller.canvas.requestRenderAll();
+                        controller.notifyChange(true);
+                      }}
+                    >
+                      <Icon name={v.icon} size={15} />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : (
