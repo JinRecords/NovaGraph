@@ -1,11 +1,142 @@
 import { h } from 'preact';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { CanvasController } from '../canvas/controller';
 import { ShapeKind } from '../canvas/nodes';
 import { searchProducts } from '../data/search';
 import { t } from '../i18n';
 import { ProductItem } from '../types';
 import { Icon } from './Icons';
+
+const ICONIFY_MIRRORS = [
+  'https://api.iconify.design',
+  'https://api.simplesvg.com',
+  'https://api.unisvg.com',
+];
+
+export const globalIconSvgCache = new Map<string, string>();
+
+async function fetchViaBackgroundOrDirect(message: any, fallbackUrl: string): Promise<any> {
+  // 1. Try background service worker (immune to host-page CSP / CORS)
+  if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+    try {
+      const response = await new Promise<any>((resolve) => {
+        let done = false;
+        const timer = setTimeout(() => {
+          if (!done) {
+            done = true;
+            resolve(null);
+          }
+        }, 4000);
+
+        chrome.runtime.sendMessage(message, (res) => {
+          if (!done) {
+            done = true;
+            clearTimeout(timer);
+            if (chrome.runtime.lastError) {
+              resolve(null);
+            } else {
+              resolve(res);
+            }
+          }
+        });
+      });
+
+      if (response && response.ok) {
+        return response.data || response.svg;
+      }
+    } catch {}
+  }
+
+  // 2. Fallback to direct fetch across mirrors
+  for (const mirror of ICONIFY_MIRRORS) {
+    try {
+      const url = fallbackUrl.startsWith('http')
+        ? fallbackUrl.replace(/https:\/\/[^/]+/, mirror)
+        : `${mirror}${fallbackUrl.startsWith('/') ? '' : '/'}${fallbackUrl}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        if (url.includes('.svg')) {
+          return await res.text();
+        }
+        return await res.json();
+      }
+    } catch {}
+  }
+  return null;
+}
+
+function extractSvgFromCollection(data: any, name: string): string | null {
+  if (!data || !data.icons) return null;
+  let iconData = data.icons[name];
+  if (!iconData && data.aliases && data.aliases[name]) {
+    const parentName = data.aliases[name].parent;
+    iconData = data.icons[parentName];
+  }
+  if (!iconData || !iconData.body) return null;
+  const w = iconData.width || data.width || 24;
+  const h = iconData.height || data.height || 24;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" height="100%" fill="currentColor">${iconData.body}</svg>`;
+}
+
+async function batchFetchIcons(icons: string[]): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+  const uncachedByPrefix: Record<string, string[]> = {};
+
+  for (const iconKey of icons) {
+    if (globalIconSvgCache.has(iconKey)) {
+      result[iconKey] = globalIconSvgCache.get(iconKey)!;
+    } else {
+      const parts = iconKey.split(':');
+      if (parts.length === 2) {
+        const [prefix, name] = parts;
+        if (!uncachedByPrefix[prefix]) uncachedByPrefix[prefix] = [];
+        uncachedByPrefix[prefix].push(name);
+      }
+    }
+  }
+
+  // Batch fetch grouped by icon set prefix
+  const batchPromises = Object.entries(uncachedByPrefix).map(async ([prefix, names]) => {
+    try {
+      const data = await fetchViaBackgroundOrDirect(
+        { type: 'FETCH_ICONIFY_BATCH', prefix, icons: names },
+        `https://api.iconify.design/${prefix}.json?icons=${names.join(',')}`
+      );
+      if (data) {
+        for (const name of names) {
+          const svg = extractSvgFromCollection(data, name);
+          if (svg) {
+            const fullKey = `${prefix}:${name}`;
+            globalIconSvgCache.set(fullKey, svg);
+            result[fullKey] = svg;
+          }
+        }
+      }
+    } catch {}
+  });
+
+  await Promise.all(batchPromises);
+
+  // If any icons remain uncached (e.g. collection miss or alias), fetch single SVG
+  const singlePromises = icons
+    .filter((k) => !globalIconSvgCache.has(k))
+    .map(async (iconKey) => {
+      try {
+        const svg = await fetchViaBackgroundOrDirect(
+          { type: 'FETCH_ICONIFY_SVG', iconKey },
+          `https://api.iconify.design/${iconKey.replace(':', '/')}.svg?color=%231e293b`
+        );
+        if (svg && svg.includes('<svg')) {
+          globalIconSvgCache.set(iconKey, svg);
+          result[iconKey] = svg;
+        }
+      } catch {}
+    });
+
+  await Promise.all(singlePromises);
+
+  return result;
+}
 
 const POPULAR_AV_ICONS = [
   'mdi:server',
@@ -55,8 +186,21 @@ export function SidebarLeft({
   // Feat #3: Online Icon search & grid
   const [iconQuery, setIconQuery] = useState('');
   const [iconList, setIconList] = useState<string[]>(POPULAR_AV_ICONS);
+  const [iconSvgMap, setIconSvgMap] = useState<Record<string, string>>({});
   const [isLoadingIcons, setIsLoadingIcons] = useState(false);
-  const iconCache = useRef<Map<string, string>>(new Map());
+
+  // Automatically batch-fetch SVGs for all current icons in iconList
+  useEffect(() => {
+    let active = true;
+    batchFetchIcons(iconList).then((svgs) => {
+      if (active) {
+        setIconSvgMap((prev) => ({ ...prev, ...svgs }));
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [iconList]);
 
   // Debounced search for icons on Iconify open source repo
   useEffect(() => {
@@ -70,10 +214,12 @@ export function SidebarLeft({
     setIsLoadingIcons(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(trimmed)}&limit=36`);
-        if (res.ok) {
-          const data = await res.json();
-          setIconList(Array.isArray(data.icons) ? data.icons : []);
+        const data = await fetchViaBackgroundOrDirect(
+          { type: 'FETCH_ICONIFY_SEARCH', query: trimmed, limit: 36 },
+          `https://api.iconify.design/search?query=${encodeURIComponent(trimmed)}&limit=36`
+        );
+        if (data && Array.isArray(data.icons)) {
+          setIconList(data.icons);
         } else {
           setIconList([]);
         }
@@ -88,23 +234,12 @@ export function SidebarLeft({
     return () => clearTimeout(timer);
   }, [iconQuery]);
 
-  const fetchIconSvg = async (iconKey: string): Promise<string> => {
-    if (iconCache.current.has(iconKey)) {
-      return iconCache.current.get(iconKey)!;
-    }
-    try {
-      const cleanKey = iconKey.replace(':', '/');
-      const res = await fetch(`https://api.iconify.design/${cleanKey}.svg?color=%231e293b`);
-      const svg = await res.text();
-      iconCache.current.set(iconKey, svg);
-      return svg;
-    } catch {
-      return '';
-    }
-  };
-
   const handleSelectIcon = async (iconKey: string) => {
-    const svg = await fetchIconSvg(iconKey);
+    let svg = iconSvgMap[iconKey] || globalIconSvgCache.get(iconKey);
+    if (!svg) {
+      const svgs = await batchFetchIcons([iconKey]);
+      svg = svgs[iconKey];
+    }
     if (svg) {
       await controller.addSvgFromString(svg);
     }
@@ -112,12 +247,11 @@ export function SidebarLeft({
 
   const handleIconDragStart = (e: DragEvent, iconKey: string) => {
     e.dataTransfer?.setData('application/novagraph-icon-key', iconKey);
-    const cachedSvg = iconCache.current.get(iconKey);
-    if (cachedSvg) {
-      e.dataTransfer?.setData('application/novagraph-icon', cachedSvg);
+    const svg = iconSvgMap[iconKey] || globalIconSvgCache.get(iconKey);
+    if (svg) {
+      e.dataTransfer?.setData('application/novagraph-icon', svg);
     }
     e.dataTransfer!.effectAllowed = 'copy';
-    fetchIconSvg(iconKey);
   };
 
   const filteredProducts = useMemo(() => {
@@ -402,8 +536,7 @@ export function SidebarLeft({
                   }}
                 >
                   {iconList.map((iconKey) => {
-                    const cleanKey = iconKey.replace(':', '/');
-                    const imgUrl = `https://api.iconify.design/${cleanKey}.svg?color=%231e293b`;
+                    const svg = iconSvgMap[iconKey] || globalIconSvgCache.get(iconKey);
                     return (
                       <div
                         key={iconKey}
@@ -412,14 +545,15 @@ export function SidebarLeft({
                         draggable={true}
                         onDragStart={(e) => handleIconDragStart(e, iconKey)}
                         onClick={() => handleSelectIcon(iconKey)}
-                        onMouseEnter={() => fetchIconSvg(iconKey)}
                       >
-                        <img
-                          src={imgUrl}
-                          alt={iconKey}
-                          loading="lazy"
-                          style={{ width: '22px', height: '22px', pointerEvents: 'none' }}
-                        />
+                        {svg ? (
+                          <div
+                            className="ng-icon-svg-container"
+                            dangerouslySetInnerHTML={{ __html: svg }}
+                          />
+                        ) : (
+                          <div className="ng-icon-skeleton" />
+                        )}
                       </div>
                     );
                   })}

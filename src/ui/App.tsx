@@ -21,7 +21,7 @@ import { ExportModal } from './ExportModal';
 import { HSeriesConfiguratorModal } from './HSeriesConfiguratorModal';
 import { Icon } from './Icons';
 import { Inspector } from './Inspector';
-import { SidebarLeft } from './SidebarLeft';
+import { SidebarLeft, globalIconSvgCache } from './SidebarLeft';
 import { hasCompletedTutorial, TutorialModal } from './TutorialModal';
 import { EGG_IMAGE_DATA_URL } from '../canvas/eggData';
 
@@ -514,12 +514,19 @@ export function App({ onClose }: { onClose: () => void }) {
       await controllerRef.current.addSvgFromString(rawIconSvg, { x: pt.x, y: pt.y });
       return;
     } else if (rawIconKey) {
+      const cached = globalIconSvgCache.get(rawIconKey);
+      if (cached) {
+        await controllerRef.current.addSvgFromString(cached, { x: pt.x, y: pt.y });
+        return;
+      }
       try {
         const cleanKey = rawIconKey.replace(':', '/');
         const res = await fetch(`https://api.iconify.design/${cleanKey}.svg?color=%231e293b`);
-        const svg = await res.text();
-        await controllerRef.current.addSvgFromString(svg, { x: pt.x, y: pt.y });
-        return;
+        if (res.ok) {
+          const svg = await res.text();
+          await controllerRef.current.addSvgFromString(svg, { x: pt.x, y: pt.y });
+          return;
+        }
       } catch {}
     }
 

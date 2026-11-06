@@ -80,8 +80,43 @@ export function buildHardwareFallbackSvg(model: string, series: string): string 
   const lower = model.toLowerCase();
   const isFiberCard = lower.includes('fiber') || lower.includes('10g') || lower.includes('sfp');
   const isDpHdmiCard = lower.includes('dp') || lower.includes('hdmi') || lower.includes('dvi') || lower.includes('sdi');
-  const isCard = lower.includes('card') || series.toLowerCase().includes('card');
+  const isCard =
+    lower.includes('card') ||
+    series.toLowerCase().includes('card') ||
+    lower.startsWith('tcc') ||
+    lower.startsWith('mrv') ||
+    lower.startsWith('dh') ||
+    lower.startsWith('a5s') ||
+    lower.startsWith('a7s') ||
+    lower.startsWith('a8s') ||
+    lower.startsWith('a10s');
   const isIc = series.toLowerCase().includes('ic') || lower.startsWith('tbs');
+  const isLargeChassis =
+    lower.startsWith('h20') ||
+    lower.startsWith('h15') ||
+    lower.startsWith('h9') ||
+    lower.startsWith('h5');
+
+  if (isLargeChassis) {
+    const is20U = lower.startsWith('h20');
+    const h = is20U ? 180 : 120;
+    const slotCount = is20U ? 8 : 5;
+    const slots = Array.from({ length: slotCount })
+      .map(
+        (_, i) =>
+          `<rect x="24" y="${14 + i * 19}" width="212" height="14" rx="1.5" fill="#0f172a" stroke="#334155" stroke-width="0.8"/>`
+      )
+      .join('');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="260" height="${h}" viewBox="0 0 260 ${h}">
+      <rect x="2" y="4" width="14" height="${h - 8}" rx="2" fill="#18181b" stroke="#3f3f46"/>
+      <circle cx="9" cy="16" r="2.5" fill="#71717a"/><circle cx="9" cy="${h - 16}" r="2.5" fill="#71717a"/>
+      <rect x="16" y="4" width="228" height="${h - 8}" rx="3" fill="#1f242d" stroke="#475569" stroke-width="1.2"/>
+      <rect x="244" y="4" width="14" height="${h - 8}" rx="2" fill="#18181b" stroke="#3f3f46"/>
+      <circle cx="251" cy="16" r="2.5" fill="#71717a"/><circle cx="251" cy="${h - 16}" r="2.5" fill="#71717a"/>
+      ${slots}
+    </svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  }
 
   if (isCard || isFiberCard || isDpHdmiCard) {
     const tabColor = isFiberCard ? '#38bdf8' : '#22c55e';
@@ -152,19 +187,24 @@ async function buildProductChildObjects(
   }
 
   const img = await FabricImage.fromURL(dataUrl);
-  const natW = img.width || 240;
-  const natH = img.height || 64;
-  // Scale hardware image to a clean standard width on canvas while keeping aspect ratio
-  const targetW = product.isHSeriesCard || product.model.toLowerCase().includes('card') ? 210 : 230;
-  const targetH = Math.max(28, Math.min(135, Math.round((natH / natW) * targetW)));
+  const natW = Math.max(1, img.width || 240);
+  const natH = Math.max(1, img.height || 64);
+
+  // Maintain strict uniform aspect ratio (scaleX === scaleY) so tall units (H20, TCC160) are never squashed
+  const isCard = product.isHSeriesCard || product.model.toLowerCase().includes('card');
+  const maxW = isCard ? 210 : 230;
+  const maxH = isCard ? 65 : 220;
+  const scale = Math.min(maxW / natW, maxH / natH);
+  const targetW = Math.round(natW * scale);
+  const targetH = Math.round(natH * scale);
 
   img.set({
     originX: 'center',
     originY: 'center',
     left: 0,
     top: 0,
-    scaleX: targetW / natW,
-    scaleY: targetH / natH,
+    scaleX: scale,
+    scaleY: scale,
   });
 
   const children: FabricObject[] = [img];
@@ -447,15 +487,20 @@ export async function createHSeriesConfiguredNode(
       (await fetchImageAsDataUrl(entry.card.image)) ||
       buildHardwareFallbackSvg(entry.card.name, 'H Series Cards');
     const img = await FabricImage.fromURL(cardUrl);
-    const w = 220;
-    const h = Math.max(22, Math.min(42, Math.round(((img.height || 30) / (img.width || 220)) * w)));
+    const cardNatW = Math.max(1, img.width || 220);
+    const cardNatH = Math.max(1, img.height || 30);
+    const cardMaxW = 220;
+    const cardMaxH = 42;
+    const cardScale = Math.min(cardMaxW / cardNatW, cardMaxH / cardNatH);
+    const w = Math.round(cardNatW * cardScale);
+    const h = Math.round(cardNatH * cardScale);
     img.set({
       originX: 'center',
       originY: 'center',
       left: 0,
       top: currentY,
-      scaleX: w / (img.width || 220),
-      scaleY: h / (img.height || 30),
+      scaleX: cardScale,
+      scaleY: cardScale,
     });
     const lbl = new IText(`${entry.count}× ${entry.card.name}`, {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -476,18 +521,20 @@ export async function createHSeriesConfiguredNode(
     (await fetchImageAsDataUrl(config.host.image)) ||
     buildHardwareFallbackSvg(config.host.name, 'H Series');
   const hostImg = await FabricImage.fromURL(hostUrl);
-  const hostW = 260;
-  const hostH = Math.max(
-    65,
-    Math.min(160, Math.round(((hostImg.height || 100) / (hostImg.width || 260)) * hostW))
-  );
+  const hostNatW = Math.max(1, hostImg.width || 260);
+  const hostNatH = Math.max(1, hostImg.height || 100);
+  const hostMaxW = 260;
+  const hostMaxH = 220;
+  const hostScale = Math.min(hostMaxW / hostNatW, hostMaxH / hostNatH);
+  const hostW = Math.round(hostNatW * hostScale);
+  const hostH = Math.round(hostNatH * hostScale);
   hostImg.set({
     originX: 'center',
     originY: 'center',
     left: 0,
     top: currentY + hostH / 2,
-    scaleX: hostW / (hostImg.width || 260),
-    scaleY: hostH / (hostImg.height || 100),
+    scaleX: hostScale,
+    scaleY: hostScale,
   });
   const hostLbl = new IText(`${config.host.name} (${config.host.unit}U Splicer)`, {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -509,15 +556,20 @@ export async function createHSeriesConfiguredNode(
       (await fetchImageAsDataUrl(entry.card.image)) ||
       buildHardwareFallbackSvg(entry.card.name, 'H Series Cards');
     const img = await FabricImage.fromURL(cardUrl);
-    const w = 220;
-    const h = Math.max(22, Math.min(42, Math.round(((img.height || 30) / (img.width || 220)) * w)));
+    const cardNatW = Math.max(1, img.width || 220);
+    const cardNatH = Math.max(1, img.height || 30);
+    const cardMaxW = 220;
+    const cardMaxH = 42;
+    const cardScale = Math.min(cardMaxW / cardNatW, cardMaxH / cardNatH);
+    const w = Math.round(cardNatW * cardScale);
+    const h = Math.round(cardNatH * cardScale);
     img.set({
       originX: 'center',
       originY: 'center',
       left: 0,
       top: currentY,
-      scaleX: w / (img.width || 220),
-      scaleY: h / (img.height || 30),
+      scaleX: cardScale,
+      scaleY: cardScale,
     });
     const lbl = new IText(`${entry.count}× ${entry.card.name}`, {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',

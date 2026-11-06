@@ -29,7 +29,9 @@
   ],
   "host_permissions": [
     "*://novastar.show/*",
-    "https://api.iconify.design/*"
+    "https://api.iconify.design/*",
+    "https://api.simplesvg.com/*",
+    "https://api.unisvg.com/*"
   ],
   "content_scripts": [
     {
