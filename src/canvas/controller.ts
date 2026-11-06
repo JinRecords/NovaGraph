@@ -229,7 +229,8 @@ export class CanvasController {
     const canvasAny = this.canvas as any;
     const origShouldClear = canvasAny._shouldClearSelection.bind(this.canvas);
     canvasAny._shouldClearSelection = (e: MouseEvent, target?: FabricObject) => {
-      if (!target && e?.shiftKey && this.activeTool === 'select') {
+      const isTargetFrame = target && (target as any).ngType === 'frame';
+      if ((!target || isTargetFrame) && e?.shiftKey && this.activeTool === 'select') {
         const pt = this.canvas.getScenePoint(e);
         if (hitTestConnector(this.connectors, this.canvas.getObjects(), pt, 9)) return false;
       }
@@ -258,7 +259,20 @@ export class CanvasController {
           }
         }
       }
-      return origFindTarget(e);
+
+      const target = origFindTarget(e);
+      // If the clicked target is a Frame, check if the click actually hit a connector line.
+      // Connectors are drawn on top of frames, so clicking a connector line must yield
+      // priority to the connector rather than selecting the background frame.
+      if (target && (target as any).ngType === 'frame') {
+        const scenePt = this.canvas.getScenePoint(e);
+        const hitConn = hitTestConnector(this.connectors, this.canvas.getObjects(), scenePt, 9);
+        if (hitConn) {
+          return undefined;
+        }
+      }
+
+      return target;
     };
 
     const origRenderBg = this.canvas._renderBackground.bind(this.canvas);
@@ -823,9 +837,11 @@ export class CanvasController {
       }
 
       // 4. Check if clicking an existing connector line
-      if (!target) {
+      const isTargetFrame = target && (target as any).ngType === 'frame';
+      if (!target || isTargetFrame) {
         const hitConn = hitTestConnector(this.connectors, this.canvas.getObjects(), scenePt, 9);
         if (hitConn) {
+          (this.canvas as any)._currentTransform = null;
           (this.canvas as any)._groupSelector = null;
           if (ev.shiftKey) {
             this.toggleConnectorInSelection(hitConn.id);
@@ -1065,13 +1081,25 @@ export class CanvasController {
         this.canvas.defaultCursor = 'crosshair';
         this.canvas.hoverCursor = 'crosshair';
       } else {
-        this.canvas.defaultCursor =
-          this.activeTool === 'pan'
-            ? 'grab'
-            : this.activeTool === 'connect'
-            ? 'crosshair'
-            : 'default';
-        this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
+        const hitConn = hitTestConnector(this.connectors, allObjects, scenePt, 9);
+        if (hitConn) {
+          this.canvas.defaultCursor = 'pointer';
+          this.canvas.hoverCursor = 'pointer';
+          if ((this.canvas as any).upperCanvasEl) {
+            (this.canvas as any).upperCanvasEl.style.cursor = 'pointer';
+          }
+          if (this.hoveredObject && (this.hoveredObject as any).ngType === 'frame') {
+            this.hoveredObject = null;
+          }
+        } else {
+          this.canvas.defaultCursor =
+            this.activeTool === 'pan'
+              ? 'grab'
+              : this.activeTool === 'connect'
+              ? 'crosshair'
+              : 'default';
+          this.canvas.hoverCursor = this.activeTool === 'connect' ? 'crosshair' : 'move';
+        }
       }
 
       if (prevHoveredObj !== this.hoveredObject || prevHoveredAnchor !== this.hoveredAnchor) {
@@ -2467,6 +2495,15 @@ export class CanvasController {
           resolvedTarget = o;
           break;
         }
+      }
+    }
+
+    // If the resolved target is a Frame, check if right-clicking a connector line inside the frame.
+    // Connectors are drawn on top of frames, so right-clicking a line must open the connector menu.
+    if (resolvedTarget && (resolvedTarget as any).ngType === 'frame') {
+      const hitConnOnFrame = hitTestConnector(this.connectors, allObjects, scenePt, 14);
+      if (hitConnOnFrame) {
+        resolvedTarget = null;
       }
     }
 
