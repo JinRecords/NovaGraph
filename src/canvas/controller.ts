@@ -435,62 +435,73 @@ export class CanvasController {
     const h = this.canvas.height || 800;
     const v = this.canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
     const zoom = v[0] || 1;
+    const panX = v[4] || 0;
+    const panY = v[5] || 0;
 
     ctx.save();
     ctx.fillStyle = this.settings.bgColor || '#fafaf9';
     ctx.fillRect(0, 0, w, h);
 
     if (this.settings.bgStyle !== 'plain') {
-      const step = Math.max(12, this.settings.gridSize || 24);
-      const startX = -v[4] / zoom;
-      const startY = -v[5] / zoom;
-      const endX = startX + w / zoom;
-      const endY = startY + h / zoom;
-
-      const firstGridX = Math.floor(startX / step) * step;
-      const firstGridY = Math.floor(startY / step) * step;
-
-      ctx.transform(v[0], v[1], v[2], v[3], v[4], v[5]);
+      const baseStep = Math.max(12, this.settings.gridSize || 24);
+      let step = baseStep;
+      // Level of Detail: dynamically scale grid step when zoomed out so screen lines never get overly dense
+      while (step * zoom < 14) {
+        step *= 2;
+      }
+      const screenStep = step * zoom;
+      const firstX = ((panX % screenStep) + screenStep) % screenStep;
+      const firstY = ((panY % screenStep) + screenStep) % screenStep;
 
       if (this.settings.bgStyle === 'grid') {
         const majorEvery = step * 4;
-        ctx.lineWidth = 1 / zoom;
+        const majorScreenStep = majorEvery * zoom;
+        const firstMajorX = ((panX % majorScreenStep) + majorScreenStep) % majorScreenStep;
+        const firstMajorY = ((panY % majorScreenStep) + majorScreenStep) % majorScreenStep;
 
-        // Minor lines
-        ctx.beginPath();
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
-        for (let x = firstGridX; x <= endX; x += step) {
-          ctx.moveTo(x, startY);
-          ctx.lineTo(x, endY);
+        ctx.lineWidth = 1;
+
+        // Minor lines (drawn only when comfortably spaced >= 14px on screen, pixel-snapped)
+        if (screenStep >= 14) {
+          ctx.beginPath();
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+          for (let x = firstX; x <= w; x += screenStep) {
+            const rx = Math.floor(x) + 0.5;
+            ctx.moveTo(rx, 0);
+            ctx.lineTo(rx, h);
+          }
+          for (let y = firstY; y <= h; y += screenStep) {
+            const ry = Math.floor(y) + 0.5;
+            ctx.moveTo(0, ry);
+            ctx.lineTo(w, ry);
+          }
+          ctx.stroke();
         }
-        for (let y = firstGridY; y <= endY; y += step) {
-          ctx.moveTo(startX, y);
-          ctx.lineTo(endX, y);
-        }
-        ctx.stroke();
 
         // Major lines (graph-paper look like sample1.jpg)
-        const firstMajorX = Math.floor(startX / majorEvery) * majorEvery;
-        const firstMajorY = Math.floor(startY / majorEvery) * majorEvery;
         ctx.beginPath();
         ctx.strokeStyle = 'rgba(100, 116, 139, 0.34)';
-        for (let x = firstMajorX; x <= endX; x += majorEvery) {
-          ctx.moveTo(x, startY);
-          ctx.lineTo(x, endY);
+        for (let x = firstMajorX; x <= w; x += majorScreenStep) {
+          const rx = Math.floor(x) + 0.5;
+          ctx.moveTo(rx, 0);
+          ctx.lineTo(rx, h);
         }
-        for (let y = firstMajorY; y <= endY; y += majorEvery) {
-          ctx.moveTo(startX, y);
-          ctx.lineTo(endX, y);
+        for (let y = firstMajorY; y <= h; y += majorScreenStep) {
+          const ry = Math.floor(y) + 0.5;
+          ctx.moveTo(0, ry);
+          ctx.lineTo(w, ry);
         }
         ctx.stroke();
       } else if (this.settings.bgStyle === 'dots') {
         ctx.fillStyle = 'rgba(100, 116, 139, 0.42)';
-        const r = Math.max(1, 1.3 / zoom);
-        for (let x = firstGridX; x <= endX; x += step) {
-          for (let y = firstGridY; y <= endY; y += step) {
-            ctx.fillRect(x - r / 2, y - r / 2, r, r);
+        const r = Math.max(1, Math.min(2.5, 1.4 * Math.sqrt(zoom)));
+        ctx.beginPath();
+        for (let x = firstX; x <= w; x += screenStep) {
+          for (let y = firstY; y <= h; y += screenStep) {
+            ctx.rect(x - r / 2, y - r / 2, r, r);
           }
         }
+        ctx.fill();
       }
     }
     ctx.restore();
@@ -1373,16 +1384,47 @@ export class CanvasController {
       }
     });
 
-    // Zoom with Mouse Wheel
+    // Zoom and pan with Mouse Wheel / Trackpad
+    let wheelNotifyTimer: number | null = null;
     this.canvas.on('mouse:wheel', (opt) => {
       const ev = opt.e as WheelEvent;
       ev.preventDefault();
       ev.stopPropagation();
-      let zoom = this.canvas.getZoom();
-      zoom *= 0.999 ** ev.deltaY;
-      zoom = Math.max(0.2, Math.min(4, zoom));
-      this.canvas.zoomToPoint(new Point(ev.offsetX, ev.offsetY), zoom);
-      this.notifyChange(false);
+
+      // Trackpad two-finger pan (when deltaX is present or shiftKey is held without ctrlKey)
+      if (Math.abs(ev.deltaX) > 0 || (ev.shiftKey && !ev.ctrlKey && !ev.metaKey)) {
+        const dx = ev.shiftKey ? ev.deltaY : ev.deltaX;
+        const dy = ev.shiftKey ? 0 : ev.deltaY;
+        this.canvas.relativePan(new Point(-dx, -dy));
+        if (wheelNotifyTimer) window.clearTimeout(wheelNotifyTimer);
+        wheelNotifyTimer = window.setTimeout(() => {
+          this.notifyChange(false);
+        }, 150);
+        return;
+      }
+
+      // Normalize wheel delta across mice and trackpads (deltaMode 0: pixels, 1: lines, 2: pages)
+      let delta = ev.deltaY;
+      if (ev.deltaMode === 1) {
+        delta *= 32;
+      } else if (ev.deltaMode === 2) {
+        delta *= 600;
+      }
+
+      // Smooth, natural exponential zoom factor (dampened to prevent sudden jumps)
+      const clampedDelta = Math.max(-100, Math.min(100, delta));
+      const zoomFactor = Math.pow(0.9985, clampedDelta);
+      let newZoom = this.canvas.getZoom() * zoomFactor;
+      newZoom = Math.max(0.2, Math.min(4, newZoom));
+
+      const point = new Point(ev.offsetX, ev.offsetY);
+      this.canvas.zoomToPoint(point, newZoom);
+
+      // Debounce notifyChange so React never re-renders during active wheel zooming!
+      if (wheelNotifyTimer) window.clearTimeout(wheelNotifyTimer);
+      wheelNotifyTimer = window.setTimeout(() => {
+        this.notifyChange(false);
+      }, 150);
     });
 
     // Grid snapping, Smart Alignment Guides, and Alt/Option-drag duplication

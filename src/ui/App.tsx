@@ -115,11 +115,19 @@ export function App({ onClose }: { onClose: () => void }) {
     let autoSaveTimer: number | null = null;
     const unsub = ctrl.onChange(() => {
       const state = ctrl.getSelectionState();
-      setSelection({
-        activeObject: state.activeObject,
-        activeConnector: state.activeConnector,
+      setSelection((prev) => {
+        if (
+          prev.activeObject === state.activeObject &&
+          prev.activeConnector === state.activeConnector
+        ) {
+          return prev;
+        }
+        return {
+          activeObject: state.activeObject,
+          activeConnector: state.activeConnector,
+        };
       });
-      setActiveTool(ctrl.activeTool);
+      setActiveTool((prev) => (prev === ctrl.activeTool ? prev : ctrl.activeTool));
 
       // Do not auto-save when switching boards or during board load
       if (isSwitchingBoardRef.current) return;
