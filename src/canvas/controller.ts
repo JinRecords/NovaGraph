@@ -615,7 +615,7 @@ export class CanvasController {
       let startingAnchor: AnchorPoint | null = null;
       if (this.hoveredAnchor) {
         const dHover = Math.hypot(scenePt.x - this.hoveredAnchor.x, scenePt.y - this.hoveredAnchor.y) * zoom;
-        if (dHover <= 24) {
+        if (dHover <= 12) {
           startingAnchor = this.hoveredAnchor;
         }
       }
@@ -623,7 +623,7 @@ export class CanvasController {
         startingAnchor = findNearestAnchorPort(
           this.canvas.getObjects(),
           scenePt,
-          this.activeTool === 'connect' ? 32 : 18,
+          this.activeTool === 'connect' ? 16 : 9,
           undefined,
           target,
           this.altPressed || ev.altKey
@@ -730,7 +730,7 @@ export class CanvasController {
         const snapAnchor = findNearestAnchorPort(
           this.canvas.getObjects(),
           scenePt,
-          32,
+          16,
           excludeId,
           null,
           this.altPressed || ev.altKey
@@ -768,7 +768,7 @@ export class CanvasController {
         const snapAnchor = findNearestAnchorPort(
           this.canvas.getObjects(),
           scenePt,
-          32,
+          16,
           this.draftConnector.from.objectId,
           null,
           this.altPressed || ev.altKey
@@ -864,7 +864,7 @@ export class CanvasController {
         : findNearestAnchorPort(
             allObjects,
             scenePt,
-            18,
+            9,
             excludeId,
             topObj,
             this.altPressed || ev.altKey
@@ -1404,6 +1404,36 @@ export class CanvasController {
       this.multiSelectedConnectorIds.add(this.selectedConnectorId);
       this.selectedConnectorId = null;
     }
+  }
+
+  /** Select all objects and connectors on the canvas (Cmd+A / Ctrl+A). */
+  public selectAll() {
+    // 1. Gather all visible diagram objects with ngId
+    const selectableObjects = this.canvas.getObjects().filter((o) => {
+      const rec = o as unknown as Record<string, unknown>;
+      return o.visible && Boolean(rec.ngId);
+    });
+
+    // 2. Select all connectors
+    this.selectedConnectorId = null;
+    this.multiSelectedConnectorIds.clear();
+    for (const c of this.connectors) {
+      this.multiSelectedConnectorIds.add(c.id);
+    }
+
+    // 3. Set active objects
+    if (selectableObjects.length === 1 && this.multiSelectedConnectorIds.size === 0) {
+      this.canvas.setActiveObject(selectableObjects[0]);
+    } else if (selectableObjects.length > 0) {
+      const sel = new ActiveSelection(selectableObjects, { canvas: this.canvas });
+      this.canvas.setActiveObject(sel);
+    } else {
+      this.canvas.discardActiveObject();
+    }
+
+    this.normalizeConnectorSelection();
+    this.canvas.requestRenderAll();
+    this.notifyChange(false);
   }
 
   public getSelectionState(): SelectionState {

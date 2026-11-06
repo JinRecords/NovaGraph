@@ -71,7 +71,7 @@ export function getObjectAnchorPorts(obj: FabricObject, forceOffset?: number): A
 export function findNearestAnchorPort(
   objects: FabricObject[],
   scenePt: Point,
-  maxDist = 18,
+  maxDist = 9,
   excludeObjectId?: string,
   targetObject?: FabricObject | null,
   isAltFreeMode = false
@@ -734,7 +734,7 @@ export function renderAnchorPortsOverlay(
         activeAnchor.objectId === p.objectId &&
         activeAnchor.side === p.side &&
         Math.abs(activeAnchor.ratio - p.ratio) < 0.08 &&
-        Math.hypot(activeAnchor.x - p.x, activeAnchor.y - p.y) < 14;
+        Math.hypot(activeAnchor.x - p.x, activeAnchor.y - p.y) < 8;
       if (isHit) activeRendered = true;
       ctx.beginPath();
       ctx.arc(p.x, p.y, isHit ? 7 : 4.5, 0, Math.PI * 2);

@@ -233,6 +233,10 @@ export function ContextMenu({ x, y, scenePt, targetType, targetConnector, contro
         <span>Paste</span>
         <span className="ng-ctx-key">⌘V</span>
       </div>
+      <div className="ng-ctx-item" onClick={() => act(() => controller.selectAll())}>
+        <span>Select All</span>
+        <span className="ng-ctx-key">⌘A</span>
+      </div>
 
       {targetType === 'canvas' && (
         <>

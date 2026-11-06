@@ -234,6 +234,11 @@ export function App({ onClose }: { onClose: () => void }) {
         ctrl.setTool('connect');
       } else if ((e.key === 'Backspace' || e.key === 'Delete') && !isInput) {
         ctrl.deleteSelected();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+        if (!isInput && !(ctrl.canvas.getActiveObject() as any)?.isEditing) {
+          e.preventDefault();
+          ctrl.selectAll();
+        }
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) ctrl.redo();

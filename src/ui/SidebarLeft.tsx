@@ -331,7 +331,7 @@ export function SidebarLeft({
                 style={{ justifyContent: 'flex-start', padding: '10px 8px' }}
                 onClick={() => controller.addShape(s.id as ShapeKind)}
               >
-                <Icon name="shapes" size={14} />
+                <Icon name={s.id} size={14} />
                 <span style={{ fontSize: '11px' }}>{s.label}</span>
               </button>
             ))}

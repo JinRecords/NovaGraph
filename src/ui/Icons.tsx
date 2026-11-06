@@ -89,6 +89,40 @@ export function Icon({
         </>
       );
       break;
+    case 'shape-rect':
+    case 'rect':
+      path = <rect width="18" height="13" x="3" y="5.5" rx="0" />;
+      break;
+    case 'shape-rounded-rect':
+    case 'rounded-rect':
+      path = <rect width="18" height="13" x="3" y="5.5" rx="4" />;
+      break;
+    case 'shape-circle':
+    case 'circle':
+      path = <circle cx="12" cy="12" r="8.5" />;
+      break;
+    case 'shape-triangle':
+    case 'triangle':
+      path = <path d="M12 3.5 2.5 19.5h19Z" />;
+      break;
+    case 'shape-diamond':
+    case 'diamond':
+      path = <path d="M12 2.5 21.5 12 12 21.5 2.5 12Z" />;
+      break;
+    case 'shape-arrow':
+    case 'arrow':
+      path = <path d="M3 8.5h8.5V4.5L21.5 12l-10 7.5v-4H3Z" />;
+      break;
+    case 'shape-speech':
+    case 'speech':
+      path = <path d="M21 14a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />;
+      break;
+    case 'shape-star':
+    case 'star':
+      path = (
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      );
+      break;
     case 'frame':
       path = (
         <>
