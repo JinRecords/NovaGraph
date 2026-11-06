@@ -723,17 +723,17 @@ export class CanvasController {
         }
       }
 
-      // Check if clicking an endpoint of any connector (or selected connector) to reposition it
+      // Check if clicking an endpoint of any unselected connector to reposition it (small hitbox when not selected)
       const targetConns = ev.shiftKey
         ? [] // Shift+click is reserved for adding connectors to a multi-selection
-        : this.connectors;
+        : this.connectors.filter((c) => c.id !== activeConnId);
       const zoom = this.canvas.getZoom();
       for (const conn of targetConns) {
         const endpoints = getConnectorEndpoints(conn, this.canvas.getObjects());
         if (!endpoints) continue;
         const d1 = Math.hypot(scenePt.x - endpoints.p1.x, scenePt.y - endpoints.p1.y) * zoom;
         const d2 = Math.hypot(scenePt.x - endpoints.p2.x, scenePt.y - endpoints.p2.y) * zoom;
-        if (d1 <= 24 || d2 <= 24) {
+        if (d1 <= 10 || d2 <= 10) {
           (this.canvas as any)._currentTransform = null;
           (this.canvas as any)._groupSelector = null;
           this.canvas.discardActiveObject();
