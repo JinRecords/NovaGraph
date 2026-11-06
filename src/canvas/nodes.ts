@@ -54,22 +54,170 @@ export function genNgId(prefix = 'obj'): string {
 // Cache fetched product image data URLs so rebuilds and exports are instant and CORS-clean
 const imageDataUrlCache = new Map<string, string>();
 
+/**
+ * Automatically trims empty transparent margins/letterboxing around a product image
+ * so products with wide 16:9 canvas padding (e.g. TU4K Pro) fit snugly inside their frame.
+ */
+export async function trimImageAlpha(dataUrl: string): Promise<string> {
+  if (!dataUrl || dataUrl.startsWith('data:image/svg+xml') || typeof document === 'undefined') {
+    return dataUrl;
+  }
+  return new Promise<string>((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        if (!w || !h || w < 8 || h < 8) {
+          resolve(dataUrl);
+          return;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0);
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+
+        let top = -1;
+        let bottom = -1;
+        let left = -1;
+        let right = -1;
+
+        // Find top bound
+        for (let y = 0; y < h; y++) {
+          const rowStart = y * w * 4;
+          for (let x = 0; x < w; x++) {
+            if (d[rowStart + x * 4 + 3] > 15) {
+              top = y;
+              break;
+            }
+          }
+          if (top !== -1) break;
+        }
+
+        // If completely transparent, return original
+        if (top === -1) {
+          resolve(dataUrl);
+          return;
+        }
+
+        // Find bottom bound
+        for (let y = h - 1; y >= 0; y--) {
+          const rowStart = y * w * 4;
+          for (let x = 0; x < w; x++) {
+            if (d[rowStart + x * 4 + 3] > 15) {
+              bottom = y;
+              break;
+            }
+          }
+          if (bottom !== -1) break;
+        }
+
+        // Find left bound (scanning only rows between top and bottom for speed)
+        for (let x = 0; x < w; x++) {
+          for (let y = top; y <= bottom; y++) {
+            if (d[(y * w + x) * 4 + 3] > 15) {
+              left = x;
+              break;
+            }
+          }
+          if (left !== -1) break;
+        }
+
+        // Find right bound (scanning only rows between top and bottom for speed)
+        for (let x = w - 1; x >= 0; x--) {
+          for (let y = top; y <= bottom; y++) {
+            if (d[(y * w + x) * 4 + 3] > 15) {
+              right = x;
+              break;
+            }
+          }
+          if (right !== -1) break;
+        }
+
+        if (left === -1 || right === -1 || bottom < top || right < left) {
+          resolve(dataUrl);
+          return;
+        }
+
+        // If already tightly cropped (less than 4px or 3% padding on all sides), return original
+        const padRatio = 0.03;
+        if (
+          top <= Math.max(4, h * padRatio) &&
+          left <= Math.max(4, w * padRatio) &&
+          bottom >= h - 1 - Math.max(4, h * padRatio) &&
+          right >= w - 1 - Math.max(4, w * padRatio)
+        ) {
+          resolve(dataUrl);
+          return;
+        }
+
+        // Add 2px margin around the trimmed device
+        const pad = 2;
+        const cropX = Math.max(0, left - pad);
+        const cropY = Math.max(0, top - pad);
+        const cropW = Math.min(w - cropX, right - left + 1 + pad * 2);
+        const cropH = Math.min(h - cropY, bottom - top + 1 + pad * 2);
+
+        // Limit maximum dimension to 1200px to keep canvas fast and memory light
+        let outW = cropW;
+        let outH = cropH;
+        if (outW > 1200) {
+          const factor = 1200 / outW;
+          outW = 1200;
+          outH = Math.round(cropH * factor);
+        }
+
+        const outCanvas = document.createElement('canvas');
+        outCanvas.width = outW;
+        outCanvas.height = outH;
+        const outCtx = outCanvas.getContext('2d');
+        if (!outCtx) {
+          resolve(dataUrl);
+          return;
+        }
+
+        outCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, outW, outH);
+        resolve(outCanvas.toDataURL('image/png'));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 export async function fetchImageAsDataUrl(url: string | null | undefined): Promise<string | null> {
   if (!url) return null;
-  if (url.startsWith('data:')) return url;
   if (imageDataUrlCache.has(url)) return imageDataUrlCache.get(url)!;
+  if (url.startsWith('data:')) {
+    const trimmed = await trimImageAlpha(url);
+    imageDataUrlCache.set(url, trimmed);
+    return trimmed;
+  }
   try {
     const res = await fetch(url, { credentials: 'same-origin' });
     if (!res.ok) return null;
     const blob = await res.blob();
-    const dataUrl = await new Promise<string>((resolve, reject) => {
+    const rawDataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(String(reader.result));
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-    imageDataUrlCache.set(url, dataUrl);
-    return dataUrl;
+    const trimmed = await trimImageAlpha(rawDataUrl);
+    imageDataUrlCache.set(url, trimmed);
+    return trimmed;
   } catch {
     return null;
   }
@@ -181,7 +329,9 @@ async function buildProductChildObjects(
   titlePos: SpecPosition,
   cachedDataUrl?: string | null
 ): Promise<{ children: FabricObject[]; dataUrl: string }> {
-  let dataUrl = cachedDataUrl || (await fetchImageAsDataUrl(product.imageUrl));
+  let dataUrl = cachedDataUrl
+    ? await trimImageAlpha(cachedDataUrl)
+    : await fetchImageAsDataUrl(product.imageUrl);
   if (!dataUrl) {
     dataUrl = buildHardwareFallbackSvg(product.model, product.series);
   }
@@ -989,7 +1139,8 @@ export async function createImageNodeFromDataUrl(
   top = 280,
   label = 'Image'
 ): Promise<FabricImage> {
-  const img = await FabricImage.fromURL(dataUrl);
+  const trimmed = await trimImageAlpha(dataUrl);
+  const img = await FabricImage.fromURL(trimmed);
   const maxDim = Math.max(img.width || 200, img.height || 200, 1);
   const scale = maxDim > 340 ? 280 / maxDim : 1;
   img.set({

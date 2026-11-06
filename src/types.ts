@@ -69,9 +69,13 @@ export interface ConnectorConfig {
   fromSide: AnchorSide;
   /** Normalized offset along the side (0.1 .. 0.9), defaults to 0.5 */
   fromRatio?: number;
+  /** Free-floating endpoint in scene coordinates when not attached to an object */
+  fromPt?: { x: number; y: number };
   toId: string;
   toSide: AnchorSide;
   toRatio?: number;
+  /** Free-floating endpoint in scene coordinates when not attached to an object */
+  toPt?: { x: number; y: number };
   routing: LineRouting;
   startEnd: LineEndType;
   endEnd: LineEndType;

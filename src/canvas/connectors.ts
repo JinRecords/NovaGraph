@@ -309,11 +309,21 @@ export function getConnectorEndpoints(
     const rec = o as unknown as Record<string, unknown>;
     if (rec.ngId && o.visible) objMap.set(String(rec.ngId), o);
   }
-  const fromObj = objMap.get(conn.fromId);
-  const toObj = objMap.get(conn.toId);
-  if (!fromObj || !toObj) return null;
-  const p1 = getObjectEdgePoint(fromObj, conn.fromSide, conn.fromRatio ?? 0.5);
-  const p2 = getObjectEdgePoint(toObj, conn.toSide, conn.toRatio ?? 0.5);
+  const fromObj = conn.fromId ? objMap.get(conn.fromId) : null;
+  const toObj = conn.toId ? objMap.get(conn.toId) : null;
+
+  const p1 = conn.fromPt
+    ? { ...conn.fromPt }
+    : fromObj
+    ? getObjectEdgePoint(fromObj, conn.fromSide, conn.fromRatio ?? 0.5)
+    : null;
+  const p2 = conn.toPt
+    ? { ...conn.toPt }
+    : toObj
+    ? getObjectEdgePoint(toObj, conn.toSide, conn.toRatio ?? 0.5)
+    : null;
+
+  if (!p1 || !p2) return null;
   return { p1, p2 };
 }
 
@@ -337,15 +347,20 @@ export function renderConnectorsOnContext(
   }
 
   for (const conn of connectors) {
-    const fromObj = objMap.get(conn.fromId);
-    const toObj = objMap.get(conn.toId);
-    if (!fromObj || !toObj) continue;
+    const fromObj = conn.fromId ? objMap.get(conn.fromId) : null;
+    const toObj = conn.toId ? objMap.get(conn.toId) : null;
+    if (!conn.fromPt && !fromObj) continue;
+    if (!conn.toPt && !toObj) continue;
 
     const isRepositioning = repositioningConnector && repositioningConnector.connId === conn.id;
-    let p1 = getObjectEdgePoint(fromObj, conn.fromSide, conn.fromRatio ?? 0.5);
-    let p2 = getObjectEdgePoint(toObj, conn.toSide, conn.toRatio ?? 0.5);
-    let fromSide = conn.fromSide;
-    let toSide = conn.toSide;
+    let p1 = conn.fromPt
+      ? { ...conn.fromPt }
+      : getObjectEdgePoint(fromObj!, conn.fromSide, conn.fromRatio ?? 0.5);
+    let p2 = conn.toPt
+      ? { ...conn.toPt }
+      : getObjectEdgePoint(toObj!, conn.toSide, conn.toRatio ?? 0.5);
+    let fromSide = conn.fromSide || 'right';
+    let toSide = conn.toSide || 'left';
 
     if (isRepositioning) {
       if (repositioningConnector.endpoint === 'from') {
@@ -590,18 +605,26 @@ function distToSegment(
 /** Compute the polyline approximation (scene coords) of a connector's rendered path. */
 function getConnectorPolyline(
   conn: ConnectorConfig,
-  fromObj: FabricObject,
-  toObj: FabricObject
+  fromObj: FabricObject | null | undefined,
+  toObj: FabricObject | null | undefined
 ): Array<{ x: number; y: number }> {
-  const p1 = getObjectEdgePoint(fromObj, conn.fromSide, conn.fromRatio ?? 0.5);
-  const p2 = getObjectEdgePoint(toObj, conn.toSide, conn.toRatio ?? 0.5);
+  const p1 = conn.fromPt
+    ? { ...conn.fromPt }
+    : fromObj
+    ? getObjectEdgePoint(fromObj, conn.fromSide, conn.fromRatio ?? 0.5)
+    : { x: 0, y: 0 };
+  const p2 = conn.toPt
+    ? { ...conn.toPt }
+    : toObj
+    ? getObjectEdgePoint(toObj, conn.toSide, conn.toRatio ?? 0.5)
+    : { x: 0, y: 0 };
 
   if (conn.routing === 'straight') {
     return [p1, p2];
   }
   if (conn.routing === 'curved') {
-    const n1 = sideNormal(conn.fromSide);
-    const n2 = sideNormal(conn.toSide);
+    const n1 = sideNormal(conn.fromSide || 'right');
+    const n2 = sideNormal(conn.toSide || 'left');
     const dist = Math.max(40, Math.hypot(p2.x - p1.x, p2.y - p1.y) * 0.42);
     const c1 = { x: p1.x + n1.nx * dist, y: p1.y + n1.ny * dist };
     const c2 = { x: p2.x + n2.nx * dist, y: p2.y + n2.ny * dist };
@@ -624,7 +647,7 @@ function getConnectorPolyline(
     }
     return pts;
   }
-  return computeElbowPoints(p1, conn.fromSide, p2, conn.toSide, conn.elbowOffset || 0);
+  return computeElbowPoints(p1, conn.fromSide || 'right', p2, conn.toSide || 'left', conn.elbowOffset || 0);
 }
 
 function buildVisibleObjectMap(objects: FabricObject[]): Map<string, FabricObject> {
@@ -647,9 +670,10 @@ export function hitTestConnector(
 
   for (let i = connectors.length - 1; i >= 0; i--) {
     const conn = connectors[i];
-    const fromObj = objMap.get(conn.fromId);
-    const toObj = objMap.get(conn.toId);
-    if (!fromObj || !toObj) continue;
+    const fromObj = conn.fromId ? objMap.get(conn.fromId) : null;
+    const toObj = conn.toId ? objMap.get(conn.toId) : null;
+    if (!conn.fromPt && !fromObj) continue;
+    if (!conn.toPt && !toObj) continue;
     const pts = getConnectorPolyline(conn, fromObj, toObj);
 
     for (let j = 0; j < pts.length - 1; j++) {
@@ -699,9 +723,10 @@ export function connectorsIntersectingRect(
   const objMap = buildVisibleObjectMap(objects);
   const result: ConnectorConfig[] = [];
   for (const conn of connectors) {
-    const fromObj = objMap.get(conn.fromId);
-    const toObj = objMap.get(conn.toId);
-    if (!fromObj || !toObj) continue;
+    const fromObj = conn.fromId ? objMap.get(conn.fromId) : null;
+    const toObj = conn.toId ? objMap.get(conn.toId) : null;
+    if (!conn.fromPt && !fromObj) continue;
+    if (!conn.toPt && !toObj) continue;
     const pts = getConnectorPolyline(conn, fromObj, toObj);
     for (let j = 0; j < pts.length - 1; j++) {
       if (segmentIntersectsRect(pts[j], pts[j + 1], rect)) {

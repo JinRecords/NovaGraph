@@ -668,11 +668,11 @@ export class CanvasController {
       }
 
       // 1. Prioritize selected connector's endpoint handles over connected node resize handles,
-      // node movement, and connected node line anchor handles.
+      // node movement, and connected node line anchor handles (supports holding Shift for free endpoint movement).
       const activeConnId =
         this.selectedConnectorId ||
         (this.multiSelectedConnectorIds.size === 1 ? [...this.multiSelectedConnectorIds][0] : null);
-      if (activeConnId && !ev.shiftKey && ev.button === 0) {
+      if (activeConnId && ev.button === 0) {
         const selConn = this.connectors.find((c) => c.id === activeConnId);
         if (selConn) {
           const endpoints = getConnectorEndpoints(selConn, this.canvas.getObjects());
@@ -886,24 +886,32 @@ export class CanvasController {
 
       // 1.5. Repositioning a connector's endpoint
       if (this.repositioningConnector) {
-        const selConn = this.connectors.find((c) => c.id === this.repositioningConnector!.connId);
-        const excludeId = selConn
-          ? this.repositioningConnector.endpoint === 'from'
-            ? selConn.toId
-            : selConn.fromId
-          : undefined;
-        const snapAnchor = findNearestAnchorPort(
-          this.canvas.getObjects(),
-          scenePt,
-          16,
-          excludeId,
-          null,
-          this.altPressed || ev.altKey
-        );
+        const isFreeShift = ev.shiftKey || this.shiftPressed;
         this.repositioningConnector.currentPt = { x: scenePt.x, y: scenePt.y };
-        this.repositioningConnector.targetAnchor = snapAnchor;
-        this.hoveredObject = snapAnchor ? this.findObjectById(snapAnchor.objectId) : null;
-        this.hoveredAnchor = snapAnchor;
+        if (isFreeShift) {
+          // Feat #1: Holding Shift allows moving the line endpoint completely freely without snapping to anchors
+          this.repositioningConnector.targetAnchor = null;
+          this.hoveredObject = null;
+          this.hoveredAnchor = null;
+        } else {
+          const selConn = this.connectors.find((c) => c.id === this.repositioningConnector!.connId);
+          const excludeId = selConn
+            ? this.repositioningConnector.endpoint === 'from'
+              ? selConn.toId
+              : selConn.fromId
+            : undefined;
+          const snapAnchor = findNearestAnchorPort(
+            this.canvas.getObjects(),
+            scenePt,
+            16,
+            excludeId,
+            null,
+            this.altPressed || ev.altKey
+          );
+          this.repositioningConnector.targetAnchor = snapAnchor;
+          this.hoveredObject = snapAnchor ? this.findObjectById(snapAnchor.objectId) : null;
+          this.hoveredAnchor = snapAnchor;
+        }
         this.canvas.requestRenderAll();
         return;
       }
@@ -919,16 +927,21 @@ export class CanvasController {
 
       // 3. Dragging a draft connector line from an edge port
       if (this.draftConnector) {
-        const snapAnchor = findNearestAnchorPort(
-          this.canvas.getObjects(),
-          scenePt,
-          16,
-          this.draftConnector.from.objectId,
-          null,
-          this.altPressed || ev.altKey
-        );
+        const isFreeShift = ev.shiftKey || this.shiftPressed;
         this.draftConnector.toPt = { x: scenePt.x, y: scenePt.y };
-        this.draftConnector.toAnchor = snapAnchor;
+        if (isFreeShift) {
+          this.draftConnector.toAnchor = null;
+        } else {
+          const snapAnchor = findNearestAnchorPort(
+            this.canvas.getObjects(),
+            scenePt,
+            16,
+            this.draftConnector.from.objectId,
+            null,
+            this.altPressed || ev.altKey
+          );
+          this.draftConnector.toAnchor = snapAnchor;
+        }
         this.canvas.requestRenderAll();
         return;
       }
@@ -1081,23 +1094,34 @@ export class CanvasController {
       }
 
       if (this.repositioningConnector) {
-        const { connId, endpoint, targetAnchor } = this.repositioningConnector;
+        const { connId, endpoint, targetAnchor, currentPt } = this.repositioningConnector;
         this.repositioningConnector = null;
         this.canvas.selection = this.activeTool === 'select';
-        if (targetAnchor) {
-          const conn = this.connectors.find((c) => c.id === connId);
-          if (conn) {
+        const conn = this.connectors.find((c) => c.id === connId);
+        if (conn) {
+          if (targetAnchor) {
             if (endpoint === 'from') {
               conn.fromId = targetAnchor.objectId;
               conn.fromSide = targetAnchor.side;
               conn.fromRatio = targetAnchor.ratio;
+              delete conn.fromPt;
             } else {
               conn.toId = targetAnchor.objectId;
               conn.toSide = targetAnchor.side;
               conn.toRatio = targetAnchor.ratio;
+              delete conn.toPt;
             }
-            this.notifyChange(true);
+          } else {
+            // Feat #1: Move line endpoint freely without needing to be attached to product anchors
+            if (endpoint === 'from') {
+              conn.fromId = '';
+              conn.fromPt = { x: currentPt.x, y: currentPt.y };
+            } else {
+              conn.toId = '';
+              conn.toPt = { x: currentPt.x, y: currentPt.y };
+            }
           }
+          this.notifyChange(true);
         }
         this.canvas.requestRenderAll();
         return;
@@ -1159,7 +1183,7 @@ export class CanvasController {
       }
 
       if (this.draftConnector) {
-        const { from, toAnchor } = this.draftConnector;
+        const { from, toAnchor, toPt } = this.draftConnector;
         this.draftConnector = null;
         this.canvas.selection = this.activeTool === 'select';
         if (toAnchor && toAnchor.objectId !== from.objectId) {
@@ -1178,6 +1202,25 @@ export class CanvasController {
             strokeWidth: 2,
             stroke: '#5b84b1',
           });
+        } else if (!toAnchor && (ev.shiftKey || this.shiftPressed)) {
+          const dist = Math.hypot(toPt.x - from.x, toPt.y - from.y);
+          if (dist > 15) {
+            this.addConnector({
+              id: genNgId('conn'),
+              fromId: from.objectId,
+              fromSide: from.side,
+              fromRatio: from.ratio,
+              toId: '',
+              toSide: 'left',
+              toPt: { x: toPt.x, y: toPt.y },
+              routing: 'elbow',
+              startEnd: 'none',
+              endEnd: 'arrow',
+              dash: 'solid',
+              strokeWidth: 2,
+              stroke: '#5b84b1',
+            });
+          }
         } else {
           this.canvas.requestRenderAll();
         }
