@@ -2,9 +2,9 @@
 // Produces cross-browser distributions for Chrome and Firefox.
 import { build } from 'vite';
 import { cp, mkdir, rm, readFile, writeFile, copyFile } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { createZipArchive } from './zip.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const dist = path.join(root, 'dist');
@@ -129,15 +129,30 @@ if (!watch) {
     await rm(firefoxZipPath, { force: true });
     await rm(legacyZipPath, { force: true });
 
-    // Zip Chrome package
-    execFileSync('zip', ['-r', '-q', chromeZipPath, '.', '-x', '*.DS_Store*'], { cwd: chromeDist });
+    // Pure Node.js packaging (works identically on Windows, macOS, and Linux without zip CLI)
+    createZipArchive(chromeDist, chromeZipPath);
     await copyFile(chromeZipPath, legacyZipPath);
     console.log(`📦 Packaged Chrome extension: ${chromeZipName}`);
 
     // Zip Firefox package (.xpi is standard Firefox extension format, identical to zip)
-    execFileSync('zip', ['-r', '-q', firefoxXpiPath, '.', '-x', '*.DS_Store*'], { cwd: firefoxDist });
+    createZipArchive(firefoxDist, firefoxXpiPath);
     await copyFile(firefoxXpiPath, firefoxZipPath);
     console.log(`📦 Packaged Firefox add-on:   ${firefoxXpiName} (and ${firefoxZipName})`);
+
+    // Also auto-package source code archive for AMO submissions
+    const sourceZipName = `novagraph-source-v${pkg.version}.zip`;
+    const sourceZipPath = path.join(root, sourceZipName);
+    createZipArchive(root, sourceZipPath, (name) => {
+      return (
+        !['node_modules', '.git', 'dist'].includes(name) &&
+        !name.endsWith('.zip') &&
+        !name.endsWith('.xpi') &&
+        !name.endsWith('.crx') &&
+        !name.endsWith('.pem') &&
+        name !== '.DS_Store'
+      );
+    });
+    console.log(`📦 Packaged Source code:      ${sourceZipName}`);
   } catch (err) {
     console.warn('⚠️  Could not auto-generate zip/xpi archives:', err.message);
   }
