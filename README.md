@@ -109,11 +109,14 @@ cd NovaGraph
 # 2. Install dependencies
 npm install
 
-# 3. Build the extension
+# 3. Build the extension (generates packages for both Chrome & Firefox)
 npm run build
 
 # 4. Load into Chrome
-# Open chrome://extensions/ -> Enable 'Developer mode' -> Click 'Load unpacked' -> Select the 'NovaGraph/dist' directory
+# Open chrome://extensions/ -> Enable 'Developer mode' -> Click 'Load unpacked' -> Select 'NovaGraph/dist/chrome'
+
+# 5. Load into Firefox
+# Open about:debugging#/runtime/this-firefox -> Click 'Load Temporary Add-on...' -> Select 'NovaGraph/dist/firefox/manifest.json'
 ```
 
 To run in live development mode with auto-rebuild:
@@ -147,7 +150,7 @@ npm run watch
 
 ## Architecture & Tech Stack
 
-- **Platform**: Chrome Extension (Manifest V3)
+- **Platform**: Cross-Browser Extension (Chrome MV3 & Firefox MV3)
 - **Framework**: [Preact](https://preactjs.com/) (Compact, high-performance UI layer)
 - **Canvas Engine**: [Fabric.js v6](https://fabricjs.com/) (Object model, transforms, vector rendering)
 - **PDF Generation**: [pdf-lib](https://pdf-lib.js.org/) (Vector PDF document creation)

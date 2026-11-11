@@ -202,9 +202,11 @@ export function ShapesTab({
                     onClick={() => handleSelectIcon(iconKey)}
                   >
                     {svg ? (
-                      <div
+                      <img
                         className="ng-icon-svg-container"
-                        dangerouslySetInnerHTML={{ __html: svg }}
+                        src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
+                        alt={iconKey}
+                        draggable={false}
                       />
                     ) : (
                       <div className="ng-icon-skeleton" />

@@ -8,3 +8,4 @@ node_modules/
 NOVAGRAPH_DEVELOPMENT_DOCUMENTATION.md
 logs.txt
 benchmark.png
+*.xpi

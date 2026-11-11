@@ -1,0 +1,73 @@
+{
+  "manifest_version": 3,
+  "name": "NovaGraph",
+  "short_name": "NovaGraph",
+  "version": "0.0.5",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "NovaGraph",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "novagraph@novastar.show",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  },
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "clipboardRead",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "*://novastar.show/*",
+    "https://api.iconify.design/*",
+    "https://api.simplesvg.com/*",
+    "https://api.unisvg.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://novastar.show/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*"
+      ],
+      "matches": [
+        "*://novastar.show/*"
+      ]
+    }
+  ]
+}

@@ -385,12 +385,15 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  object-fit: contain;
 }
 
-.ng-icon-svg-container svg {
+.ng-icon-svg-container svg,
+img.ng-icon-svg-container {
   width: 22px;
   height: 22px;
   display: block;
+  object-fit: contain;
 }
 
 .ng-icon-skeleton {

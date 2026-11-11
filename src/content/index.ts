@@ -85,6 +85,85 @@ export function toggleNovaGraph() {
 /**
  * Inject the NovaGraph button into novastar.show header immediately to the left of #language-select.
  */
+
+function createHeaderButtonContent(): DocumentFragment {
+  const frag = document.createDocumentFragment();
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("width", "18");
+  svg.setAttribute("height", "18");
+  svg.setAttribute("viewBox", "0 0 32 32");
+  svg.setAttribute("fill", "none");
+
+  const rect = document.createElementNS(svgNS, "rect");
+  rect.setAttribute("width", "32");
+  rect.setAttribute("height", "32");
+  rect.setAttribute("rx", "7");
+  rect.setAttribute("fill", "#1b1b1d");
+  svg.appendChild(rect);
+
+  const g = document.createElementNS(svgNS, "g");
+  g.setAttribute("fill", "#e5e3dd");
+  const dotCoords = [
+    [9.5, 9.5], [16, 9.5],
+    [9.5, 16], [16, 16], [22.5, 16],
+    [9.5, 22.5], [16, 22.5], [22.5, 22.5],
+  ];
+  for (const [cx, cy] of dotCoords) {
+    const c = document.createElementNS(svgNS, "circle");
+    c.setAttribute("cx", String(cx));
+    c.setAttribute("cy", String(cy));
+    c.setAttribute("r", "2.6");
+    g.appendChild(c);
+  }
+  svg.appendChild(g);
+
+  const orangeDot = document.createElementNS(svgNS, "circle");
+  orangeDot.setAttribute("cx", "22.5");
+  orangeDot.setAttribute("cy", "9.5");
+  orangeDot.setAttribute("r", "2.6");
+  orangeDot.setAttribute("fill", "#ff6a2b");
+  svg.appendChild(orangeDot);
+
+  const span = document.createElement("span");
+  span.textContent = "NovaGraph";
+
+  frag.appendChild(svg);
+  frag.appendChild(span);
+  return frag;
+}
+
+function createHConfigButtonContent(): DocumentFragment {
+  const frag = document.createDocumentFragment();
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("width", "14");
+  svg.setAttribute("height", "14");
+  svg.setAttribute("viewBox", "0 0 32 32");
+  svg.setAttribute("fill", "none");
+
+  const rect = document.createElementNS(svgNS, "rect");
+  rect.setAttribute("width", "32");
+  rect.setAttribute("height", "32");
+  rect.setAttribute("rx", "7");
+  rect.setAttribute("fill", "#ff6a2b");
+  svg.appendChild(rect);
+
+  const circle = document.createElementNS(svgNS, "circle");
+  circle.setAttribute("cx", "16");
+  circle.setAttribute("cy", "16");
+  circle.setAttribute("r", "5");
+  circle.setAttribute("fill", "white");
+  svg.appendChild(circle);
+
+  const span = document.createElement("span");
+  span.textContent = "Add to NovaGraph";
+
+  frag.appendChild(svg);
+  frag.appendChild(span);
+  return frag;
+}
+
 function tryInjectHeaderButton(): boolean {
   if (document.getElementById('novagraph-header-btn')) return true;
 
@@ -105,18 +184,7 @@ function tryInjectHeaderButton(): boolean {
   btn.className =
     'focus:border-primary-500 focus:ring-primary-500/15 flex h-9 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-[13px] font-semibold text-slate-700 outline-none hover:border-gray-400 hover:text-slate-900 focus:ring-3 transition-all cursor-pointer shadow-sm';
 
-  btn.innerHTML = `
-    <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="32" height="32" rx="7" fill="#1b1b1d"/>
-      <g fill="#e5e3dd">
-        <circle cx="9.5" cy="9.5" r="2.6"/><circle cx="16" cy="9.5" r="2.6"/>
-        <circle cx="9.5" cy="16" r="2.6"/><circle cx="16" cy="16" r="2.6"/><circle cx="22.5" cy="16" r="2.6"/>
-        <circle cx="9.5" cy="22.5" r="2.6"/><circle cx="16" cy="22.5" r="2.6"/><circle cx="22.5" cy="22.5" r="2.6"/>
-      </g>
-      <circle cx="22.5" cy="9.5" r="2.6" fill="#ff6a2b"/>
-    </svg>
-    <span>NovaGraph</span>
-  `;
+  btn.replaceChildren(createHeaderButtonContent());
 
   btn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -160,13 +228,7 @@ function tryInjectHConfiguratorButton() {
     btn.type = 'button';
     btn.className =
       'novagraph-hconf-add-btn flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#1b1b1d] hover:bg-[#27272a] transition-colors cursor-pointer shadow-sm';
-    btn.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 32 32" fill="none">
-        <rect width="32" height="32" rx="7" fill="#ff6a2b"/>
-        <circle cx="16" cy="16" r="5" fill="white"/>
-      </svg>
-      <span>Add to NovaGraph</span>
-    `;
+    btn.replaceChildren(createHConfigButtonContent());
 
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
