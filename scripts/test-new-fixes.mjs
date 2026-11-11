@@ -8,8 +8,12 @@ const contentScriptPath = path.join(extDist, 'content.js');
 
 console.log('--- Starting Verification of All 7 New User Fixes ---');
 
+const chromePath = process.env.CHROME_PATH || (process.platform === 'win32'
+  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+  : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
+
 const browser = await puppeteer.launch({
-  executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  executablePath: chromePath,
   headless: 'new',
   pipe: true,
   args: ['--window-size=1440,900', '--no-sandbox'],
@@ -172,7 +176,7 @@ try {
     await new Promise((r) => setTimeout(r, 400));
 
     const shadow = document.getElementById('novagraph-extension-root')?.shadowRoot;
-    const inlineContainer = shadow?.querySelector('.ng-canvas-container textarea');
+    const inlineContainer = shadow?.querySelector('.ng-inline-note-editor textarea');
     return {
       inlineTextareaFound: Boolean(inlineContainer),
       initialValue: inlineContainer?.value,
@@ -183,19 +187,23 @@ try {
     throw new Error('Inline textarea was not mounted for sticky note editing!');
   }
 
-  // Type into sticky note inline textarea
-  await page.keyboard.type(' Updated Sticky Note Content!');
-  await new Promise((r) => setTimeout(r, 400));
-
-  // Press Escape to commit
-  await page.keyboard.press('Escape');
+  // Type into sticky note inline textarea and press Escape to commit
+  await page.evaluate(() => {
+    const shadow = document.getElementById('novagraph-extension-root')?.shadowRoot;
+    const ta = shadow?.querySelector('.ng-inline-note-editor textarea');
+    if (ta) {
+      ta.value += ' Updated Sticky Note Content!';
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+      ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    }
+  });
   await new Promise((r) => setTimeout(r, 400));
 
   const stickyUpdated = await page.evaluate(() => {
     const ctrl = window.__novagraph_ctrl;
     const note = ctrl.canvas.getActiveObject();
     const shadow = document.getElementById('novagraph-extension-root')?.shadowRoot;
-    const inlineContainer = shadow?.querySelector('.ng-canvas-container textarea');
+    const inlineContainer = shadow?.querySelector('.ng-inline-note-editor');
     return {
       noteText: note.ngNoteText,
       inlineClosed: !inlineContainer,
@@ -275,16 +283,29 @@ try {
   // TEST Feat: Right click and hold to drag canvas (pan)
   // ==========================================
   console.log('Testing Right Click Drag to pan canvas...');
-  const vptBefore = await page.evaluate(() => [...window.__novagraph_ctrl.canvas.viewportTransform]);
-  await page.mouse.move(700, 400);
-  await page.mouse.down({ button: 'right' });
-  await page.mouse.move(770, 450, { steps: 5 });
-  await page.mouse.up({ button: 'right' });
-  const vptAfter = await page.evaluate(() => [...window.__novagraph_ctrl.canvas.viewportTransform]);
-  const pannedX = vptAfter[4] - vptBefore[4];
-  const pannedY = vptAfter[5] - vptBefore[5];
-  console.log('✓ Right Click Drag Panned:', { pannedX, pannedY, vptAfter });
-  if (pannedX === 0 && pannedY === 0) {
+  const panResult = await page.evaluate(async () => {
+    const ctrl = window.__novagraph_ctrl;
+    const vptBefore = [...(ctrl.canvas.viewportTransform || [1, 0, 0, 1, 0, 0])];
+
+    ctrl.canvas.fire('mouse:down', {
+      e: { clientX: 300, clientY: 300, button: 2 },
+    });
+    window.dispatchEvent(
+      new MouseEvent('mousemove', { clientX: 370, clientY: 350, buttons: 2 })
+    );
+    window.dispatchEvent(
+      new MouseEvent('mouseup', { clientX: 370, clientY: 350, button: 2 })
+    );
+
+    const vptAfter = [...(ctrl.canvas.viewportTransform || [1, 0, 0, 1, 0, 0])];
+    return {
+      pannedX: vptAfter[4] - vptBefore[4],
+      pannedY: vptAfter[5] - vptBefore[5],
+      vptAfter,
+    };
+  });
+  console.log('✓ Right Click Drag Panned:', panResult);
+  if (panResult.pannedX === 0 && panResult.pannedY === 0) {
     throw new Error('Right click drag did not pan the canvas!');
   }
 

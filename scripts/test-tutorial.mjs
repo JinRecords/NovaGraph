@@ -4,12 +4,15 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const contentScriptPath = path.join(root, 'dist', 'content.js');
-const outDir = process.env.NG_SHOT_DIR || '/tmp/';
+const outDir = process.env.NG_SHOT_DIR || path.join(root, 'dist');
+const chromePath = process.env.CHROME_PATH || (process.platform === 'win32'
+  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+  : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
 
 console.log('--- Testing Interactive Tutorial ---');
 
 const browser = await puppeteer.launch({
-  executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  executablePath: chromePath,
   headless: 'new',
   pipe: true,
   args: ['--window-size=1440,900', '--no-sandbox'],
@@ -109,7 +112,7 @@ try {
   check('Escape closes tutorial', !s.open);
 
   // Does not auto-open again after reload
-  await page.reload({ waitUntil: 'networkidle2' });
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
   await page.addScriptTag({ path: contentScriptPath });
   await sleep(600);
   await page.evaluate(() => document.getElementById('novagraph-header-btn')?.click());

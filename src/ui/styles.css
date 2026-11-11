@@ -51,6 +51,7 @@
   gap: 12px;
   flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  position: relative;
 }
 
 .ng-header-left, .ng-header-center, .ng-header-right {
@@ -995,4 +996,139 @@
   .ng-logo-title > span {
     display: none;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* First-Run Scraping Progress Card & Progress Line                   */
+/* ------------------------------------------------------------------ */
+
+@keyframes ngSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ng-spin {
+  animation: ngSpin 1s linear infinite;
+  display: inline-block;
+}
+
+.ng-header-progress-line {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2.5px;
+  background: linear-gradient(90deg, #ff8c42, #ff6a2b, #ea580c);
+  box-shadow: 0 0 10px rgba(255, 106, 43, 0.7);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 20;
+}
+
+.ng-scraping-card {
+  background: #ffffff;
+  border: 1px solid #ffd8c4;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 2px 10px rgba(255, 106, 43, 0.08);
+  animation: ngFadeIn 0.3s ease;
+  transition: all 0.4s ease;
+  margin-bottom: 2px;
+}
+
+.ng-scraping-card.completed {
+  border-color: #86efac;
+  background: #f0fdf4;
+  box-shadow: 0 2px 10px rgba(34, 197, 94, 0.1);
+}
+
+.ng-scraping-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ng-scraping-title-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.ng-scraping-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff6a2b;
+  flex-shrink: 0;
+}
+
+.ng-scraping-card.completed .ng-scraping-icon {
+  color: #16a34a;
+}
+
+.ng-scraping-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ng-scraping-percent {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ff6a2b;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.ng-scraping-card.completed .ng-scraping-percent {
+  color: #16a34a;
+}
+
+.ng-scraping-track {
+  width: 100%;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ng-scraping-card.completed .ng-scraping-track {
+  background: #dcfce7;
+}
+
+.ng-scraping-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff8c42, #ff6a2b);
+  border-radius: 999px;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px rgba(255, 106, 43, 0.45);
+}
+
+.ng-scraping-card.completed .ng-scraping-bar {
+  background: linear-gradient(90deg, #4ade80, #16a34a);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.45);
+}
+
+.ng-scraping-stage {
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+}
+
+.ng-scraping-card.completed .ng-scraping-stage {
+  color: #15803d;
+  font-weight: 500;
 }

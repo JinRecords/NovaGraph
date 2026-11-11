@@ -15,6 +15,8 @@ export const DEFAULT_LED_SCREEN_CONFIG: LedScreenConfig = {
   borderColor: '#a47551',
   borderLabel: 'Wood Frame',
   fillColor: '#ffffff',
+  textColor: '#18181b',
+  cellColors: {},
   showSpecsLabel: true,
 };
 
@@ -87,7 +89,7 @@ function buildLedScreenChildren(
     }
   }
 
-  // 2. Inner LED active area
+  // 2. Inner LED active area background
   const screenRect = new Rect({
     left: 0,
     top: 0,
@@ -100,6 +102,53 @@ function buildLedScreenChildren(
     originY: 'center',
   });
   children.push(screenRect);
+
+  // 2b. Per-rectangle partition cell colors (if configured)
+  const vStops = [0, ...[...cfg.verticalPartitions].sort((a, b) => a - b), 1];
+  const hStops = [0, ...[...cfg.horizontalPartitions].sort((a, b) => a - b), 1];
+  if (cfg.cellColors && Object.keys(cfg.cellColors).length > 0) {
+    let anyCellColored = false;
+    for (let r = 0; r < hStops.length - 1; r++) {
+      for (let c = 0; c < vStops.length - 1; c++) {
+        const cellColor = cfg.cellColors[`${r}_${c}`];
+        if (cellColor && cellColor !== 'transparent') {
+          anyCellColored = true;
+          const x0 = -innerW / 2 + vStops[c] * innerW;
+          const x1 = -innerW / 2 + vStops[c + 1] * innerW;
+          const y0 = -innerH / 2 + hStops[r] * innerH;
+          const y1 = -innerH / 2 + hStops[r + 1] * innerH;
+          children.push(
+            new Rect({
+              left: (x0 + x1) / 2,
+              top: (y0 + y1) / 2,
+              width: Math.max(1, x1 - x0),
+              height: Math.max(1, y1 - y0),
+              fill: cellColor,
+              strokeWidth: 0,
+              originX: 'center',
+              originY: 'center',
+            })
+          );
+        }
+      }
+    }
+    if (anyCellColored) {
+      // Re-draw inner border outline above cell fills so edges remain crisp
+      children.push(
+        new Rect({
+          left: 0,
+          top: 0,
+          width: innerW,
+          height: innerH,
+          fill: 'transparent',
+          stroke: '#71717a',
+          strokeWidth: 1.5,
+          originX: 'center',
+          originY: 'center',
+        })
+      );
+    }
+  }
 
   // 3. Vertical partition lines (move side-to-side)
   const vSorted = [...cfg.verticalPartitions].map((r, idx) => ({ r, idx }));
@@ -159,8 +208,10 @@ function buildLedScreenChildren(
     }
   }
 
+  const mainTextColor = cfg.textColor || '#18181b';
+  const subTextColor = cfg.textColor || '#64748b';
+
   // 5. Partition segment pixel labels along top & left edges
-  const vStops = [0, ...[...cfg.verticalPartitions].sort((a, b) => a - b), 1];
   if (vStops.length > 2) {
     for (let i = 0; i < vStops.length - 1; i++) {
       const segRatio = vStops[i + 1] - vStops[i];
@@ -169,7 +220,7 @@ function buildLedScreenChildren(
       const lbl = new IText(`${segPx.toLocaleString()}px`, {
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
         fontSize: 10,
-        fill: '#64748b',
+        fill: subTextColor,
         originX: 'center',
         originY: 'bottom',
         left: midX,
@@ -179,7 +230,6 @@ function buildLedScreenChildren(
     }
   }
 
-  const hStops = [0, ...[...cfg.horizontalPartitions].sort((a, b) => a - b), 1];
   if (hStops.length > 2) {
     for (let i = 0; i < hStops.length - 1; i++) {
       const segRatio = hStops[i + 1] - hStops[i];
@@ -188,7 +238,7 @@ function buildLedScreenChildren(
       const lbl = new IText(`${segPx.toLocaleString()}px`, {
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
         fontSize: 10,
-        fill: '#64748b',
+        fill: subTextColor,
         originX: 'right',
         originY: 'center',
         left: innerW / 2 - 6,
@@ -199,16 +249,18 @@ function buildLedScreenChildren(
   }
 
   // 6. Center title & specs label (like "LED Screen 7,680x1,920" in sample1.jpg)
+  const mainTitleSize = cfg.textSize || 15;
+  const subTitleSize = Math.max(9, Math.round(mainTitleSize * 0.75));
   const titleStr = `${cfg.name || 'LED Screen'} ${cfg.resWidth.toLocaleString()}×${cfg.resHeight.toLocaleString()}`;
   const titleObj = new IText(titleStr, {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    fontSize: 15,
+    fontSize: mainTitleSize,
     fontWeight: '600',
-    fill: '#18181b',
+    fill: mainTextColor,
     originX: 'center',
     originY: 'center',
     left: 0,
-    top: cfg.showSpecsLabel ? -8 : 0,
+    top: cfg.showSpecsLabel ? -Math.round(mainTitleSize * 0.55) : 0,
   });
   children.push(titleObj);
 
@@ -216,12 +268,12 @@ function buildLedScreenChildren(
     const subStr = `P${cfg.pixelPitchMm}mm  •  ${cfg.physicalWidthM.toFixed(2)}m × ${cfg.physicalHeightM.toFixed(2)}m`;
     const subObj = new IText(subStr, {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      fontSize: 11,
-      fill: '#64748b',
+      fontSize: subTitleSize,
+      fill: subTextColor,
       originX: 'center',
       originY: 'center',
       left: 0,
-      top: 12,
+      top: Math.round(mainTitleSize * 0.8),
     });
     children.push(subObj);
   }

@@ -2,10 +2,15 @@ import puppeteer from '../node_modules/puppeteer-core/lib/puppeteer/puppeteer-co
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import fs from 'node:fs';
+
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const chromePath = process.env.CHROME_PATH || (process.platform === 'win32'
+  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+  : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
 
 const browser = await puppeteer.launch({
-  executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  executablePath: chromePath,
   headless: 'new',
   pipe: true,
   args: [
@@ -35,8 +40,15 @@ try {
     failed = true;
   });
 
-  const fileUrl = 'file://' + path.resolve(root, '../novastar_product_list_web_scrape/novastar wiki product list/novastar.show/index.html');
-  await page.goto(fileUrl);
+  const localPath = path.resolve(root, '../novastar_product_list_web_scrape/novastar wiki product list/novastar.show/index.html');
+  if (fs.existsSync(localPath)) {
+    await page.goto('file://' + localPath);
+  } else {
+    await page.goto('https://novastar.show/', { waitUntil: 'networkidle2' });
+    await page.evaluate(() => {
+      Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Agree')?.click();
+    });
+  }
   await page.addScriptTag({ path: path.resolve(root, 'dist/content.js') });
   await new Promise(r => setTimeout(r, 400));
 

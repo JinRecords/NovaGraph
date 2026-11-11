@@ -83,8 +83,16 @@ export interface ConnectorConfig {
   strokeWidth: number;
   stroke: string;
   label?: string;
+  labelColor?: string;
+  labelSize?: number;
+  /** Layer ordering index relative to non-frame canvas objects */
+  zIndex?: number;
   /** Manual midpoint offset for elbow routing */
   elbowOffset?: number;
+  /** Manual Bezier control point 1 offset for curved routing */
+  curveOffset1?: { dx: number; dy: number };
+  /** Manual Bezier control point 2 offset for curved routing */
+  curveOffset2?: { dx: number; dy: number };
 }
 
 export interface LedScreenConfig {
@@ -102,6 +110,10 @@ export interface LedScreenConfig {
   borderColor: string;
   borderLabel: string;
   fillColor: string;
+  textColor?: string;
+  textSize?: number;
+  /** Custom fill colors per partition cell keyed by "${rowIdx}_${colIdx}" */
+  cellColors?: Record<string, string>;
   showSpecsLabel: boolean;
 }
 

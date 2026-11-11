@@ -106,7 +106,7 @@ const dict = {
     borderColor: 'Border Color',
     borderLabel: 'Border Material Label',
     screenFillColor: 'Screen Fill',
-    showSpecsOnScreen: 'Show Resolution & Pitch',
+    showSpecsOnScreen: 'Show dimension and Pitch',
     createLedScreen: 'Add LED Screen to Canvas',
     // Inspector - Shapes & Text & Sticky Note
     shapeProps: 'Shape & Style',
@@ -189,6 +189,17 @@ const dict = {
     tutStep5Body: 'Select anything to edit its properties here — model specs, LED screen size and partitions, colors and typography. With nothing selected, adjust the canvas style and snapping.',
     tutStep6Title: 'Templates, Import & Export',
     tutStep6Body: 'Start from a template, import a previous diagram, or export as PNG, JPEG, PDF or JSON — exports keep embedded data so they can be re-opened and edited. Replay this tour anytime via "tutorial" at the bottom right.',
+    // Scraping progress
+    scrapingCatalog: 'Scraping NovaStar Catalog...',
+    scrapingStepConnect: 'Connecting to NovaStar platform...',
+    scrapingStepVersion: 'Checking catalog version & specifications...',
+    scrapingStepProducts: 'Fetching hardware catalog specifications...',
+    scrapingStepBundles: 'Scanning application bundles & image assets...',
+    scrapingStepHSeries: 'Extracting H-Series modular card matrices...',
+    scrapingStepCompat: 'Parsing optical transceiver compatibility rules...',
+    scrapingStepComplete: 'Catalog indexing complete!',
+    refreshCatalog: 'Re-index Catalog',
+    refreshCatalogDesc: 'Re-scrape latest NovaStar products and specs',
   },
   zh: {
     appName: 'NovaGraph 拓扑图',
@@ -367,6 +378,17 @@ const dict = {
     tutStep5Body: '选中任意对象后可在此编辑属性 —— 产品规格、LED 屏幕尺寸与分区、颜色和字体。未选中对象时，可调整画布样式和吸附设置。',
     tutStep6Title: '模板、导入与导出',
     tutStep6Body: '可从模板开始、导入已有系统图，或导出为 PNG、JPEG、PDF、JSON —— 导出文件内嵌工程数据，可再次导入编辑。随时点击右下角的“使用教程”重新查看本教程。',
+    // Scraping progress
+    scrapingCatalog: '正在抓取 NovaStar 产品库...',
+    scrapingStepConnect: '正在连接 NovaStar 平台...',
+    scrapingStepVersion: '正在检查产品版本与规格规范...',
+    scrapingStepProducts: '正在获取硬件产品参数数据...',
+    scrapingStepBundles: '正在扫描前端脚本资源包与图片...',
+    scrapingStepHSeries: '正在解析 H 系列模块化板卡参数...',
+    scrapingStepCompat: '正在分析光电收发器兼容性规则...',
+    scrapingStepComplete: '产品库索引构建完成！',
+    refreshCatalog: '重新抓取产品库',
+    refreshCatalogDesc: '重新抓取最新的 NovaStar 产品与规格',
   },
 } as const;
 
@@ -385,7 +407,7 @@ export function setLocale(locale: Locale) {
   currentLocale = locale;
   try {
     localStorage.setItem(STORAGE_KEY, locale);
-  } catch {}
+  } catch { }
   listeners.forEach((fn) => fn(locale));
 }
 

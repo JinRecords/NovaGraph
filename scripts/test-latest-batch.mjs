@@ -2,14 +2,20 @@ import puppeteer from '../node_modules/puppeteer-core/lib/puppeteer/puppeteer-co
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import fs from 'node:fs';
+
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const extDist = path.join(root, 'dist');
 const contentScriptPath = path.join(extDist, 'content.js');
 
 console.log('=== Starting NovaGraph Comprehensive Batch Verification ===');
 
+const chromePath = process.env.CHROME_PATH || (process.platform === 'win32'
+  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+  : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
+
 const browser = await puppeteer.launch({
-  executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  executablePath: chromePath,
   headless: 'new',
   pipe: true,
   args: ['--window-size=1440,900', '--no-sandbox'],
@@ -24,8 +30,15 @@ try {
     }
   });
 
-  const localHtml = 'file://' + path.join(path.dirname(root), 'novastar_product_list_web_scrape', 'index.html');
-  await page.goto(localHtml, { waitUntil: 'load' });
+  const localFile = path.join(path.dirname(root), 'novastar_product_list_web_scrape', 'index.html');
+  if (fs.existsSync(localFile)) {
+    await page.goto('file://' + localFile, { waitUntil: 'load' });
+  } else {
+    await page.goto('https://novastar.show/', { waitUntil: 'networkidle2' });
+    await page.evaluate(() => {
+      Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Agree')?.click();
+    });
+  }
 
   // Ensure header with language-select exists for the extension button
   await page.evaluate(() => {
@@ -334,13 +347,15 @@ try {
     const dragPanned = vptAfterDrag[4] > vptBefore[4] && vptAfterDrag[5] > vptBefore[5];
     const dragNoMenu = !menuTriggered;
 
+    await new Promise((r) => setTimeout(r, 250));
+
     // 2. Right click without drag (< 5px) -> triggers context menu
     ctrl.canvas.fire('mouse:down', {
       e: { clientX: 300, clientY: 300, button: 2 },
     });
-    window.dispatchEvent(
-      new MouseEvent('mouseup', { clientX: 301, clientY: 301, button: 2 })
-    );
+    ctrl.canvas.fire('mouse:up', {
+      e: { clientX: 301, clientY: 301, button: 2 },
+    });
     const clickTriggeredMenu = menuTriggered;
 
     return {

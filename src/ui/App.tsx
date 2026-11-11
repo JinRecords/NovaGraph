@@ -1,7 +1,13 @@
 import { h } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { CanvasController } from '../canvas/controller';
-import { CatalogBundleData, getCachedCatalog, loadCatalogData } from '../data/catalog';
+import {
+  CatalogBundleData,
+  getCachedCatalog,
+  loadCatalogData,
+  onCatalogScrapeProgress,
+  ScrapingProgress,
+} from '../data/catalog';
 import { extractBoardFromFile } from '../export/metadata';
 import { getLocale, onLocaleChange, setLocale, t } from '../i18n';
 import {
@@ -19,11 +25,10 @@ import { ContextMenu } from './ContextMenu';
 import { CustomProductModal } from './CustomProductModal';
 import { ExportModal } from './ExportModal';
 import { HSeriesConfiguratorModal } from './HSeriesConfiguratorModal';
-import { Icon } from './Icons';
 import { Inspector } from './Inspector';
-import { SidebarLeft, globalIconSvgCache } from './SidebarLeft';
+import { SidebarLeft } from './SidebarLeft';
 import { hasCompletedTutorial, TutorialModal } from './TutorialModal';
-import { EGG_IMAGE_DATA_URL } from '../canvas/eggData';
+import { FooterBar, HeaderTop, installGlobalShortcuts } from './app/index';
 
 export function App({ onClose }: { onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,8 +63,8 @@ export function App({ onClose }: { onClose: () => void }) {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isCustomProdOpen, setIsCustomProdOpen] = useState(false);
   const [isHSeriesOpen, setIsHSeriesOpen] = useState(false);
+  const [scrapingProgress, setScrapingProgress] = useState<ScrapingProgress | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
-  // Auto-open the tutorial the first time NovaGraph is opened
   const [isTutorialOpen, setIsTutorialOpen] = useState(() => !hasCompletedTutorial());
   const [tutorialRunId, setTutorialRunId] = useState(0);
   const [toasts, setToasts] = useState<Array<{ id: number; text: string; kind: 'info' | 'warn' | 'ok' }>>([]);
@@ -98,39 +103,28 @@ export function App({ onClose }: { onClose: () => void }) {
       setBoards(fresh);
       const activeId = getActiveBoardId();
       if (activeId) {
-        const doc = fresh.find((b) => b.id === activeId) || fresh[0];
-        if (doc && ctrl && !ctrl.canvas.getObjects().length) {
-          ctrl.loadBoardDocument(doc);
+        setActiveId(activeId);
+        activeBoardIdRef.current = activeId;
+        const curDoc = fresh.find((b) => b.id === activeId);
+        if (curDoc) {
+          ctrl.loadBoardDocument(curDoc);
         }
+      } else if (fresh[0]) {
+        setActiveId(fresh[0].id);
+        activeBoardIdRef.current = fresh[0].id;
+        ctrl.loadBoardDocument(fresh[0]);
       }
     });
 
-    const all = loadAllBoards();
-    const currentDoc = all.find((b) => b.id === activeBoardId) || all[0];
-    if (currentDoc) {
-      ctrl.loadBoardDocument(currentDoc);
-    }
-
-    // Auto-save on change (debounced to avoid heavy serialization on every minor event)
+    // Auto-save on diagram changes (debounced by 300ms)
     let autoSaveTimer: number | null = null;
     const unsub = ctrl.onChange(() => {
-      const state = ctrl.getSelectionState();
-      setSelection((prev) => {
-        if (
-          prev.activeObject === state.activeObject &&
-          prev.activeConnector === state.activeConnector
-        ) {
-          return prev;
-        }
-        return {
-          activeObject: state.activeObject,
-          activeConnector: state.activeConnector,
-        };
+      const sel = ctrl.getSelectionState();
+      setSelection({
+        activeObject: sel.activeObject,
+        activeConnector: sel.activeConnector,
       });
-      setActiveTool((prev) => (prev === ctrl.activeTool ? prev : ctrl.activeTool));
-
-      // Do not auto-save when switching boards or during board load
-      if (isSwitchingBoardRef.current) return;
+      setActiveTool(ctrl.activeTool);
 
       if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
       autoSaveTimer = window.setTimeout(() => {
@@ -139,253 +133,20 @@ export function App({ onClose }: { onClose: () => void }) {
         const all = loadAllBoards();
         const curName = all.find((b) => b.id === curId)?.name || 'Untitled Diagram';
         const curDoc = ctrl.serializeBoard(curId, curName);
-        setBoards(upsertBoard(curDoc));
-      }, 500);
+        upsertBoard(curDoc);
+      }, 300);
     });
 
-    // Resize observer
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
-          ctrl.resize(width, height);
-        }
-      }
+    const removeShortcuts = installGlobalShortcuts({
+      controller: ctrl,
+      containerEl: containerRef.current,
+      showToast,
     });
-    ro.observe(containerRef.current);
-
-    const handleWinResize = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          ctrl.resize(rect.width, rect.height);
-        }
-      }
-    };
-    window.addEventListener('resize', handleWinResize);
-
-    // Keyboard shortcuts: Space for pan, V for select, C for connect, Cmd+Z for undo, Backspace for delete, etc.
-    let eggKeyBuffer = '';
-    ctrl.canvas.on('selection:cleared', () => {
-      eggKeyBuffer = '';
-    });
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Inside Shadow DOM, document.activeElement is the host element.
-      // Check composedPath, closest, and shadowRoot.activeElement so typing in inputs never deletes nodes
-      const pathTarget = (e.composedPath?.()[0] || e.target) as HTMLElement | null;
-      const hostEl = document.getElementById('novagraph-extension-root');
-      const shadowActive = hostEl?.shadowRoot?.activeElement;
-      const isInput = Boolean(
-        pathTarget?.tagName === 'INPUT' ||
-        pathTarget?.tagName === 'TEXTAREA' ||
-        pathTarget?.tagName === 'SELECT' ||
-        pathTarget?.isContentEditable === true ||
-        pathTarget?.getAttribute?.('contenteditable') === 'true' ||
-        pathTarget?.closest?.('input, textarea, select, [contenteditable="true"]') ||
-        shadowActive?.tagName === 'INPUT' ||
-        shadowActive?.tagName === 'TEXTAREA' ||
-        shadowActive?.tagName === 'SELECT'
-      );
-      if (isInput) return;
-
-      const hasSelection = Boolean(
-        ctrl.canvas.getActiveObject() ||
-        ctrl.selectedConnectorId ||
-        ctrl.multiSelectedConnectorIds.size > 0
-      );
-
-      if (!hasSelection && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        if (/^[0-9]$/.test(e.key)) {
-          eggKeyBuffer += e.key;
-          if (eggKeyBuffer.length > 16) eggKeyBuffer = eggKeyBuffer.slice(-16);
-          if (eggKeyBuffer.endsWith('666888')) {
-            eggKeyBuffer = '';
-            ctrl.addImageFromDataUrl(EGG_IMAGE_DATA_URL, 'egg.jpg');
-          }
-        } else if (e.key.length === 1 && e.key !== 'Shift') {
-          eggKeyBuffer = '';
-        }
-      } else {
-        eggKeyBuffer = '';
-      }
-
-      if (e.key === 'Escape') {
-        const editingObj = ctrl.canvas.getObjects().find((o: any) => o.isEditing) as any;
-        if (editingObj) {
-          editingObj.exitEditing();
-          ctrl.canvas.requestRenderAll();
-          return;
-        }
-        let changed = false;
-        if (ctrl.canvas.getActiveObject()) {
-          ctrl.canvas.discardActiveObject();
-          changed = true;
-        }
-        if (ctrl.selectedConnectorId || ctrl.multiSelectedConnectorIds.size > 0) {
-          ctrl.selectedConnectorId = null;
-          ctrl.multiSelectedConnectorIds.clear();
-          changed = true;
-        }
-        if (changed) {
-          ctrl.canvas.requestRenderAll();
-          ctrl.notifyChange(false);
-        }
-        return;
-      }
-
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
-        const step = e.shiftKey ? 10 : 1;
-        let dx = 0;
-        let dy = 0;
-        if (e.key === 'ArrowUp') dy = -step;
-        else if (e.key === 'ArrowDown') dy = step;
-        else if (e.key === 'ArrowLeft') dx = -step;
-        else if (e.key === 'ArrowRight') dx = step;
-        ctrl.nudgeSelected(dx, dy);
-        return;
-      }
-
-      if (e.code === 'Space' && !e.repeat) {
-        ctrl.setSpacePressed(true);
-      } else if ((e.key === 'v' || e.key === 'V') && !e.metaKey && !e.ctrlKey) {
-        ctrl.setTool('select');
-      } else if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey) {
-        ctrl.setTool('connect');
-      } else if ((e.key === 'Backspace' || e.key === 'Delete') && !isInput) {
-        ctrl.deleteSelected();
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
-        if (!isInput && !(ctrl.canvas.getActiveObject() as any)?.isEditing) {
-          e.preventDefault();
-          ctrl.selectAll();
-        }
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) ctrl.redo();
-        else ctrl.undo();
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
-        e.preventDefault();
-        ctrl.duplicateSelected();
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
-        ctrl.copySelected();
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
-        ctrl.cutSelected();
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
-        let nativePasteTriggered = false;
-        const markHandled = () => {
-          nativePasteTriggered = true;
-        };
-        window.addEventListener('paste', markHandled, { once: true });
-        setTimeout(() => {
-          window.removeEventListener('paste', markHandled);
-          if (!nativePasteTriggered) {
-            ctrl.pasteAt();
-          }
-        }, 60);
-      } else if ((e.metaKey || e.ctrlKey) && e.key === ']') {
-        e.preventDefault();
-        if (e.shiftKey) ctrl.bringToFront();
-        else ctrl.bringForward();
-      } else if ((e.metaKey || e.ctrlKey) && e.key === '[') {
-        e.preventDefault();
-        if (e.shiftKey) ctrl.sendToBack();
-        else ctrl.sendBackwards();
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        ctrl.setSpacePressed(false);
-      }
-    };
-
-    const handleExternalHSeries = (ev: Event) => {
-      const detail = (ev as CustomEvent).detail;
-      if (detail && ctrl) {
-        ctrl.addHSeriesConfigured(detail);
-        showToast(`Added ${detail.host?.name || 'H Series'} system to canvas`, 'ok');
-      }
-    };
-
-    const handlePaste = async (e: ClipboardEvent) => {
-      const pathTarget = (e.composedPath?.()[0] || e.target) as HTMLElement | null;
-      const hostEl = document.getElementById('novagraph-extension-root');
-      const shadowActive = hostEl?.shadowRoot?.activeElement;
-      const isInput = Boolean(
-        pathTarget?.tagName === 'INPUT' ||
-        pathTarget?.tagName === 'TEXTAREA' ||
-        pathTarget?.tagName === 'SELECT' ||
-        pathTarget?.isContentEditable === true ||
-        pathTarget?.getAttribute?.('contenteditable') === 'true' ||
-        pathTarget?.closest?.('input, textarea, select, [contenteditable="true"]') ||
-        shadowActive?.tagName === 'INPUT' ||
-        shadowActive?.tagName === 'TEXTAREA' ||
-        shadowActive?.tagName === 'SELECT'
-      );
-      if (isInput) return;
-
-      const clipData = e.clipboardData;
-      if (!clipData) return;
-
-      // 1. Check for image
-      const items = Array.from(clipData.items || []);
-      const imgItem = items.find((item) => item.type.startsWith('image/'));
-      if (imgItem) {
-        e.preventDefault();
-        const file = imgItem.getAsFile();
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const dataUrl = reader.result as string;
-            if (dataUrl) {
-              ctrl.addImageFromDataUrl(dataUrl);
-              showToast('Image pasted to canvas', 'ok');
-            }
-          };
-          reader.readAsDataURL(file);
-        }
-        return;
-      }
-
-      // 2. Check for text
-      const text = clipData.getData('text/plain');
-      if (text) {
-        try {
-          const parsed = JSON.parse(text);
-          if (parsed && parsed.__novagraph_clip__) {
-            e.preventDefault();
-            ctrl.setClipboardData(parsed.clipboardData);
-            await ctrl.pasteAt();
-            return;
-          }
-        } catch {}
-
-        if (text.trim()) {
-          e.preventDefault();
-          ctrl.addText(text.trim());
-          showToast('Text pasted to canvas', 'ok');
-          return;
-        }
-      }
-
-      // 3. Fallback to internal ctrl.pasteAt()
-      if (ctrl.hasClipboardData()) {
-        e.preventDefault();
-        await ctrl.pasteAt();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('paste', handlePaste);
-    window.addEventListener('novagraph:add-hseries', handleExternalHSeries);
 
     const handleStorageEvent = (e: StorageEvent) => {
       if (e.key === 'novagraph_boards_v1' || e.key === 'novagraph_active_board_v1') {
         const fresh = loadAllBoards();
         setBoards(fresh);
-        const curActive = getActiveBoardId();
         if (!fresh.some((b) => b.id === activeBoardIdRef.current)) {
           if (fresh[0]) switchBoard(fresh[0].id);
         }
@@ -406,15 +167,17 @@ export function App({ onClose }: { onClose: () => void }) {
         }
       }
       unsub();
-      ro.disconnect();
-      window.removeEventListener('resize', handleWinResize);
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('paste', handlePaste);
-      window.removeEventListener('novagraph:add-hseries', handleExternalHSeries);
+      removeShortcuts();
       ctrl.canvas.dispose();
       setController(null);
     };
+  }, []);
+
+  // Subscribe to live catalog scraping progress (runs during first run)
+  useEffect(() => {
+    return onCatalogScrapeProgress((p) => {
+      setScrapingProgress(p.active ? { ...p } : null);
+    });
   }, []);
 
   // Fetch product catalog data
@@ -423,6 +186,17 @@ export function App({ onClose }: { onClose: () => void }) {
       .then((data) => setCatalog(data))
       .catch((e) => console.warn('[NovaGraph] Catalog load error:', e));
   }, []);
+
+  const handleRefreshCatalog = async () => {
+    try {
+      const data = await loadCatalogData(true);
+      setCatalog(data);
+      showToast('Catalog updated', 'ok');
+    } catch (e) {
+      console.warn('[NovaGraph] Catalog refresh error:', e);
+      showToast('Catalog refresh failed', 'warn');
+    }
+  };
 
   // Combine live catalog products + custom products
   const allProducts: ProductItem[] = [
@@ -438,7 +212,6 @@ export function App({ onClose }: { onClose: () => void }) {
   const switchBoard = async (id: string) => {
     if (id === activeBoardIdRef.current) return;
 
-    // 1. Save current board first
     if (controllerRef.current) {
       const curId = activeBoardIdRef.current;
       const all = loadAllBoards();
@@ -447,7 +220,6 @@ export function App({ onClose }: { onClose: () => void }) {
       upsertBoard(curDoc);
     }
 
-    // 2. Mark switching to prevent onChange clearing from overwriting board
     isSwitchingBoardRef.current = true;
     setActiveId(id);
     setActiveBoardId(id);
@@ -498,87 +270,122 @@ export function App({ onClose }: { onClose: () => void }) {
     }
   };
 
-  // Drag & drop handling from sidebar or desktop
   const handleDrop = async (e: DragEvent) => {
     e.preventDefault();
     if (!controllerRef.current || !containerRef.current) return;
+
     const rect = containerRef.current.getBoundingClientRect();
-    const pt = controllerRef.current.canvas.getScenePoint(e as unknown as MouseEvent);
+    const rawX = e.clientX - rect.left;
+    const rawY = e.clientY - rect.top;
+    const vpt = controllerRef.current.canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
+    const zoom = vpt[0] || 1;
+    const scenePt = {
+      x: Math.round((rawX - vpt[4]) / zoom),
+      y: Math.round((rawY - vpt[5]) / zoom),
+    };
 
-    // 1. Product drag from left sidebar
-    const rawProd = e.dataTransfer?.getData('application/novagraph-product');
-    if (rawProd) {
-      try {
-        const prod = JSON.parse(rawProd) as ProductItem;
-        await controllerRef.current.addProduct(prod, { x: pt.x, y: pt.y });
-        return;
-      } catch {}
-    }
-
-    // 1.5. Icon drag from left sidebar (Iconify SVG)
-    const rawIconSvg = e.dataTransfer?.getData('application/novagraph-icon');
-    const rawIconKey = e.dataTransfer?.getData('application/novagraph-icon-key');
-    if (rawIconSvg) {
-      await controllerRef.current.addSvgFromString(rawIconSvg, { x: pt.x, y: pt.y });
+    const iconKey = e.dataTransfer?.getData('application/novagraph-icon-key');
+    const iconSvg = e.dataTransfer?.getData('application/novagraph-icon');
+    const iconLabel = e.dataTransfer?.getData('application/novagraph-icon-label') || '';
+    if (iconSvg) {
+      await controllerRef.current.addSvgFromString(iconSvg, scenePt, iconLabel);
       return;
-    } else if (rawIconKey) {
-      const cached = globalIconSvgCache.get(rawIconKey);
-      if (cached) {
-        await controllerRef.current.addSvgFromString(cached, { x: pt.x, y: pt.y });
-        return;
-      }
+    }
+    if (iconKey) {
+      const svg = `https://api.iconify.design/${iconKey.replace(':', '/')}.svg?color=%231e293b`;
       try {
-        const cleanKey = rawIconKey.replace(':', '/');
-        const res = await fetch(`https://api.iconify.design/${cleanKey}.svg?color=%231e293b`);
+        const res = await fetch(svg);
         if (res.ok) {
-          const svg = await res.text();
-          await controllerRef.current.addSvgFromString(svg, { x: pt.x, y: pt.y });
+          const text = await res.text();
+          await controllerRef.current.addSvgFromString(text, scenePt, iconLabel);
           return;
         }
       } catch {}
     }
 
-    // 2. File drop from desktop (PNG, JPEG, PDF, JSON)
-    const file = e.dataTransfer?.files?.[0];
-    if (file) {
-      const doc = await extractBoardFromFile(file);
-      if (doc) {
-        await controllerRef.current.loadBoardDocument(doc);
-        showToast(t('importSuccess'), 'ok');
-      } else if (file.type.startsWith('image/')) {
+    const prodJson = e.dataTransfer?.getData('application/novagraph-product');
+    if (prodJson) {
+      try {
+        const prod = JSON.parse(prodJson) as ProductItem;
+        await controllerRef.current.addProduct(prod, scenePt);
+        return;
+      } catch {}
+    }
+
+    // File drop (NovaGraph diagram file with embedded metadata or standard image)
+    const files = Array.from(e.dataTransfer?.files || []);
+    for (const f of files) {
+      try {
+        const doc = await extractBoardFromFile(f);
+        if (doc && doc.fabricJson) {
+          const importedName = doc.name || f.name.replace(/\.[^.]+$/, '');
+          const newDoc: BoardDocument = {
+            ...doc,
+            version: 1,
+            id: `board_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            name: importedName,
+            updatedAt: new Date().toISOString(),
+          };
+          const next = upsertBoard(newDoc);
+          setBoards(next);
+          await switchBoard(newDoc.id);
+          controllerRef.current?.zoomToFit();
+          showToast(`Imported "${importedName}" successfully!`, 'ok');
+          continue;
+        }
+      } catch {}
+      if (f.type.startsWith('image/')) {
         const reader = new FileReader();
-        reader.onload = async () => {
-          await controllerRef.current?.addImageFromDataUrl(
+        reader.onload = () => {
+          controllerRef.current?.addImageFromDataUrl(
             String(reader.result),
-            file.name,
-            { x: pt.x, y: pt.y }
+            f.name,
+            scenePt
           );
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(f);
       }
     }
   };
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
-    e.dataTransfer!.dropEffect = 'copy';
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
   };
 
-  // Import file via file selector
   const handleImportFile = async (e: Event) => {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (!file || !controllerRef.current) return;
-    const doc = await extractBoardFromFile(file);
-    if (doc) {
-      await controllerRef.current.loadBoardDocument(doc);
-      showToast(t('importSuccess'), 'ok');
-    } else if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        await controllerRef.current?.addImageFromDataUrl(String(reader.result), file.name);
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      const doc = await extractBoardFromFile(file);
+      if (!doc) throw new Error('Could not parse board');
+      if (controllerRef.current && activeBoardIdRef.current) {
+        const curId = activeBoardIdRef.current;
+        const all = loadAllBoards();
+        const curName = all.find((b) => b.id === curId)?.name || 'Untitled Diagram';
+        upsertBoard(controllerRef.current.serializeBoard(curId, curName));
+      }
+      const importedName = doc.name || file.name.replace(/\.[^.]+$/, '');
+      const newDoc: BoardDocument = {
+        ...doc,
+        version: 1,
+        id: `board_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: importedName,
+        updatedAt: new Date().toISOString(),
       };
-      reader.readAsDataURL(file);
-      showToast(t('importError'), 'warn');
+      const next = upsertBoard(newDoc);
+      setBoards(next);
+      await switchBoard(newDoc.id);
+      controllerRef.current?.zoomToFit();
+      showToast(`Imported "${importedName}" successfully!`, 'ok');
+    } catch (err: any) {
+      showToast(`Import failed: ${err.message || 'Corrupt or incompatible file'}`, 'warn');
+    } finally {
+      input.value = '';
     }
   };
 
@@ -587,206 +394,33 @@ export function App({ onClose }: { onClose: () => void }) {
   return (
     <div className="ng-overlay" ref={overlayRef}>
       {/* Top Header */}
-      <div className="ng-header">
-        <div className="ng-header-left">
-          <div className="ng-logo-title">
-            <Icon name="logo" size={20} />
-            <span>{t('appName')}</span>
-          </div>
-
-          {/* Board Selector */}
-          <div className="ng-board-selector">
-            <select
-              className="ng-input-select"
-              style={{ fontWeight: 600, fontSize: '12.5px', maxWidth: '170px' }}
-              value={activeBoardId}
-              onChange={(e) => switchBoard((e.target as HTMLSelectElement).value)}
-            >
-              {boards.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-            <button className="ng-btn-icon" onClick={createNewBoard} title={t('newBoard')}>
-              <Icon name="plus" size={14} />
-            </button>
-            <button className="ng-btn-icon" onClick={renameCurrentBoard} title={t('renameBoard')}>
-              <Icon name="text" size={14} />
-            </button>
-            <button className="ng-btn-icon" onClick={deleteCurrentBoard} title={t('deleteBoard')}>
-              <Icon name="trash" size={14} />
-            </button>
-          </div>
-
-          <div className="ng-separator" />
-
-          {/* Undo / Redo */}
-          <button
-            className="ng-btn-icon"
-            onClick={() => controllerRef.current?.undo()}
-            title={t('undo')}
-          >
-            <Icon name="undo" size={14} />
-          </button>
-          <button
-            className="ng-btn-icon"
-            onClick={() => controllerRef.current?.redo()}
-            title={t('redo')}
-          >
-            <Icon name="redo" size={14} />
-          </button>
-        </div>
-
-        {/* Center: Tool Modes & Quick Insertion */}
-        <div className="ng-header-center">
-          <div className="ng-tool-group">
-            <button
-              className={`ng-tool-tab ${activeTool === 'select' ? 'active' : ''}`}
-              onClick={() => controllerRef.current?.setTool('select')}
-              title={t('selectTool')}
-            >
-              <Icon name="select" size={13} />
-              <span>Select</span>
-            </button>
-            <button
-              className={`ng-tool-tab ${activeTool === 'pan' ? 'active' : ''}`}
-              onClick={() => controllerRef.current?.setTool('pan')}
-              title={t('panTool')}
-            >
-              <Icon name="pan" size={13} />
-              <span>Pan</span>
-            </button>
-            <button
-              className={`ng-tool-tab ${activeTool === 'connect' ? 'active' : ''}`}
-              onClick={() => controllerRef.current?.setTool('connect')}
-              title={t('connectTool')}
-            >
-              <Icon name="connect" size={13} />
-              <span>Connect</span>
-            </button>
-          </div>
-
-          <div className="ng-separator" />
-
-          <button
-            className="ng-btn ng-btn-secondary"
-            onClick={() => controllerRef.current?.addLedScreen()}
-            title={t('addLedScreen')}
-          >
-            <Icon name="monitor" size={14} />
-            <span>LED Screen</span>
-          </button>
-          <button
-            className="ng-btn ng-btn-secondary"
-            onClick={() => controllerRef.current?.addText()}
-            title={t('addText')}
-          >
-            <Icon name="text" size={14} />
-            <span>Text</span>
-          </button>
-          <button
-            className="ng-btn ng-btn-secondary"
-            onClick={() => controllerRef.current?.addStickyNote()}
-            title={t('addStickyNote')}
-          >
-            <Icon name="sticky" size={14} />
-            <span>Note</span>
-          </button>
-
-          {/* Image Import */}
-          <label className="ng-btn ng-btn-secondary" style={{ cursor: 'pointer' }} title={t('uploadImage')}>
-            <Icon name="image" size={14} />
-            <span>Image</span>
-            <input
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const file = (e.target as HTMLInputElement).files?.[0];
-                if (!file) return;
-                const r = new FileReader();
-                r.onload = () => controllerRef.current?.addImageFromDataUrl(String(r.result), file.name);
-                r.readAsDataURL(file);
-              }}
-            />
-          </label>
-        </div>
-
-        {/* Right: Zoom, Sample, Import, Export, Language, Close */}
-        <div className="ng-header-right">
-          <button
-            className="ng-btn-icon"
-            onClick={() => controllerRef.current?.setZoom((controllerRef.current?.canvas.getZoom() || 1) * 0.85)}
-            title={t('zoomOut')}
-          >
-            <Icon name="zoomOut" size={14} />
-          </button>
-          <button
-            className="ng-btn-icon"
-            onClick={() => controllerRef.current?.setZoom((controllerRef.current?.canvas.getZoom() || 1) * 1.15)}
-            title={t('zoomIn')}
-          >
-            <Icon name="zoomIn" size={14} />
-          </button>
-          <button
-            className="ng-btn-icon"
-            onClick={() => controllerRef.current?.zoomToFit()}
-            title={t('zoomFit')}
-          >
-            <Icon name="zoomFit" size={14} />
-          </button>
-
-          <div className="ng-separator" />
-
-          <button
-            className="ng-btn ng-btn-secondary"
-            onClick={() => controllerRef.current?.loadSampleTopology(allProducts)}
-            title={t('sampleBoard')}
-          >
-            <Icon name="sparkles" size={13} />
-            <span>{t('loadSample')}</span>
-          </button>
-
-          {/* Import file with metadata */}
-          <label className="ng-btn ng-btn-secondary" style={{ cursor: 'pointer' }} title={t('importHint')}>
-            <Icon name="download" size={14} />
-            <span>{t('importBtn')}</span>
-            <input
-              type="file"
-              accept=".png,.jpg,.jpeg,.pdf,.json"
-              style={{ display: 'none' }}
-              onChange={handleImportFile}
-            />
-          </label>
-
-          {/* Export button */}
-          <button
-            className="ng-btn ng-btn-accent"
-            onClick={() => setIsExportOpen(true)}
-            title={t('exportTitle')}
-          >
-            <Icon name="upload" size={14} />
-            <span>{t('exportBtn')}</span>
-          </button>
-
-          <div className="ng-separator" />
-
-          {/* Language Switcher */}
-          <button
-            className="ng-btn ng-btn-secondary"
-            style={{ padding: '5px 8px', fontSize: '11px', fontWeight: 600 }}
-            onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
-          >
-            {locale === 'en' ? '中文' : 'EN'}
-          </button>
-
-          {/* Close Overlay */}
-          <button className="ng-btn-icon" onClick={onClose} title={t('close')}>
-            <Icon name="close" size={18} />
-          </button>
-        </div>
-      </div>
+      <HeaderTop
+        boards={boards}
+        activeBoardId={activeBoardId}
+        activeTool={activeTool}
+        locale={locale}
+        allProducts={allProducts}
+        onSwitchBoard={switchBoard}
+        onCreateBoard={createNewBoard}
+        onRenameBoard={renameCurrentBoard}
+        onDeleteBoard={deleteCurrentBoard}
+        onUndo={() => controllerRef.current?.undo()}
+        onRedo={() => controllerRef.current?.redo()}
+        onSetTool={(tool) => controllerRef.current?.setTool(tool)}
+        onAddLedScreen={() => controllerRef.current?.addLedScreen()}
+        onAddText={() => controllerRef.current?.addText()}
+        onAddStickyNote={() => controllerRef.current?.addStickyNote()}
+        onAddImage={(dataUrl, name) => controllerRef.current?.addImageFromDataUrl(dataUrl, name)}
+        onZoomIn={() => controllerRef.current?.setZoom((controllerRef.current?.canvas.getZoom() || 1) * 1.15)}
+        onZoomOut={() => controllerRef.current?.setZoom((controllerRef.current?.canvas.getZoom() || 1) * 0.85)}
+        onZoomFit={() => controllerRef.current?.zoomToFit()}
+        onLoadSample={() => controllerRef.current?.loadSampleTopology(allProducts)}
+        onImportFile={handleImportFile}
+        onOpenExport={() => setIsExportOpen(true)}
+        onToggleLocale={() => setLocale(locale === 'en' ? 'zh' : 'en')}
+        onClose={onClose}
+        scrapingProgress={scrapingProgress}
+      />
 
       {/* Main 3-Column Workspace */}
       <div className="ng-main-workspace">
@@ -797,6 +431,8 @@ export function App({ onClose }: { onClose: () => void }) {
             seriesList={seriesList}
             onOpenCustomProductModal={() => setIsCustomProdOpen(true)}
             onOpenHSeriesModal={() => setIsHSeriesOpen(true)}
+            scrapingProgress={scrapingProgress}
+            onRefreshCatalog={handleRefreshCatalog}
           />
         )}
 
@@ -819,25 +455,13 @@ export function App({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* Footer / Shortcuts Help */}
-      <div className="ng-footer-bar">
-        <span>{t('shortcutsHint')}</span>
-        <span className="ng-footer-right">
-          <span>
-            {currentBoard?.name} • NovaStar System Topology Designer
-          </span>
-          <button
-            type="button"
-            className="ng-tutorial-trigger"
-            onClick={() => {
-              setTutorialRunId((n) => n + 1);
-              setIsTutorialOpen(true);
-            }}
-            title={t('tutorialLinkTitle')}
-          >
-            {t('tutorialLink')}
-          </button>
-        </span>
-      </div>
+      <FooterBar
+        boardName={currentBoard?.name}
+        onOpenTutorial={() => {
+          setTutorialRunId((n) => n + 1);
+          setIsTutorialOpen(true);
+        }}
+      />
 
       {/* Interactive Tutorial */}
       {isTutorialOpen && (

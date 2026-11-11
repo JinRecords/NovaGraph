@@ -25,12 +25,150 @@ export function createEmptyBoard(name = 'Untitled Diagram'): BoardDocument {
   };
 }
 
+let inMemoryBoards: BoardDocument[] | null = null;
+
+function isQuotaExceededError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as any;
+  return (
+    e.name === 'QuotaExceededError' ||
+    e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    e.code === 22 ||
+    e.code === 1014 ||
+    (typeof e.message === 'string' && e.message.includes('quota'))
+  );
+}
+
+function getQuickActiveId(boards: BoardDocument[]): string {
+  try {
+    const id = localStorage.getItem(ACTIVE_BOARD_KEY);
+    if (id && boards.some((b) => b.id === id)) return id;
+  } catch {}
+  return boards[0]?.id || '';
+}
+
+function safeSaveBoardsToLocalStorage(boards: BoardDocument[]): void {
+  const json = JSON.stringify(boards);
+  try {
+    localStorage.setItem(BOARDS_STORAGE_KEY, json);
+    return;
+  } catch (err) {
+    if (!isQuotaExceededError(err)) {
+      return;
+    }
+  }
+
+  // 1. Quota exceeded: Free up disposable caches from localStorage
+  try {
+    localStorage.removeItem('novagraph_catalog_cache_v1');
+  } catch {}
+
+  try {
+    localStorage.setItem(BOARDS_STORAGE_KEY, json);
+    return;
+  } catch (err) {
+    if (!isQuotaExceededError(err)) return;
+  }
+
+  // 2. Still exceeding quota: compact inactive boards for localStorage copy
+  // Note: Full lossless boards are ALWAYS preserved in chrome.storage.local (unlimitedStorage)
+  try {
+    const activeId = getQuickActiveId(boards);
+    const compacted = boards.map((b) => {
+      if (b.id === activeId) {
+        return b;
+      }
+      return {
+        ...b,
+        fabricJson: {
+          version: b.fabricJson?.version || '6.9.1',
+          objects: [],
+        },
+      };
+    });
+    localStorage.setItem(BOARDS_STORAGE_KEY, JSON.stringify(compacted));
+    return;
+  } catch (err) {
+    if (!isQuotaExceededError(err)) return;
+  }
+
+  // 3. Still exceeding quota: strip large embedded image dataUrls from active board in localStorage
+  try {
+    const activeId = getQuickActiveId(boards);
+    const stripped = boards.map((b) => {
+      if (b.id !== activeId) {
+        return {
+          ...b,
+          fabricJson: { version: (b.fabricJson as any)?.version || '6.9.1', objects: [] },
+        };
+      }
+      const rawObjects = Array.isArray((b.fabricJson as any)?.objects)
+        ? ((b.fabricJson as any).objects as any[])
+        : [];
+      const safeObjects = rawObjects.map((obj: any) => {
+        if (!obj || typeof obj !== 'object') return obj;
+        const copy = { ...obj };
+        if (typeof copy.ngImgDataUrl === 'string' && copy.ngImgDataUrl.length > 512) {
+          copy.ngImgDataUrl = '';
+        }
+        if (typeof copy.src === 'string' && copy.src.length > 512) {
+          copy.src = '';
+        }
+        if (Array.isArray(copy.objects)) {
+          copy.objects = copy.objects.map((child: any) => {
+            if (!child || typeof child !== 'object') return child;
+            const cCopy = { ...child };
+            if (typeof cCopy.src === 'string' && cCopy.src.length > 512) {
+              cCopy.src = '';
+            }
+            return cCopy;
+          });
+        }
+        return copy;
+      });
+      return {
+        ...b,
+        fabricJson: {
+          ...b.fabricJson,
+          objects: safeObjects,
+        },
+      };
+    });
+    localStorage.setItem(BOARDS_STORAGE_KEY, JSON.stringify(stripped));
+    return;
+  } catch (err) {
+    if (!isQuotaExceededError(err)) return;
+  }
+
+  // 4. If host site completely filled origin localStorage, save a minimal metadata stub
+  try {
+    const metaOnly = boards.map((b) => ({
+      version: b.version,
+      id: b.id,
+      name: b.name,
+      updatedAt: b.updatedAt,
+      settings: b.settings,
+      connectors: [],
+      fabricJson: { version: '6.9.1', objects: [] },
+    }));
+    localStorage.setItem(BOARDS_STORAGE_KEY, JSON.stringify(metaOnly));
+  } catch {
+    // Host origin is completely full; chrome.storage.local has all data safely saved.
+  }
+}
+
 export function loadAllBoards(): BoardDocument[] {
+  if (inMemoryBoards && inMemoryBoards.length > 0) {
+    return inMemoryBoards;
+  }
   try {
     const raw = localStorage.getItem(BOARDS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        inMemoryBoards = parsed;
+        return parsed;
+      }
     }
   } catch {}
   const first = createEmptyBoard('Main System Topology');
@@ -60,9 +198,10 @@ export async function initStorage(): Promise<void> {
       if (Array.isArray(chromeBoards) && chromeBoards.length > 0) {
         if (localBoards.length === 0) {
           // localStorage was cleared! Restore from chrome.storage.local backup!
-          localStorage.setItem(BOARDS_STORAGE_KEY, JSON.stringify(chromeBoards));
+          inMemoryBoards = chromeBoards;
+          safeSaveBoardsToLocalStorage(chromeBoards);
           if (result[ACTIVE_BOARD_KEY]) {
-            localStorage.setItem(ACTIVE_BOARD_KEY, String(result[ACTIVE_BOARD_KEY]));
+            setActiveBoardId(String(result[ACTIVE_BOARD_KEY]));
           }
         } else {
           // Merge non-destructively: keep latest version of each board
@@ -70,19 +209,30 @@ export async function initStorage(): Promise<void> {
           for (const b of localBoards) map.set(b.id, b);
           for (const cb of chromeBoards) {
             const existing = map.get(cb.id);
-            if (!existing || new Date(cb.updatedAt).getTime() > new Date(existing.updatedAt).getTime()) {
+            const localHasObjects = (((existing?.fabricJson as any)?.objects?.length) || 0) > 0;
+            const chromeHasObjects = (((cb.fabricJson as any)?.objects?.length) || 0) > 0;
+            if (
+              !existing ||
+              (chromeHasObjects && !localHasObjects) ||
+              new Date(cb.updatedAt).getTime() >= new Date(existing.updatedAt).getTime()
+            ) {
               map.set(cb.id, cb);
             }
           }
-          localStorage.setItem(BOARDS_STORAGE_KEY, JSON.stringify(Array.from(map.values())));
+          const merged = Array.from(map.values());
+          inMemoryBoards = merged;
+          safeSaveBoardsToLocalStorage(merged);
         }
+      } else if (localBoards.length > 0) {
+        inMemoryBoards = localBoards;
+        chrome.storage.local.set({ [BOARDS_STORAGE_KEY]: localBoards });
       }
 
       // Restore custom products if missing from localStorage
       const chromeCustom = result[CUSTOM_PRODUCTS_KEY] as ProductItem[] | undefined;
       const rawLocalCustom = localStorage.getItem(CUSTOM_PRODUCTS_KEY);
       if (Array.isArray(chromeCustom) && chromeCustom.length > 0 && !rawLocalCustom) {
-        localStorage.setItem(CUSTOM_PRODUCTS_KEY, JSON.stringify(chromeCustom));
+        saveCustomProducts(chromeCustom);
       }
     } catch (e) {
       console.warn('[NovaGraph] initStorage restore warning:', e);
@@ -91,47 +241,54 @@ export async function initStorage(): Promise<void> {
 }
 
 export function saveAllBoards(boards: BoardDocument[]) {
-  try {
-    localStorage.setItem(BOARDS_STORAGE_KEY, JSON.stringify(boards));
-  } catch (e) {
-    console.warn('[NovaGraph] localStorage save warning:', e);
-  }
+  inMemoryBoards = boards;
+
+  // 1. Primary authoritative unlimited storage (Chrome Extension MV3)
   try {
     if (typeof chrome !== 'undefined' && chrome.storage?.local) {
       chrome.storage.local.set({ [BOARDS_STORAGE_KEY]: boards });
     }
   } catch {}
+
+  // 2. Synchronous web storage with automatic progressive quota recovery
+  safeSaveBoardsToLocalStorage(boards);
 }
 
 export function upsertBoard(doc: BoardDocument): BoardDocument[] {
-  // Read fresh from localStorage right before write to prevent cross-tab stale overwrite
-  let currentBoards: BoardDocument[] = [];
-  try {
-    const raw = localStorage.getItem(BOARDS_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) currentBoards = parsed;
-    }
-  } catch {}
+  let currentBoards: BoardDocument[] = inMemoryBoards || [];
+  if (currentBoards.length === 0) {
+    try {
+      const raw = localStorage.getItem(BOARDS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) currentBoards = parsed;
+      }
+    } catch {}
+  }
+  if (currentBoards.length === 0) {
+    currentBoards = loadAllBoards();
+  }
 
   doc.updatedAt = new Date().toISOString();
   const idx = currentBoards.findIndex((b) => b.id === doc.id);
   if (idx >= 0) currentBoards[idx] = doc;
   else currentBoards.unshift(doc);
-  saveAllBoards(currentBoards);
   setActiveBoardId(doc.id);
+  saveAllBoards(currentBoards);
   return currentBoards;
 }
 
 export function deleteBoardById(id: string): BoardDocument[] {
-  let currentBoards: BoardDocument[] = [];
-  try {
-    const raw = localStorage.getItem(BOARDS_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) currentBoards = parsed;
-    }
-  } catch {}
+  let currentBoards: BoardDocument[] = inMemoryBoards || [];
+  if (currentBoards.length === 0) {
+    try {
+      const raw = localStorage.getItem(BOARDS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) currentBoards = parsed;
+      }
+    } catch {}
+  }
   if (currentBoards.length === 0) currentBoards = loadAllBoards();
   let boards = currentBoards.filter((b) => b.id !== id);
   if (boards.length === 0) {

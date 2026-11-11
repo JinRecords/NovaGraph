@@ -95,8 +95,8 @@ export function ContextMenu({ x, y, scenePt, targetType, targetConnector, contro
         onMouseDown={(e) => e.stopPropagation()}
         onContextMenu={(e) => e.preventDefault()}
       >
-      {/* Object & Frame Actions */}
-      {isObject && (
+      {/* Object, Frame & Connector Layering Actions */}
+      {(isObject || isConnector) && (
         <>
           <div className="ng-ctx-item" onClick={() => act(() => controller.bringToFront())}>
             <span>Bring to Front</span>

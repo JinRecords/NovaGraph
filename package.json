@@ -8,6 +8,8 @@
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit",
+    "test": "node scripts/test-all.mjs",
+    "test:all": "node scripts/test-all.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
@@ -18,8 +20,8 @@
   "devDependencies": {
     "@types/chrome": "^0.1.0",
     "puppeteer-core": "^25.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.0",
     "vite": "^8.0.0"
   }
 }
-

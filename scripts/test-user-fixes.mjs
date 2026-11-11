@@ -5,12 +5,15 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const extDist = path.join(root, 'dist');
 const contentScriptPath = path.join(extDist, 'content.js');
-const outDir = '/Users/jin/.gemini/antigravity/brain/26d429d1-b7bf-4302-9561-26ed59598d4d/scratch/';
+const outDir = process.env.NG_SHOT_DIR || path.join(root, 'dist', 'test-screenshots-');
+const chromePath = process.env.CHROME_PATH || (process.platform === 'win32'
+  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+  : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
 
 console.log('--- Testing All User Reported Bugs & Features ---');
 
 const browser = await puppeteer.launch({
-  executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  executablePath: chromePath,
   headless: 'new',
   pipe: true,
   args: ['--window-size=1440,900', '--no-sandbox'],

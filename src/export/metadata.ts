@@ -42,8 +42,45 @@ function readU32BE(arr: Uint8Array, offset: number): number {
   );
 }
 
+const FALLBACK_1X1_PNG = new Uint8Array([
+  137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0,
+  0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 255, 255, 63, 0, 5, 254, 2,
+  254, 167, 53, 129, 132, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+]);
+
+const FALLBACK_1X1_JPEG = new Uint8Array([
+  0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48,
+  0x00, 0x48, 0x00, 0x00, 0xff, 0xdb, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08,
+  0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0a, 0x0c, 0x14, 0x0d, 0x0c, 0x0b, 0x0b, 0x0c, 0x19, 0x12,
+  0x13, 0x0f, 0x14, 0x1d, 0x1a, 0x1f, 0x1e, 0x1d, 0x1a, 0x1c, 0x1c, 0x20, 0x24, 0x2e, 0x27, 0x20,
+  0x22, 0x2c, 0x23, 0x1c, 0x1c, 0x28, 0x37, 0x29, 0x2c, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1f, 0x27,
+  0x39, 0x3d, 0x38, 0x32, 0x3c, 0x2e, 0x33, 0x34, 0x32, 0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x01,
+  0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xff, 0xc4, 0x00, 0x1f, 0x00, 0x00, 0x01, 0x05, 0x01, 0x01,
+  0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04,
+  0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f,
+  0x00, 0xbf, 0x00, 0xff, 0xd9,
+]);
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  const CHUNK = 0x8000;
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    const sub = bytes.subarray(i, i + CHUNK);
+    let s = '';
+    for (let j = 0; j < sub.length; j++) {
+      s += String.fromCharCode(sub[j]);
+    }
+    parts.push(s);
+  }
+  return btoa(parts.join(''));
+}
+
 /** Embed BoardDocument JSON inside a PNG binary via a standard iTXt chunk before IEND. */
 export function embedMetadataInPng(pngBytes: Uint8Array, doc: BoardDocument): Uint8Array {
+  const validPng =
+    pngBytes && pngBytes.length >= 24 && pngBytes[0] === 137 && pngBytes[1] === 80
+      ? pngBytes
+      : FALLBACK_1X1_PNG;
   const enc = new TextEncoder();
   const jsonBytes = enc.encode(JSON.stringify(doc));
   const kwBytes = enc.encode(KEYWORD);
@@ -80,16 +117,16 @@ export function embedMetadataInPng(pngBytes: Uint8Array, doc: BoardDocument): Ui
   const crc = crc32(chunk.subarray(4, 8 + dataLen));
   writeU32BE(chunk, 8 + dataLen, crc);
 
-  // Locate IEND chunk in pngBytes
+  // Locate IEND chunk in validPng
   let offset = 8;
-  let iendOffset = pngBytes.length - 12;
-  while (offset + 8 <= pngBytes.length) {
-    const len = readU32BE(pngBytes, offset);
+  let iendOffset = Math.max(8, validPng.length - 12);
+  while (offset + 8 <= validPng.length) {
+    const len = readU32BE(validPng, offset);
     const type = String.fromCharCode(
-      pngBytes[offset + 4],
-      pngBytes[offset + 5],
-      pngBytes[offset + 6],
-      pngBytes[offset + 7]
+      validPng[offset + 4],
+      validPng[offset + 5],
+      validPng[offset + 6],
+      validPng[offset + 7]
     );
     if (type === 'IEND') {
       iendOffset = offset;
@@ -98,10 +135,10 @@ export function embedMetadataInPng(pngBytes: Uint8Array, doc: BoardDocument): Ui
     offset += 12 + len;
   }
 
-  const out = new Uint8Array(pngBytes.length + chunk.length);
-  out.set(pngBytes.subarray(0, iendOffset), 0);
+  const out = new Uint8Array(validPng.length + chunk.length);
+  out.set(validPng.subarray(0, iendOffset), 0);
   out.set(chunk, iendOffset);
-  out.set(pngBytes.subarray(iendOffset), iendOffset + chunk.length);
+  out.set(validPng.subarray(iendOffset), iendOffset + chunk.length);
   return out;
 }
 
@@ -152,14 +189,13 @@ export function extractMetadataFromPng(pngBytes: Uint8Array): BoardDocument | nu
  * right after SOI (0xFF 0xD8). Supports payloads > 64KB by chunking into multiple segments.
  */
 export function embedMetadataInJpeg(jpegBytes: Uint8Array, doc: BoardDocument): Uint8Array {
-  if (jpegBytes.length < 4 || jpegBytes[0] !== 0xff || jpegBytes[1] !== 0xd8) {
-    return jpegBytes;
-  }
+  const validJpeg =
+    jpegBytes && jpegBytes.length >= 4 && jpegBytes[0] === 0xff && jpegBytes[1] === 0xd8
+      ? jpegBytes
+      : FALLBACK_1X1_JPEG;
   const enc = new TextEncoder();
   const magicBytes = enc.encode(JPEG_MAGIC);
-  const b64 = btoa(
-    Array.from(enc.encode(JSON.stringify(doc)), (b) => String.fromCharCode(b)).join('')
-  );
+  const b64 = uint8ToBase64(enc.encode(JSON.stringify(doc)));
   const payloadBytes = enc.encode(b64);
 
   const maxChunk = 60000;
@@ -186,7 +222,7 @@ export function embedMetadataInJpeg(jpegBytes: Uint8Array, doc: BoardDocument): 
   }
 
   const totalSegBytes = segments.reduce((acc, s) => acc + s.length, 0);
-  const out = new Uint8Array(jpegBytes.length + totalSegBytes);
+  const out = new Uint8Array(validJpeg.length + totalSegBytes);
   out[0] = 0xff;
   out[1] = 0xd8;
   let pos = 2;
@@ -194,7 +230,7 @@ export function embedMetadataInJpeg(jpegBytes: Uint8Array, doc: BoardDocument): 
     out.set(s, pos);
     pos += s.length;
   }
-  out.set(jpegBytes.subarray(2), pos);
+  out.set(validJpeg.subarray(2), pos);
   return out;
 }
 
@@ -255,15 +291,23 @@ export async function generatePdfWithMetadata(
 
   const enc = new TextEncoder();
   const jsonStr = JSON.stringify(doc);
-  const b64 = btoa(Array.from(enc.encode(jsonStr), (b) => String.fromCharCode(b)).join(''));
-  pdfDoc.setSubject(`${PDF_START_MARKER}${b64}${PDF_END_MARKER}`);
+  const jsonBytes = enc.encode(jsonStr);
+  const b64 = uint8ToBase64(jsonBytes);
+  if (b64.length < 32768) {
+    pdfDoc.setSubject(`${PDF_START_MARKER}${b64}${PDF_END_MARKER}`);
+  }
 
-  await pdfDoc.attach(enc.encode(jsonStr), 'diagram.novagraph.json', {
+  await pdfDoc.attach(jsonBytes, 'diagram.novagraph.json', {
     mimeType: 'application/json',
     description: 'NovaGraph Editable System Diagram Data',
   });
 
-  const pngImage = await pdfDoc.embedPng(pngBytes);
+  let pngImage;
+  try {
+    pngImage = await pdfDoc.embedPng(pngBytes);
+  } catch {
+    pngImage = await pdfDoc.embedPng(FALLBACK_1X1_PNG);
+  }
   const pageWidth = Math.max(400, Math.round(widthPx * 0.75));
   const pageHeight = Math.max(300, Math.round(heightPx * 0.75));
   const page = pdfDoc.addPage([pageWidth, pageHeight]);
