@@ -1015,8 +1015,21 @@ img.ng-icon-svg-container {
 }
 
 .ng-spin {
-  animation: ngSpin 1s linear infinite;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  line-height: 0;
+  width: min-content;
+  height: min-content;
+  flex-shrink: 0;
+  transform-origin: 50% 50%;
+  animation: ngSpin 0.9s linear infinite;
+}
+
+.ng-spin svg {
+  display: block;
+  transform-origin: 50% 50%;
 }
 
 .ng-header-progress-line {
@@ -1135,3 +1148,74 @@ img.ng-icon-svg-container {
   color: #15803d;
   font-weight: 500;
 }
+
+/* ------------------------------------------------------------------ */
+/* VNNOX Care Button, Badge & Import Modal                             */
+/* ------------------------------------------------------------------ */
+
+.ng-btn-vnnox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.ng-badge-experimental {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: rgba(234, 88, 12, 0.14);
+  color: #ea580c;
+  border: 1px solid rgba(234, 88, 12, 0.28);
+  border-radius: 4px;
+  padding: 1px 4px;
+  line-height: 1.1;
+  display: inline-block;
+}
+
+.ng-vnnox-modal {
+  max-width: 540px;
+}
+
+.ng-vnnox-url-input {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  padding: 9px 12px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ng-vnnox-url-input:focus {
+  background: #ffffff;
+  border-color: #ff6a2b;
+  box-shadow: 0 0 0 3px rgba(255, 106, 43, 0.15);
+}
+
+.ng-vnnox-status-box {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #9a3412;
+  font-size: 12px;
+}
+
+.ng-vnnox-error-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #991b1b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+

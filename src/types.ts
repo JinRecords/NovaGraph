@@ -95,6 +95,23 @@ export interface ConnectorConfig {
   curveOffset2?: { dx: number; dy: number };
 }
 
+export interface LedCabinetGridConfig {
+  cols: number;
+  rows: number;
+  cabinetWidthPx?: number;
+  cabinetHeightPx?: number;
+  showPortRoutes?: boolean;
+  drawStyle?: 'horizontal' | 'vertical';
+  cabsPerPort?: number;
+  colsPerPort?: number;
+  totalPorts?: number;
+  card1Name?: string;
+  card2Name?: string;
+  rcName?: string;
+  sendingCardPartitions?: number;
+  splitAxis?: 'horizontal' | 'vertical';
+}
+
 export interface LedScreenConfig {
   name: string;
   resWidth: number;
@@ -114,6 +131,10 @@ export interface LedScreenConfig {
   textSize?: number;
   /** Custom fill colors per partition cell keyed by "${rowIdx}_${colIdx}" */
   cellColors?: Record<string, string>;
+  /** Custom text labels per partition cell keyed by "${rowIdx}_${colIdx}" */
+  cellLabels?: Record<string, string>;
+  /** Optional cabinet matrix grid overlay (e.g. 8x8 cabinets and port routing) */
+  cabinetGrid?: LedCabinetGridConfig;
   showSpecsLabel: boolean;
 }
 

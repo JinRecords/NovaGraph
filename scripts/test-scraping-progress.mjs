@@ -47,8 +47,9 @@ try {
       header = document.createElement('header');
       document.body.prepend(header);
     }
-    if (!header.querySelector('.language-select')) {
+    if (!document.getElementById('language-select')) {
       const lang = document.createElement('div');
+      lang.id = 'language-select';
       lang.className = 'language-select';
       lang.textContent = 'EN';
       header.appendChild(lang);

@@ -1,0 +1,1459 @@
+{
+  "contentBackupPdf": "",
+  "contentBackupPdfJson": "{\"zh\":\"\",\"en\":\"\",\"es\":\"\",\"pt\":\"\",\"ja\":\"\",\"ko\":\"\",\"ru\":\"\",\"vi\":\"\",\"th\":\"\",\"id\":\"\",\"it\":\"\"}",
+  "excelJson": "{\"zh\":\"\",\"en\":\"\",\"es\":\"\",\"pt\":\"\",\"ja\":\"\",\"ko\":\"\",\"ru\":\"\",\"vi\":\"\",\"th\":\"\",\"id\":\"\",\"it\":\"\"}",
+  "id": 6232,
+  "nickName": "",
+  "pdfJson": "{\"zh\":\"\",\"en\":\"\",\"es\":\"\",\"pt\":\"\",\"ja\":\"\",\"ko\":\"\",\"ru\":\"\",\"vi\":\"\",\"th\":\"\",\"id\":\"\",\"it\":\"\"}",
+  "projectId": 6232,
+  "schemeContent": {
+    "schemeBaseInfo": {
+      "uid": "957837",
+      "sourceType": 1,
+      "oemInfo": "",
+      "createTime": 1794452348745,
+      "name": "test solution 2",
+      "updateTime": 1794452680404,
+      "userName": "JinRecords",
+      "type": "TRADITION",
+      "version": "2"
+    },
+    "schemeUserConfigInfo": {
+      "country": "c67",
+      "note": "",
+      "supCabinetsInfo": {
+        "supBtnStatus": false,
+        "solution": {}
+      },
+      "receiveCardName": "",
+      "customBoxSize": {
+        "width": 576,
+        "height": 324
+      },
+      "customBoxDetailInfo": [],
+      "moduleRealResolution": "480x270",
+      "interface": {
+        "output": {
+          "outputList": [
+            {
+              "filter": false,
+              "num": 0,
+              "name": "DVI",
+              "icon": "DVI.png",
+              "id": "OX1",
+              "type": 1,
+              "key": "sldvi"
+            },
+            {
+              "filter": false,
+              "num": 0,
+              "name": "HDMI1.3",
+              "icon": "HDMI.png",
+              "id": "OX2",
+              "type": 1,
+              "key": "hdmi1P3"
+            },
+            {
+              "filter": false,
+              "num": 0,
+              "name": "HDMI1.4",
+              "icon": "HDMI.png",
+              "id": "OX3",
+              "type": 1,
+              "key": "hdmi1P4"
+            },
+            {
+              "filter": false,
+              "num": 0,
+              "name": "HDMI2.0",
+              "icon": "HDMI.png",
+              "id": "OX4",
+              "type": 1,
+              "key": "hdmi2P0"
+            }
+          ],
+          "MVRInfo": {
+            "label": "是否需要预监？",
+            "value": 2
+          }
+        },
+        "input": [
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDMI1.3",
+            "icon": "HDMI.png",
+            "id": "IX3",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "hdmi1P3"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "DVI",
+            "icon": "DVI.png",
+            "id": "IX1",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "sldvi"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "3G_SDI",
+            "icon": "SDI.png",
+            "id": "IX9",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "sdi3G"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "VGA",
+            "icon": "VGA.png",
+            "id": "IX12",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "vga"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "CVBS",
+            "icon": "CVBS.png",
+            "id": "IX11",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "cvbs"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDBaseT(2k60)",
+            "icon": "HDbaseT-2k60.png",
+            "id": "IX18",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "hdBaseT2k"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDMI1.4",
+            "icon": "HDMI.png",
+            "id": "IX4",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "hdmi1P4"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "DP1.1",
+            "icon": "4K_DP.png",
+            "id": "IX6",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "dp1P1"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDBaseT(4k30)",
+            "icon": "HDbaseT-4k30.png",
+            "id": "IX19",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "hdBaseT4k"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDMI2.0",
+            "icon": "HDMI.png",
+            "id": "IX5",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "hdmi2P0"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "DP1.2",
+            "icon": "4K_DP.png",
+            "id": "IX7",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "dp1P2"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "12G_SDI",
+            "icon": "SDI.png",
+            "id": "IX10",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "sdi12G"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "NDI",
+            "icon": "NDI.png",
+            "id": "IX20",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "ndi"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "RJ45 (IP decoding)",
+            "icon": "IP.png",
+            "id": "IX8",
+            "type": 0,
+            "resolution": "7680*4320",
+            "key": "rj45"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "DP1.4",
+            "icon": "4K_DP.png",
+            "id": "IX13",
+            "type": 0,
+            "resolution": "7680*4320",
+            "key": "dp1P4"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDMI2.1",
+            "icon": "HDMI.png",
+            "id": "IX14",
+            "type": 0,
+            "resolution": "8192*4392",
+            "key": "hdmi2P1"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "Video over IP",
+            "icon": "VoIP.png",
+            "id": "IX15",
+            "type": 0,
+            "resolution": "4096*2160",
+            "key": "voIp"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "OPT",
+            "icon": "光口.png",
+            "id": "IX16",
+            "type": 0,
+            "resolution": "4096*2160",
+            "key": "fibreOptical"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "ST2110(25G)",
+            "icon": "ST2110.png",
+            "id": "IX17",
+            "type": 0,
+            "resolution": "4096*2160",
+            "key": "st2110"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "ST2110(100G)",
+            "icon": "ST2110.png",
+            "id": "IX21",
+            "type": 0,
+            "resolution": "4096*2160",
+            "key": "st2110100G"
+          }
+        ]
+      },
+      "manufacturer": "General",
+      "isCustomPointSpace": false,
+      "receiveCardNum": 0,
+      "mediaServer": [],
+      "isCustomBox": false,
+      "dimension": {
+        "ftWidth": 15360,
+        "screenBgUrl": "",
+        "unit": 2,
+        "screenParam": 2,
+        "width": 15360,
+        "realUnit": 2,
+        "isFtUnit": false,
+        "ftHeight": 8640,
+        "height": 8640
+      },
+      "rcData": [
+        {
+          "cableMaxWidth": 0,
+          "moduleHeight": 0,
+          "moduleNum": "0*0",
+          "num": 1024,
+          "moduleWidth": 0,
+          "recommend": false,
+          "rgb": 0,
+          "carryingCapacityWidth": 480,
+          "version": "",
+          "carryingCapacity": "480x270",
+          "hubType": "高密接插件",
+          "hub": "576x324",
+          "receivingCardTagId": 5,
+          "width": 480,
+          "model": "",
+          "carryingCapacityHeight": 270,
+          "id": "rc0",
+          "cableMaxHeight": 0,
+          "height": 480,
+          "receivingCardId": 360
+        }
+      ],
+      "pointRatio": "1.2",
+      "displayNums": {
+        "rowNum": "",
+        "colNum": ""
+      },
+      "moduleType": 1,
+      "highLevelAttribute": {
+        "frameRate": "120",
+        "multilayerNumber": [
+          {
+            "interfaceType": "HDMI1.3",
+            "value": "",
+            "key": "2K*1K"
+          },
+          {
+            "interfaceType": "HDMI1.4",
+            "value": "",
+            "key": "4K*1K"
+          },
+          {
+            "interfaceType": "HDMI2.0",
+            "value": "",
+            "key": "4K*2K"
+          },
+          {
+            "interfaceType": "DP1.4",
+            "value": "",
+            "key": "8K*2K"
+          }
+        ],
+        "bitDepth": "10",
+        "selectedOptions": [
+          "pointToPoint",
+          "activeShutter_3d",
+          "hdr",
+          "longDistance"
+        ],
+        "fiberDistance": "0.3",
+        "isUltraWideScreen": false
+      },
+      "more": {
+        "screenRadio": "-1",
+        "realHeight": 10.368,
+        "supCalcBoxStatus": {},
+        "ACTIVE_SHUTTER_3D": false,
+        "DISTRIBUTE": false,
+        "screenTotal": "132.71million",
+        "moduleHeightCount": 32,
+        "moduleWidthCount": 32,
+        "screenArea": 132710400,
+        "onSiteApply": [],
+        "realPixWidth": 15360,
+        "realPixHeight": 8640,
+        "sizeRatio": "16:9",
+        "realArea": 191.103,
+        "isFtUnit": false,
+        "enterpriseId": 6114638,
+        "realWidth": 18.432,
+        "applyScene": "",
+        "productModelId": 6356,
+        "isUltraWideScreen": false,
+        "screenEffect": [],
+        "multiLayer": ""
+      },
+      "moreProductInfo": {
+        "heatReleaseCoefficient": 0,
+        "currentSpecification": 0,
+        "manufacturerId": 0,
+        "weight": 0,
+        "partNumber": "",
+        "maximumPower": 0,
+        "averagePower": 0,
+        "powerCableRoutingMode": 0
+      },
+      "modelType": "",
+      "productInfo": "International，P1.2 (576x324)",
+      "scanNum": "",
+      "moduleRealSize": {
+        "width": 576,
+        "height": 324
+      },
+      "series": "International",
+      "moduleRatio": {
+        "width": 480,
+        "height": 270
+      },
+      "centralCtrl": [],
+      "countryName": {
+        "ruName": "",
+        "itName": "",
+        "zhName": "",
+        "idName": "",
+        "viName": "",
+        "enName": "Malaysia",
+        "koName": "",
+        "ptName": "",
+        "esName": "",
+        "jaName": "",
+        "thName": ""
+      },
+      "graphicsInfo": [],
+      "moduleInterface": "高密接插件"
+    },
+    "screenType": "LED",
+    "schemeContent": {
+      "accessoryInfo": {
+        "steelStructure": 191.103,
+        "parvicostellae": 1024,
+        "originData": [],
+        "windingDisplacement": 1024,
+        "list": [
+          {
+            "unit": "pcs",
+            "quantity": 1024,
+            "detailName": "",
+            "name": "Long Ethernet Cable",
+            "tag": "part",
+            "source": "SYSTEM",
+            "sort": 1,
+            "url": [
+              {
+                "path": "./img/deviceDefault/主网线.png",
+                "name": "LongEthernetCable.png"
+              }
+            ],
+            "key": "mainCable"
+          },
+          {
+            "unit": "pcs",
+            "quantity": 128,
+            "detailName": "",
+            "name": "Optical Fiber",
+            "tag": "part",
+            "source": "SYSTEM",
+            "sort": 6,
+            "url": [
+              {
+                "path": "./img/deviceDefault/光纤.png",
+                "name": "Optical Fiber.png"
+              }
+            ],
+            "key": "lightLine"
+          },
+          {
+            "unit": "pc",
+            "quantity": 1,
+            "detailName": "",
+            "name": "3D Emitter",
+            "tag": "part",
+            "source": "SYSTEM",
+            "sort": 11,
+            "url": [
+              {
+                "path": "./img/deviceDefault/3D发射器.png",
+                "name": "3D Emitter.png"
+              }
+            ]
+          },
+          {
+            "unit": "pcs",
+            "quantity": 5,
+            "detailName": "",
+            "name": "3D Glasses",
+            "tag": "part",
+            "source": "SYSTEM",
+            "sort": 12,
+            "url": [
+              {
+                "path": "./img/deviceDefault/3D眼镜.png",
+                "name": "3D Glasses.png"
+              }
+            ]
+          },
+          {
+            "unit": "pc",
+            "quantity": "1",
+            "detailName": "",
+            "name": "NovaLCT",
+            "model": "Desktop PC",
+            "remark": "Professional LED display control software suitable for hardware configuration and real-time monitoring in complex applications.",
+            "tag": "soft",
+            "source": "SYSTEM",
+            "type": "device",
+            "priority": 1,
+            "url": [
+              {
+                "path": "./img/deviceDefault/LCT.png",
+                "name": "LCT.png"
+              }
+            ],
+            "key": "HEV"
+          },
+          {
+            "unit": "pc",
+            "quantity": "1",
+            "detailName": "",
+            "name": "VNNOX Care",
+            "model": "Mobile App/Web Cloud",
+            "remark": "VNNOX Care supports pre-sales solution configuration, remote screen monitoring and maintenance, as well as cluster management. For more information, visit the official website: https://www.vnnox.com/?l=en.",
+            "tag": "soft",
+            "source": "SYSTEM",
+            "type": "device",
+            "priority": 2,
+            "url": [
+              {
+                "path": "./img/deviceDefault/vnnoxCare.png",
+                "name": "VNNOX.png"
+              }
+            ],
+            "key": "HEV"
+          },
+          {
+            "unit": "pc",
+            "quantity": "1",
+            "detailName": "",
+            "name": "VICP",
+            "model": "Tablet/Kiosk",
+            "remark": "The Visual Intelligent Control Platform (VICP) allows for all-round management and control of the splicing screen system, multimedia playback system, audio system and peripherals.",
+            "tag": "soft",
+            "source": "SYSTEM",
+            "type": "device",
+            "priority": 3,
+            "url": [
+              {
+                "path": "./img/deviceDefault/VICP.png",
+                "name": "VNNOX.png"
+              }
+            ],
+            "key": "HEV"
+          }
+        ]
+      },
+      "mediaServers": [
+        {
+          "hardwareProductName": "ET16S-G（4A4）",
+          "cardCount": 4,
+          "num": "1+3",
+          "hardwareProductTagId": 2565,
+          "className": "ET4S-G(Master)+ET16S-G（4A4）(Slave)",
+          "syncCardCount": 1,
+          "labelCanSale": true,
+          "number": 1,
+          "score": 5,
+          "carryingCapacity": "4*8K4K@60fps / 16*4K2K@60fps",
+          "customerType": 0,
+          "outputInterfaceCount": 48,
+          "scope": 2,
+          "imageUrl": "https://care-sg.oss-ap-southeast-1.aliyuncs.com/v2_care/1775724517498/186011775724517498.png",
+          "graphicsCard": {
+            "hardwareProductName": "HPGA4000",
+            "productProperties": [
+              {
+                "muid": 20199,
+                "propertyCode": "SUB_CARD_TYPE",
+                "propertyName": "子卡类型",
+                "propertyVal": "7",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98267,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "DECODE_CAPABILITY",
+                "propertyName": "解码能力",
+                "propertyVal": "1*8K4K@60fps / 4*4K2K@60fps",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98268,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "MIN_FRAME_FREQUENCY",
+                "propertyName": "最小帧频",
+                "propertyVal": "24",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98269,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "MAX_FRAME_FREQUENCY",
+                "propertyName": "最大帧频",
+                "propertyVal": "240",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98270,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "HDR",
+                "propertyName": "是否支持HDR",
+                "propertyVal": "true",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98271,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "BIT10_DEPTH",
+                "propertyName": "10bit位深",
+                "propertyVal": "true",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98272,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "BIT10_PIXEL_BIT_WIDTH1",
+                "propertyName": "10bit像素位宽-1",
+                "propertyVal": "32",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98273,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "BIT10_FRAME_FREQUENCY1",
+                "propertyName": "10bit帧频-1",
+                "propertyVal": "60",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98274,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "BIT12_DEPTH",
+                "propertyName": "12bit位深",
+                "propertyVal": "true",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98275,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "BIT12_PIXEL_BIT_WIDTH1",
+                "propertyName": "12bit像素位宽-1",
+                "propertyVal": "48",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98276,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "BIT12_FRAME_FREQUENCY1",
+                "propertyName": "12bit帧频-1",
+                "propertyVal": "60",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98277,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "CARRYING_CAPABILITY_INTERFACE",
+                "propertyName": "接口带载能力",
+                "propertyVal": "4096x2160@60Hz",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98278,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "CARRYING_CAPACITY_REMARK",
+                "propertyName": "带载能力描述",
+                "propertyVal": "4*4096x2160@60Hz",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98279,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "FRONT_VIEW",
+                "propertyName": "正视图",
+                "propertyVal": "v2_care/1736512366364/186011736512366364.png",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98280,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "BIT8_DEPTH",
+                "propertyName": "8bit位深",
+                "propertyVal": "true",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98281,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "BIT8_PIXEL_BIT_WIDTH1",
+                "propertyName": "8bit像素位宽-1",
+                "propertyVal": "24",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98282,
+                "createAt": "2026-07-07T13:35:11.000"
+              },
+              {
+                "muid": 20199,
+                "propertyCode": "BIT8_FRAME_FREQUENCY1",
+                "propertyName": "8bit帧频-1",
+                "propertyVal": "60",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductCode": "HPG4000",
+                "hardwareProductId": 1193,
+                "id": 98283,
+                "createAt": "2026-07-07T13:35:11.000"
+              }
+            ],
+            "productMediaInterfaces": [
+              {
+                "resolutionHeight": "",
+                "interfaceVersion": "1.4",
+                "updateAt": "2026-07-07T13:35:11.000",
+                "hardwareProductId": 1193,
+                "hardwareProductInterfaceId": 32,
+                "createAt": "2026-07-07T13:35:11.000",
+                "muid": 20199,
+                "interfaceType": 0,
+                "id": 11246,
+                "interfaceName": "DP1.4",
+                "interfaceCode": "DP1.4",
+                "resolutionWidth": "",
+                "interfaceNum": 4
+              }
+            ],
+            "hardwareProductType": "MEDIA_SERVER_SUBCARD",
+            "scope": 2,
+            "hardwareProductTagId": 2566,
+            "hardwareProductCode": "HPG4000",
+            "id": 1193,
+            "introduction": "{\"zh\":\"<p>1、支持4个DP1.4接口输出；</p><p>2、最大支持1个8192*4320@60HZ或4个4K@60HZ视频流畅解码；</p>\",\"en\":\"<p><span style=\\\"color: rgb(0, 0, 0);\\\">3×DP 1.4, 1×Type-C </span></p><ul><li><span style=\\\"color: rgb(0, 0, 0);\\\">Up to 4×5120×2880@60Hz outputs </span></li><li><span style=\\\"color: rgb(0, 0, 0);\\\">Four connector mosaic output, with a mosaic width or height of up to 16384 pixels </span></li><li><span style=\\\"color: rgb(0, 0, 0);\\\">Single connector width：480–8192 pixels </span></li><li><span style=\\\"color: rgb(0, 0, 0);\\\">Single connector height：300–8192 pixels </span></li><li><span style=\\\"color: rgb(0, 0, 0);\\\">Playback of 1 layer of 8K×4K@60fps SDR video (hardware-decoding) </span></li><li><span style=\\\"color: rgb(0, 0, 0);\\\">Memory：8 GB </span></li><li><span style=\\\"color: rgb(0, 0, 0);\\\">Type：GDDR6 </span></li><li><span style=\\\"color: rgb(0, 0, 0);\\\">Bit width：256 bit </span></li></ul>\",\"es\":\"<p>3×DP 1.4, 1×Tipo-C</p><p>•Hasta 4 salidas de 5120×2880 a 60 Hz</p><p>•Salida de mosaico de cuatro conectores, con un ancho o alto de mosaico de hasta 16384 píxeles</p><p>•Ancho de un solo conector: 480–8192 píxeles</p><p>•Altura de un solo conector: 300–8192 píxeles</p><p>•Reproducción de 1 capa de video SDR 8K×4K a 60 fps (decodificación de hardware)</p><p>•Memoria: 8 GB</p><p>•Tipo: GDDR6</p><p>•Ancho de bits: 256 bits</p>\",\"pt\":\"<p>3×DP 1.4, 1×Tipo C</p><p>•Até 4×5120×2880@60Hz saídas</p><p>•Saída de mosaico de quatro conectores, com largura ou altura de mosaico de até 16384 pixels</p><p>•Largura de conector único: 480–8192 pixels</p><p>•Altura de conector único: 300–8192 pixels</p><p>•Reprodução de 1 camada de vídeo SDR 8K×4K@60fps (decodificação de hardware)</p><p>•Memória: 8 GB</p><p>•Tipo: GDDR6</p><p>•Largura de bits: 256 bits</p>\",\"ko\":\"<p>DP 1.4 3개, Type-C 1개</p><p>• 최대 4개의 5120×2880@60Hz 출력</p><p>• 4개의 커넥터 모자이크 출력, 모자이크 폭 또는 높이 최대 16384픽셀</p><p>• 단일 커넥터 폭: 480~8192픽셀</p><p>• 단일 커넥터 높이: 300~8192픽셀</p><p>• 8K×4K@60fps SDR 비디오 1개 레이어 재생(하드웨어 디코딩)</p><p>• 메모리: 8GB</p><p>• 유형: GDDR6</p><p>• 비트 폭: 256비트</p>\",\"ja\":\"<p>DP 1.4×3、Type-C×1</p><p>•最大4×5120×2880@60Hz出力</p><p>•4コネクタモザイク出力（モザイク幅または高さは最大16384ピクセル）</p><p>•1コネクタ幅：480～8192ピクセル</p><p>•1コネクタ高さ：300～8192ピクセル</p><p>•8K×4K@60fps SDRビデオ1レイヤー再生（ハードウェアデコード）</p><p>•メモリ：8GB</p><p>•タイプ：GDDR6</p><p>•ビット幅：256ビット</p>\",\"ru\":\"<p>3×DP 1.4, 1×Type-C</p><p>•До 4×5120×2880 выходов при 60 Гц</p><p>•Четырехразъёмный мозаичный выход с шириной или высотой мозаики до 16384 пикселей</p><p>•Ширина одного разъёма: 480–8192 пикселя</p><p>•Высота одного разъёма: 300–8192 пикселя</p><p>•Воспроизведение одного слоя видео SDR 8K×4K при 60 кадр/с (аппаратное декодирование)</p><p>•Память: 8 ГБ</p><p>•Тип: GDDR6</p><p>•Разрядность: 256 бит</p>\",\"vi\":\"<p>3 cổng DP 1.4, 1 cổng Type-C</p><p>• Hỗ trợ tối đa 4 đầu ra 5120×2880@60Hz</p><p>• Đầu ra ghép ảnh bốn cổng, với chiều rộng hoặc chiều cao ghép ảnh lên đến 16384 pixel</p><p>• Chiều rộng một cổng: 480–8192 pixel</p><p>• Chiều cao một cổng: 300–8192 pixel</p><p>• Phát lại 1 lớp video SDR 8K×4K@60fps (giải mã phần cứng)</p><p>• Bộ nhớ: 8 GB</p><p>• Loại: GDDR6</p><p>• Độ rộng bit: 256 bit</p>\",\"th\":\"<p>3×DP 1.4, 1×Type-C</p><p>•เอาต์พุตสูงสุด 4×5120×2880@60Hz</p><p>•เอาต์พุตโมเสกแบบสี่ขั้วต่อ โดยมีความกว้างหรือความสูงของโมเสกสูงสุด 16384 พิกเซล</p><p>•ความกว้างของขั้วต่อเดี่ยว: 480–8192 พิกเซล</p><p>•ความสูงของขั้วต่อเดี่ยว: 300–8192 พิกเซล</p><p>•เล่นวิดีโอ SDR 8K×4K@60fps 1 เลเยอร์ (ถอดรหัสด้วยฮาร์ดแวร์)</p><p>•หน่วยความจำ: 8 GB</p><p>•ประเภท: GDDR6</p><p>•ความกว้างบิต: 256 บิต</p>\",\"id\":\"<p>3×DP 1.4, 1×Type-C</p><p>•Hingga 4×output 5120×2880@60Hz</p><p>•Output mosaik empat konektor, dengan lebar atau tinggi mosaik hingga 16384 piksel</p><p>•Lebar konektor tunggal: 480–8192 piksel</p><p>•Tinggi konektor tunggal: 300–8192 piksel</p><p>•Pemutaran 1 layer video SDR 8K×4K@60fps (dekode perangkat keras)</p><p>•Memori: 8 GB</p><p>•Tipe: GDDR6</p><p>•Lebar bit: 256 bit</p>\",\"it\":\"<p>3×DP 1.4, 1×Type-C</p><p>• Fino a 4 uscite 5120×2880@60Hz</p><p>• Uscita mosaico a quattro connettori, con larghezza o altezza del mosaico fino a 16384 pixel</p><p>• Larghezza del singolo connettore: 480–8192 pixel</p><p>• Altezza del singolo connettore: 300–8192 pixel</p><p>• Riproduzione di 1 layer di video SDR 8K×4K@60fps (decodifica hardware)</p><p>• Memoria: 8 GB</p><p>• Tipo: GDDR6</p><p>• Profondità di colore: 256 bit</p>\"}"
+          },
+          "disabled": false,
+          "cascadeMode": true,
+          "id": "1464_5",
+          "factoryProductInfo": {},
+          "mainImageUrl": "https://care-sg.oss-ap-southeast-1.aliyuncs.com/v2_care/1744181053617/186011744181053617.png",
+          "introduction": "{\"zh\":\"<p>1、采用X86嵌入式系统架构，双CPU处理器，128GB 高速内存（DDR4）、1TB +960GB双高速固态硬盘；</p><p>2、支持16路4K接口输出，支持拼接同步显示，单输出口分辨率最宽8192、最高8192，可同时输出16路4096×2160@60Hz的视频，拼接带载分辨率不低于16384*8192@60Hz；</p><p>3、配置1路MIC IN ，1路Line IN，3路Line OUT音频接口，9路USB接口，2路千兆网口，支持接口扩展；</p><p>4、支持接口虚拟放大缩小，支持输出接口标记，定位输出接口位置；</p><p>5、支持输出画面拆分重组，输出接口对应画面任意角度旋转，画面的位置任意拆分重组，支持不规则拼接画面；</p><p>6、最大支持4个8K@60FPS视频素材流畅播放；</p><p>7、支持视频、音频、图片、网页、PPT、流媒体、NDI、SPOUT、媒体合集等多种格式素材播放和采集；</p><p>8、搭配windows正版英文操作系统；</p>\",\"en\":\"<p><span style=\\\"color: rgb(0, 0, 0);\\\">The ET16S-G media server is the latest offering from NovaStar, boasting a 16K ultra-high resolution, pixel-to-pixel screen loading, and multiple high-performance graphics cards. Equipped with a powerful workstation motherboard, Intel Xeon processor, and ECC high-speed memory, the ET16S-G enables flawless frame-synchronized output of four graphics cards. </span></p>\",\"es\":\"<p>El servidor multimedia ET16S-G es la última oferta de NovaStar, con una resolución ultraalta de 16K, carga de pantalla píxel a píxel y múltiples tarjetas gráficas de alto rendimiento. Equipado con una potente placa base para estación de trabajo, procesador Intel Xeon y memoria ECC de alta velocidad, el ET16S-G permite una salida sincronizada por cuadros impecable de cuatro tarjetas gráficas.</p>\",\"pt\":\"<p>O servidor de mídia ET16S-G é a mais recente oferta da NovaStar, ostentando uma resolução ultra-alta de 16K, carregamento de tela pixel a pixel e várias placas gráficas de alto desempenho. Equipado com uma poderosa placa-mãe de estação de trabalho, processador Intel Xeon e memória ECC de alta velocidade, o ET16S-G permite saída sincronizada de quadros perfeita de quatro placas gráficas.</p>\",\"ko\":\"<p>ET16S-G 미디어 서버는 NovaStar의 최신 제품으로, 16K 초고해상도, 픽셀 간 화면 로딩, 그리고 여러 개의 고성능 그래픽 카드를 자랑합니다. 강력한 워크스테이션 마더보드, Intel Xeon 프로세서, 그리고 ECC 고속 메모리를 탑재한 ET16S-G는 네 개의 그래픽 카드의 완벽한 프레임 동기화 출력을 지원합니다.</p>\",\"ja\":\"<p>ET16S-GメディアサーバーはNovaStarの最新製品で、16Kの超高解像度、ピクセル単位の画面読み込み、そして複数の高性能グラフィックカードを誇ります。強力なワークステーションマザーボード、Intel Xeonプロセッサー、ECC高速メモリを搭載したET16S-Gは、4枚のグラフィックカードからフレーム同期出力を完璧に実現します。</p>\",\"ru\":\"<p>Медиасервер ET16S-G — новейшее предложение от NovaStar, обладающее сверхвысоким разрешением 16K, попиксельной загрузкой и несколькими высокопроизводительными видеокартами. Оснащённый мощной материнской платой уровня рабочей станции, процессором Intel Xeon и высокоскоростной памятью ECC, ET16S-G обеспечивает безупречный вывод с синхронизацией кадров с четырёх видеокарт.</p>\",\"vi\":\"<p>Máy chủ đa phương tiện ET16S-G là sản phẩm mới nhất của NovaStar, tự hào sở hữu độ phân giải siêu cao 16K, khả năng tải màn hình từng pixel một và nhiều card đồ họa hiệu năng cao. Được trang bị bo mạch chủ máy trạm mạnh mẽ, bộ xử lý Intel Xeon và bộ nhớ ECC tốc độ cao, ET16S-G cho phép xuất hình ảnh đồng bộ khung hình hoàn hảo từ bốn card đồ họa.</p>\",\"th\":\"<p>ET16S-G มีเดียเซิร์ฟเวอร์เป็นผลิตภัณฑ์ล่าสุดจาก NovaStar โดดเด่นด้วยความละเอียดสูงพิเศษ 16K การโหลดหน้าจอแบบพิกเซลต่อพิกเซล และการ์ดกราฟิกประสิทธิภาพสูงหลายตัว ET16S-G มาพร้อมเมนบอร์ดเวิร์คสเตชั่นทรงพลัง โปรเซสเซอร์ Intel Xeon และหน่วยความจำความเร็วสูง ECC ทำให้สามารถแสดงผลภาพแบบซิงโครไนซ์เฟรมได้อย่างไร้ที่ติจากการ์ดกราฟิกทั้งสี่ตัว</p>\",\"id\":\"<p>Server media ET16S-G adalah produk terbaru dari NovaStar, yang menawarkan resolusi ultra-tinggi 16K, pemuatan layar piksel demi piksel, dan beberapa kartu grafis berkinerja tinggi. Dilengkapi dengan motherboard workstation yang andal, prosesor Intel Xeon, dan memori ECC berkecepatan tinggi, ET16S-G memungkinkan output sinkronisasi frame yang sempurna dari empat kartu grafis.</p>\",\"it\":\"<p>Il media server ET16S-G è l'ultima novità di NovaStar, caratterizzato da una risoluzione ultra-elevata di 16K, caricamento dello schermo pixel per pixel e supporto per più schede grafiche ad alte prestazioni. Equipaggiato con una potente scheda madre workstation, processore Intel Xeon e memoria ECC ad alta velocità, l'ET16S-G consente una perfetta sincronizzazione dei fotogrammi tra quattro schede grafiche.</p>\"}",
+          "haveFactoryProduct": false,
+          "syncHost": {
+            "manufacturerDeviceInfo": {
+              "picPath": "",
+              "labelCanSale": true,
+              "customerType": 0,
+              "subCardName": "",
+              "hardwareProductTagId": 0,
+              "specification": "",
+              "id": 0,
+              "label": "",
+              "introductionUrl": "",
+              "introduction": ""
+            },
+            "syncHostPicture": "v2_care/1744181053617/186011744181053617.png",
+            "syncHostModel": "ET4S-G",
+            "syncHostIntroduction": "{\"zh\":\"<p>1、4U机箱，12代酷睿处理器（12700），32GB 高速内存（DDR4），1TB+250GB高速固态硬盘；</p><p>2、支持4个DP 1.4接口输出；</p><p>3、单机最高支持8K×4K输出带载，同时支持超大分辨率的视频解码和点对点显示；</p><p>4、支持多个输出口的拆分重组以及旋转、完成对不规则显示屏的带载，实现创意拼接显示；</p><p>5、最大支持1个8K@60FPS或4个4K@60FPS视频素材流畅播放；</p><p>6、支持视频、音频、图片、网页、PPT、流媒体、NDI、SPOUT、媒体合集等多种格式素材播放和采集；</p><p>7、搭配windows正版英文操作系统；</p>\",\"en\":\"<p><span style=\\\"color: rgb(0, 0, 0);\\\">The ET4S-G is a brand new media server developed by NovaStar, which is specifically designed for multimedia exhibition halls, banquet halls, stage performances and other creative fixed installation scenarios.</span></p>\",\"es\":\"<p>El ET4S-G es un nuevo servidor multimedia desarrollado por NovaStar, que está diseñado específicamente para salas de exposiciones multimedia, salones de banquetes, presentaciones en el escenario y otros escenarios creativos de instalación fija.</p>\",\"pt\":\"<p>O ET4S-G é um novo servidor de mídia desenvolvido pela NovaStar, que é projetado especificamente para salas de exposição multimídia, salas de banquetes, apresentações de palco e outros cenários criativos de instalação fixa.</p>\",\"ko\":\"<p>ET4S-G는 NovaStar가 개발한 새로운 미디어 서버로, 멀티미디어 전시장, 연회장, 무대 공연 및 기타 창의적인 고정 설치 시나리오에 맞게 특별히 설계되었습니다.</p>\",\"ja\":\"<p>ET4S-G は、NovaStar が開発したまったく新しいメディア サーバーで、マルチメディア展示ホール、宴会場、舞台公演、その他のクリエイティブな固定設置シナリオ向けに特別に設計されています。</p>\",\"ru\":\"<p>ET4S-G — это совершенно новый медиасервер, разработанный компанией NovaStar, который специально предназначен для мультимедийных выставочных залов, банкетных залов, сценических представлений и других креативных сценариев стационарных инсталляций.</p>\",\"vi\":\"<p>ET4S-G là một máy chủ đa phương tiện hoàn toàn mới được phát triển bởi NovaStar, được thiết kế đặc biệt cho các phòng triển lãm đa phương tiện, phòng tiệc, biểu diễn sân khấu và các kịch bản lắp đặt cố định sáng tạo khác.</p>\",\"th\":\"<p>ET4S-G เป็นมีเดียเซิร์ฟเวอร์รุ่นใหม่ล่าสุดจาก NovaStar ซึ่งออกแบบมาโดยเฉพาะสำหรับห้องจัดแสดงมัลติมีเดีย ห้องจัดเลี้ยง การแสดงบนเวที และสถานการณ์การติดตั้งถาวรเชิงสร้างสรรค์อื่นๆ</p>\",\"id\":\"<p>ET4S-G adalah server media baru yang dikembangkan oleh NovaStar, yang dirancang khusus untuk ruang pameran multimedia, ruang perjamuan, pertunjukan panggung, dan skenario instalasi tetap kreatif lainnya.</p>\",\"it\":\"<p>L'ET4S-G è un nuovissimo media server sviluppato da NovaStar, progettato specificamente per sale espositive multimediali, sale per banchetti, spettacoli teatrali e altri scenari di installazione fissa creativa.</p>\"}",
+            "id": 1179,
+            "syncHostCount": 1,
+            "syncHostSpecificationUrl": "https://www.novastar.tech/download/download.html?catid=7"
+          },
+          "productProperties": [
+            {
+              "muid": 18601,
+              "propertyCode": "DISPLAY_CARD",
+              "propertyName": "关联显卡",
+              "propertyVal": "1193",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97960,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "DISPLAY_CARD_COUNT",
+              "propertyName": "关联显卡数量",
+              "propertyVal": "4",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97961,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "SYNC_CARD",
+              "propertyName": "关联同步卡",
+              "propertyVal": "1191",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97962,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "SYNC_CARD_COUNT",
+              "propertyName": "关联同步卡数量",
+              "propertyVal": "1",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97963,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "PLUG_IN_CARD",
+              "propertyName": "是否是插卡式设备",
+              "propertyVal": "true",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97964,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "DEVICE_BACKUP",
+              "propertyName": "是否支持设备备份",
+              "propertyVal": "1",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97965,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "LAYERS_NUMBER",
+              "propertyName": "图层数量",
+              "propertyVal": "999",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97966,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "INTRODUCTION_URL",
+              "propertyName": "产品规则书",
+              "propertyVal": "",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97967,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "LABEL",
+              "propertyName": "销售产品区域",
+              "propertyVal": "a0",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97968,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "FRAME_SYNCH",
+              "propertyName": "是否支持帧同步拼接",
+              "propertyVal": "1",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97969,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "CASCADE_SUPPORT",
+              "propertyName": "是否支持级联",
+              "propertyVal": "true",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97970,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "DEFAULT_INPUT_SUBCARD",
+              "propertyName": "控制器默认输入子卡",
+              "propertyVal": "561,0,733",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97971,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "CASCADE_SYNC_HOST_MODEL",
+              "propertyName": "级联同步主机",
+              "propertyVal": "1179",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97972,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "SUPPORT_MULTILAYER",
+              "propertyName": "多图层",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97973,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "MAX_FRAME_FREQUENCY",
+              "propertyName": "帧频最大值",
+              "propertyVal": "",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97974,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "MIN_FRAME_FREQUENCY",
+              "propertyName": "帧频最小值",
+              "propertyVal": "",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97975,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "ACTIVE_SHUTTER_3D",
+              "propertyName": "主动快门式3D",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97976,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "HDR",
+              "propertyName": "HDR",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97977,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "SUPPORT_5G",
+              "propertyName": "5G",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97978,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "BIT8_DEPTH",
+              "propertyName": "8bit位深",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97979,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "BIT10_DEPTH",
+              "propertyName": "10bit位深",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97980,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "BIT12_DEPTH",
+              "propertyName": "12bit位深",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97981,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "SUPPORT_LOW_LATENCY",
+              "propertyName": "低延迟",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97982,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "SUPPORT_UPLAY",
+              "propertyName": "U盘播放",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97983,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "REMOTE_PLAY_CONTROL",
+              "propertyName": "远程播控",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97984,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "FRAME_FREQUENCY_DOUBLING",
+              "propertyName": "插帧/倍频",
+              "propertyVal": "false",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97985,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "REAR_VIEW",
+              "propertyName": "背板图",
+              "propertyVal": "",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97986,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "FRONT_VIEW",
+              "propertyName": "正视图",
+              "propertyVal": "v2_care/1775724517498/186011775724517498.png",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97987,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "CARRYING_CAPACITY_REMARK",
+              "propertyName": "带载能力描述",
+              "propertyVal": "16*4096x2160@60Hz",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97988,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "DECODE_CAPABILITY",
+              "propertyName": "解码能力",
+              "propertyVal": "4*8K4K@60fps / 16*4K2K@60fps",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97989,
+              "createAt": "2026-07-07T12:31:19.000"
+            },
+            {
+              "muid": 18601,
+              "propertyCode": "CARRYING_CAPACITY_2D",
+              "propertyName": "带载能力(万)",
+              "propertyVal": "14155",
+              "updateAt": "2026-07-07T12:31:19.000",
+              "hardwareProductCode": "ET16S-G（4A4）",
+              "hardwareProductId": 1464,
+              "id": 97990,
+              "createAt": "2026-07-07T12:31:19.000"
+            }
+          ],
+          "productMediaInterfaces": [],
+          "level": 5,
+          "label": 5,
+          "manufacturerDeviceInfo": {
+            "picPath": "",
+            "labelCanSale": true,
+            "customerType": 0,
+            "subCardName": "",
+            "hardwareProductTagId": 0,
+            "specification": "",
+            "id": 0,
+            "label": "",
+            "introductionUrl": "",
+            "introduction": ""
+          },
+          "cascadeCount": 3,
+          "decodingCapabilityList": [
+            "4*8K4K@60fps / 16*4K2K@60fps"
+          ],
+          "name": "ET16S-G（4A4）",
+          "hardwareProductCode": "ET16S-G（4A4）",
+          "introductionUrl": ""
+        }
+      ],
+      "fiberConverterInfo": {
+        "hardwareProductName": "CVT4K-S",
+        "limitWidth": 0,
+        "ACTIVE_SHUTTER_3D": false,
+        "supportFreeWiring": false,
+        "netPortNum": 16,
+        "cascadeNum": 0,
+        "tenBitConfigs": [
+          {
+            "devices": [],
+            "maxLoad": {
+              "value": ""
+            }
+          }
+        ],
+        "SUPPORT_5G": false,
+        "MAX_FRAME_FREQUENCY": "",
+        "customerType": 0,
+        "pairByNetPort": false,
+        "subCardType": "",
+        "receiveCardType": "",
+        "FRAME_FREQUENCY_DOUBLING": false,
+        "bear": 0,
+        "factoryProductInfo": {},
+        "id": 1237,
+        "haveFactoryProduct": false,
+        "networkPortLoad": "650000",
+        "slotNum": 0,
+        "inputCarryingCapacity": "",
+        "SUPPORT_LOW_LATENCY": false,
+        "supportFreeConversion": false,
+        "customerName": "CVT4K-S",
+        "props": {
+          "ACTIVE_SHUTTER_3D": false,
+          "HDR": false,
+          "MULTI_LAYER": false
+        },
+        "limitWH": "--",
+        "maxInputlimitWidth": 0,
+        "chassisSize": 0,
+        "lightPortNum": 2,
+        "bitDepth": {
+          "BIT8_DEPTH": true,
+          "BIT12_DEPTH": false,
+          "BIT10_DEPTH": false
+        },
+        "needLightPortNum": 128,
+        "name": "CVT4K-S",
+        "introductionUrl": "https://www.novastar.tech/accessories/accessories.html?catid=6",
+        "note": "",
+        "cascadeSupport": 0,
+        "distance": "10.0",
+        "tagId": 3489,
+        "plugInCard": 0,
+        "remark": 5,
+        "fiberConverters": "",
+        "limitHeight": 0,
+        "lightLineQuantity": 256,
+        "hardwareProductType": "PHOTOVOLTAIC_CONVERSION",
+        "imageUrl": "https://care-sg.oss-ap-southeast-1.aliyuncs.com/v2_care/1763016485272/186011763016485272.png",
+        "HDR": false,
+        "ctrlBackUp": 1,
+        "freeTransformWindowCount": "",
+        "REMOTE_PLAY_CONTROL": false,
+        "interfaceHash": {
+          "FIBREOPTICAL": {
+            "resolutionHeight": "",
+            "interfaceVersion": "0",
+            "updateAt": "2026-07-15T13:10:21.000",
+            "hardwareProductId": 1237,
+            "hardwareProductInterfaceId": 21,
+            "createAt": "2026-07-15T13:10:21.000",
+            "muid": 18601,
+            "interfaceType": 1,
+            "id": 11258,
+            "interfaceName": "光口",
+            "interfaceCode": "FIBREOPTICAL",
+            "resolutionWidth": "",
+            "interfaceNum": 2
+          },
+          "NETWORKPORT": {
+            "resolutionHeight": "",
+            "interfaceVersion": "0",
+            "updateAt": "2026-07-15T13:10:21.000",
+            "hardwareProductId": 1237,
+            "hardwareProductInterfaceId": 20,
+            "createAt": "2026-07-15T13:10:21.000",
+            "muid": 18601,
+            "interfaceType": 1,
+            "id": 11257,
+            "interfaceName": "网口",
+            "interfaceCode": "NETWORKPORT",
+            "resolutionWidth": "",
+            "interfaceNum": 16
+          }
+        },
+        "isFactory": false,
+        "introduction": "{\"zh\":\"<p>1、 16 路 Neutrik 千兆网口，输入和输出数据。</p><p>2、 4 路 LC 多模双芯光纤接口，其中两路为主输入/主输出接口，另外两路为备份接口，OPT1 对应 1~8 号网口，OPT2 对应 9~16 号网口， OPT3 为 OPT1 的备份，OPT4 为 OPT2 的备份，传输距离：10km。</p><p>3、双电源冗余备份，更加稳定可靠。</p><p>4、 两种电源接口（品字插座和 PowerCON 插座），满足客户的不同需求。</p><p>5、两种控制接口（USB Type B 接口和网口），使连接主控计算机的方式更加灵活方便。</p><p>6、前面板配有丰富的指示灯，可显示多种设备状态。</p>\",\"es\":\"<ol><li>16 puertos Ethernet Gigabit Neutrik para entrada y salida de datos.</li><li>4 interfaces de fibra óptica de núcleo doble multimodo LC: 2 como interfaces principales de entrada/salida y las otras 2 como interfaces de respaldo. OPT1 corresponde a los puertos Ethernet 1–8, OPT2 a los puertos 9–16, OPT3 es el respaldo de OPT1 y OPT4 es el respaldo de OPT2. Distancia de transmisión: 10 km.</li><li>Suministro de energía dual con respaldo de redundancia para mayor estabilidad y fiabilidad.</li><li>Dos tipos de interfaces de alimentación (enchufe IEC 320 C13 y enchufe PowerCON) para satisfacer las necesidades diversas de los clientes.</li><li>Dos tipos de interfaces de control (interfaz USB Type B y puerto Ethernet) para una conexión flexible y conveniente con la computadora host.</li><li>El panel frontal está equipado con abundantes luces indicadoras para mostrar diversos estados del dispositivo.<br></li></ol>\",\"en\":\"<ol><li style=\\\"text-align: start;\\\">16 Neutrik Gigabit Ethernet ports for data input and output.</li><li style=\\\"text-align: start;\\\">4 LC multimode dual-core fiber optic interfaces: 2 as primary input/output interfaces, and the other 2 as backup interfaces. OPT1 corresponds to Ethernet ports 1–8, OPT2 to ports 9–16, OPT3 is the backup for OPT1, and OPT4 is the backup for OPT2. Transmission distance: 10 km.</li><li style=\\\"text-align: start;\\\">Dual power supply redundancy backup for enhanced stability and reliability.</li><li style=\\\"text-align: start;\\\">Two types of power interfaces (IEC 320 C13 socket and PowerCON socket) to meet diverse customer needs.</li><li style=\\\"text-align: start;\\\">Two types of control interfaces (USB Type B interface and Ethernet port) for flexible and convenient connection to the host computer.</li><li style=\\\"text-align: start;\\\">The front panel is equipped with abundant indicator lights to display various device statuses.</li></ol>\",\"pt\":\"<ol><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">16 portas Ethernet Gigabit Neutrik para entrada e saída de dados.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">4 interfaces de fibra óptica multimodo de núcleo duplo LC: 2 como interfaces principais de entrada/saída e as outras 2 como interfaces de backup. OPT1 corresponde às portas Ethernet 1–8, OPT2 às portas 9–16, OPT3 é o backup de OPT1 e OPT4 é o backup de OPT2. Distância de transmissão: 10 km.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">Alimentação dupla com backup de redundância para maior estabilidade e confiabilidade.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">Dois tipos de interfaces de alimentação (tomada IEC 320 C13 e tomada PowerCON) para atender às necessidades diversas dos clientes.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">Dois tipos de interfaces de controle (interface USB Type B e porta Ethernet) para conexão flexível e conveniente com o computador host.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">O painel frontal é equipado com numerosos indicadores luminosos para exibir diversos estados do dispositivo.</span></li></ol>\",\"ko\":\"<ol><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">데이터 입력 및 출력을 위한 16포트 뉴트릭(Neutrik) 기가비트 이더넷 포트.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">4포트 LC 멀티모드 이중 코어 광섬유 인터페이스: 2포트는 주 입력/출력 인터페이스로, 나머지 2포트는 백업 인터페이스로 사용. OPT1은 이더넷 포트 1–8에 해당하고, OPT2는 포트 9–16에 해당하며, OPT3는 OPT1의 백업, OPT4는 OPT2의 백업입니다. 전송 거리: 10km.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">안정성과 신뢰성을 높이기 위한 이중 전원 공급기 중복 백업 기능.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">다양한 고객 요구를 충족하기 위한 두 가지 유형의 전원 인터페이스(IEC 320 C13 소켓 및 PowerCON 소켓).</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">호스트 컴퓨터와의 유연하고 편리한 연결을 위한 두 가지 유형의 제어 인터페이스(USB Type B 인터페이스 및 이더넷 포트).</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">장치의 다양한 상태를 표시하기 위해 정면 패널에 풍부한 표시등이 장착됨.</span></li></ol>\",\"ja\":\"<ol><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">データ入出力用 16 ポート Neutrik ギガビットイーサネットポート。</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">4 ポート LC マルチモードデュアルコア光ファイバーインターフェース：2 ポートをプライマリ入出力インターフェース、残り 2 ポートをバックアップインターフェースとして使用。OPT1 はイーサネットポート 1–8 に該当し、OPT2 はポート 9–16 に該当し、OPT3 は OPT1 のバックアップ、OPT4 は OPT2 のバックアップです。伝送距離：10km。</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">安定性と信頼性を高めるためのデュアル電源冗長バックアップ機能。</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">多様な顧客ニーズに応えるための 2 種類の電源インターフェース（IEC 320 C13 ソケット及び PowerCON ソケット）。</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">ホストコンピューターとの柔軟で便利な接続を実現する 2 種類の制御インターフェース（USB Type B インターフェース及びイーサネットポート）。</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">装置の各種状態を表示するため、フロントパネルに豊富なインジケーターライトを搭載。</span></li></ol>\",\"ru\":\"<ol><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">16 портов Ethernet Gigabit Neutrik для ввода и вывода данных.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">4 интерфейса 광фибрной связи LC мультимодального двойного ядра: 2 из них выполняют функции основных интерфейсов ввода/вывода, а другие 2 — резервных. OPT1 соответствует Ethernet-портам 1–8, OPT2 — портам 9–16, OPT3 является резервом для OPT1, а OPT4 — резервом для OPT2. Дистанция передачи: 10 км.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">Двойное источник питания с резервным дублированием для повышения стабильности и надежности.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">Два типа интерфейсов питания ( розетка IEC 320 C13 и розетка PowerCON) для удовлетворения различных потребностей клиентов.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">Два типа управляющих интерфейсов (интерфейс USB Type B и Ethernet-порт) для гибкого и удобного подключения к хост-компьютеру.</span></li><li><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">Передняя панель оснащена обильными индикаторами, отображающими различные состояния устройства.</span></li></ol>\",\"vi\":\"<p>1. 16 cổng Ethernet Gigabit Neutrik để nhập và xuất dữ liệu.</p><p>2. 4 giao diện quang đa chế độ LC lõi kép: 2 giao diện chính và 2 giao diện dự phòng. OPT1 tương ứng với các cổng Ethernet 1–8, OPT2 với các cổng 9–16, OPT3 là dự phòng cho OPT1 và OPT4 là dự phòng cho OPT2. Khoảng cách truyền dẫn: 10 km.</p><p>3. Hệ thống nguồn dự phòng kép giúp tăng cường tính ổn định và độ tin cậy.</p><p>4. Hai loại giao diện nguồn (ổ cắm IEC 320 C13 và ổ cắm PowerCON) đáp ứng nhu cầu đa dạng của khách hàng.</p><p>5. Hai loại giao diện điều khiển (giao diện USB Type B và cổng Ethernet) để kết nối linh hoạt và thuận tiện với máy tính chủ.</p><p>6. Mặt trước được trang bị nhiều đèn báo để hiển thị trạng thái của các thiết bị khác nhau.</p>\",\"th\":\"<p>1. พอร์ต Neutrik Gigabit Ethernet จำนวน 16 พอร์ต สำหรับรับและส่งข้อมูล</p><p>2. อินเทอร์เฟซไฟเบอร์ออปติกแบบมัลติโหมด LC ดูอัลคอร์ จำนวน 4 ช่อง: 2 ช่องเป็นอินเทอร์เฟซหลักสำหรับรับ/ส่งข้อมูล และอีก 2 ช่องเป็นอินเทอร์เฟซสำรอง OPT1 ตรงกับพอร์ต Ethernet 1–8, OPT2 ตรงกับพอร์ต 9–16, OPT3 เป็นสำรองสำหรับ OPT1 และ OPT4 เป็นสำรองสำหรับ OPT2 ระยะการส่งสัญญาณ: 10 กม.</p><p>3. ระบบสำรองไฟแบบคู่ เพื่อเพิ่มเสถียรภาพและความน่าเชื่อถือ</p><p>4. อินเทอร์เฟซจ่ายไฟสองประเภท (ซ็อกเก็ต IEC 320 C13 และซ็อกเก็ต PowerCON) เพื่อตอบสนองความต้องการที่หลากหลายของลูกค้า</p><p>5. อินเทอร์เฟซควบคุมสองประเภท (อินเทอร์เฟซ USB Type B และพอร์ต Ethernet) เพื่อการเชื่อมต่อกับคอมพิวเตอร์โฮสต์ที่ยืดหยุ่นและสะดวก</p><p>6. แผงด้านหน้ามีไฟแสดงสถานะมากมายเพื่อแสดงสถานะต่างๆ ของอุปกรณ์</p>\",\"id\":\"<p>1.16 port Neutrik Gigabit Ethernet untuk input dan output data.</p><p>2.4 antarmuka serat optik dual-core multimode LC: 2 sebagai antarmuka input/output utama, dan 2 lainnya sebagai antarmuka cadangan. OPT1 sesuai dengan port Ethernet 1–8, OPT2 ke port 9–16, OPT3 adalah cadangan untuk OPT1, dan OPT4 adalah cadangan untuk OPT2. Jarak transmisi: 10 km.</p><p>3. Cadangan redundansi catu daya ganda untuk meningkatkan stabilitas dan keandalan.</p><p>4. Dua jenis antarmuka daya (soket IEC 320 C13 dan soket PowerCON) untuk memenuhi beragam kebutuhan pelanggan.</p><p>5. Dua jenis antarmuka kontrol (antarmuka USB Tipe B dan port Ethernet) untuk koneksi yang fleksibel dan nyaman ke komputer host.</p><p>6. Panel depan dilengkapi dengan banyak lampu indikator untuk menampilkan berbagai status perangkat.</p>\",\"it\":\"<p>1. 16 porte Ethernet Gigabit Neutrik per l'ingresso e l'uscita dati.</p><p>2. 4 interfacce in fibra ottica multimodale dual-core LC: 2 come interfacce di ingresso/uscita primarie e le altre 2 come interfacce di backup. OPT1 corrisponde alle porte Ethernet 1-8, OPT2 alle porte 9-16, OPT3 è il backup per OPT1 e OPT4 è il backup per OPT2. Distanza di trasmissione: 10 km.</p><p>3. Doppio sistema di alimentazione ridondante per una maggiore stabilità e affidabilità.</p><p>4. Due tipi di interfacce di alimentazione (presa IEC 320 C13 e presa PowerCON) per soddisfare le diverse esigenze dei clienti.</p><p>5. Due tipi di interfacce di controllo (interfaccia USB di tipo B e porta Ethernet) per una connessione flessibile e comoda al computer host.</p><p>6. Il pannello frontale è dotato di numerose spie luminose per visualizzare i vari stati del dispositivo.</p>\"}",
+        "productProperties": [
+          {
+            "muid": 18601,
+            "propertyCode": "DISTANCE",
+            "propertyName": "传输距离",
+            "propertyVal": "10.0",
+            "updateAt": "2026-07-15T13:10:21.000",
+            "hardwareProductCode": "CVT4K-S",
+            "hardwareProductId": 1237,
+            "id": 98860,
+            "createAt": "2026-07-15T13:10:21.000"
+          },
+          {
+            "muid": 18601,
+            "propertyCode": "INTRODUCTION_URL",
+            "propertyName": "产品规格书URL",
+            "propertyVal": "https://www.novastar.tech/accessories/accessories.html?catid=6",
+            "updateAt": "2026-07-15T13:10:21.000",
+            "hardwareProductCode": "CVT4K-S",
+            "hardwareProductId": 1237,
+            "id": 98861,
+            "createAt": "2026-07-15T13:10:21.000"
+          },
+          {
+            "muid": 18601,
+            "propertyCode": "FRONT_VIEW",
+            "propertyName": "图片",
+            "propertyVal": "v2_care/1763016485272/186011763016485272.png",
+            "updateAt": "2026-07-15T13:10:21.000",
+            "hardwareProductCode": "CVT4K-S",
+            "hardwareProductId": 1237,
+            "id": 98862,
+            "createAt": "2026-07-15T13:10:21.000"
+          }
+        ],
+        "quantity": 64,
+        "SUPPORT_UPLAY": false,
+        "mainCableQuantity": 1024,
+        "mvr": 0,
+        "groups": [
+          {
+            "layers": [
+              {
+                "windowCount": ""
+              }
+            ]
+          }
+        ],
+        "label": "",
+        "defaultQuantity": 64,
+        "eightBitConfigs": [
+          {
+            "devices": [],
+            "maxLoad": {
+              "value": ""
+            }
+          }
+        ],
+        "productAttribute": "",
+        "supportMultilayer": false,
+        "twelveBitConfigs": [
+          {
+            "devices": [],
+            "maxLoad": {
+              "value": ""
+            }
+          }
+        ],
+        "MIN_FRAME_FREQUENCY": "",
+        "labelBear": 0,
+        "maxInputlimitHeight": 0,
+        "hardwareProductCode": "CVT4K-S",
+        "maxInputlimitWH": "--",
+        "powerBackUp": 1,
+        "networkPortNumber": 8
+      },
+      "mediaServer": [],
+      "topology": {
+        "subCabinetTopo": {},
+        "selectedFoldNum": 1,
+        "diagramGroupInfo": {
+          "sdSubfix": "",
+          "foursquare": true,
+          "count": 1
+        },
+        "cableLoad": 164930,
+        "drawStyle": "HLT2RB",
+        "drawPrior": 1,
+        "isUltraWideScreen": false
+      },
+      "centralCtrl": [],
+      "receiveCardInventory": {
+        "rcNum": 1024,
+        "cableMaxWidth": 0,
+        "module": {
+          "width": 0,
+          "height": 0
+        },
+        "num": 1024,
+        "rgb": 0,
+        "factoryReceivingCardName": "",
+        "selectedFoldNum": 1,
+        "receivingCardName": "",
+        "carryingCapacity": "480x270",
+        "receivingCardTagId": 5,
+        "imageUrl": "",
+        "bear": {
+          "width": 480,
+          "height": 270
+        },
+        "selectedFoldName": "Standard",
+        "introduction": "",
+        "cableMaxHeight": 0
+      },
+      "sendCardInventory": {
+        "hardwareProductName": "H_4xfiber sending card",
+        "cascadeSupport": 1,
+        "supportFreeWiring": false,
+        "inputCarryingCapacity": "",
+        "num": 2,
+        "mainEngineType": "H",
+        "type": 2,
+        "version": "H_4xfiber sending card",
+        "maxInputlimitWidth": 0,
+        "internetAccess": 32,
+        "children": [
+          {
+            "maxInputlimitWidth": 0,
+            "num": 24,
+            "imageUrl": "https://care-sg.oss-ap-southeast-1.aliyuncs.com/v2_care/1680781194986/186011680781194986.png",
+            "name": "H_2xHDMI2.0+2xDP1.2 input card",
+            "subType": 1,
+            "id": 561,
+            "factoryProductInfo": {},
+            "type": 0,
+            "introductionUrl": "",
+            "baseName": "H_2xHDMI2.0+2xDP1.2 input card",
+            "introduction": "{\"zh\":\"<p>1、支持2组输入，每组1路HDMI 2.0和1路DP 1.2接口，每组单次仅支持一个接口输入；</p><p>2、支持 8192×1080@60Hz、4096×2160@60Hz分辨率并向下兼容；</p><p>3、支持 HDCP 2.2协议；</p><p>4、支持伴随音频输入。</p>\",\"en\":\"<p>2x HDMI 2.0</p><p>− Backward compatible with HDMI 1.4 and HDMI 1.3</p><p>− Supports the maximum resolution of 3840×2160@60Hz.</p><p>− Custom resolutions:</p><p>Max. width: 4092 pixels (4092×2263@60Hz)</p><p>Max. height: 4095 pixels (2188×4095@60Hz)</p><p>2x DP1.2</p><p>− Backward compatible with DP 1.1</p><p>− Supports the maximum resolution of 4096×2160@60Hz or</p><p>8192×1080@60Hz.</p><p>− Custom resolutions:</p><p>Max. width: 8192 pixels (8192×1152@60Hz)</p><p>Max. height: 4095 pixels (2188×4095@60Hz)</p>\",\"es\":\"<p>2x HDMI 2.0</p><p>− Retrocompatible con HDMI 1.4 y HDMI 1.3</p><p>− Admite una resolución máxima de 3840×2160 a 60 Hz.</p><p>− Resoluciones personalizadas:</p><p>Ancho máximo: 4092 píxeles (4092×2263 a 60 Hz)</p><p>Altura máxima: 4095 píxeles (2188×4095 a 60 Hz)</p><p>2x DP1.2</p><p>− Retrocompatible con DP 1.1</p><p>− Admite una resolución máxima de 4096×2160 a 60 Hz o 8192×1080 a 60 Hz.</p><p>− Resoluciones personalizadas:</p><p>Ancho máximo: 8192 píxeles (8192×1152 a 60 Hz)</p><p>Altura máxima: 4095 píxeles (2188×4095 a 60 Hz) altura: 4095 píxeles (2188×4095 a 60 Hz)</p>\",\"pt\":\"<p>2x HDMI 2.0</p><p>− Compatível com HDMI 1.4 e HDMI 1.3</p><p>− Suporta a resolução máxima de 3840×2160 a 60 Hz.</p><p>− Resoluções personalizadas:</p><p>Largura máx.: 4092 pixels (4092×2263 a 60 Hz)</p><p>Altura máx.: 4095 pixels (2188×4095 a 60 Hz)</p><p>2x DP1.2</p><p>− Compatível com DP 1.1</p><p>− Suporta a resolução máxima de 4096×2160 a 60 Hz ou</p><p>8192×1080 a 60 Hz.</p><p>− Resoluções personalizadas:</p><p>Largura máx.: 8192 pixels (8192×1152 a 60 Hz)</p><p>Máx. altura: 4095 pixels (2188×4095@60Hz)</p>\",\"ko\":\"<p>HDMI 2.0 2개</p><p>− HDMI 1.4 및 HDMI 1.3과 하위 호환</p><p>− 최대 해상도 3840×2160@60Hz 지원</p><p>− 사용자 지정 해상도:</p><p>최대 가로: 4092픽셀(4092×2263@60Hz)</p><p>최대 세로: 4095픽셀(2188×4095@60Hz)</p><p>DP 1.2 2개</p><p>− DP 1.1과 하위 호환</p><p>− 최대 해상도 4096×2160@60Hz 또는</p><p>8192×1080@60Hz 지원</p><p>− 사용자 지정 해상도:</p>\",\"ja\":\"<p>HDMI 2.0 x 2</p><p>− HDMI 1.4およびHDMI 1.3との下位互換性あり</p><p>− 最大解像度3840×2160@60Hzに対応</p><p>− カスタム解像度：</p><p>最大幅：4092ピクセル（4092×2263@60Hz）</p><p>最大高さ：4095ピクセル（2188×4095@60Hz）</p><p>DP1.2 x 2</p><p>− DP 1.1との下位互換性あり</p><p>− 最大解像度4096×2160@60Hzまたは</p><p>8192×1080@60Hzに対応</p><p>− カスタム解像度：</p>\",\"ru\":\"<p>2x HDMI 2.0</p><p>− Обратная совместимость с HDMI 1.4 и HDMI 1.3</p><p>− Поддерживает максимальное разрешение 3840×2160 при 60 Гц.</p><p>− Пользовательские разрешения:</p><p>Макс. ширина: 4092 пикселя (4092×2263 при 60 Гц)</p><p>Макс. высота: 4095 пикселей (2188×4095 при 60 Гц)</p><p>2x DP1.2</p><p>− Обратная совместимость с DP 1.1</p><p>− Поддерживает максимальное разрешение 4096×2160 при 60 Гц или</p><p>8192×1080 при 60 Гц.</p><p>− Пользовательские разрешения:</p>\",\"vi\":\"<p>2 cổng HDMI 2.0</p><p>− Tương thích ngược với HDMI 1.4 và HDMI 1.3</p><p>− Hỗ trợ độ phân giải tối đa 3840×2160@60Hz.</p><p>− Độ phân giải tùy chỉnh:</p><p>Chiều rộng tối đa: 4092 pixel (4092×2263@60Hz)</p><p>Chiều cao tối đa: 4095 pixel (2188×4095@60Hz)</p><p>2 cổng DP1.2</p><p>− Tương thích ngược với DP 1.1</p><p>− Hỗ trợ độ phân giải tối đa 4096×2160@60Hz hoặc</p><p>8192×1080@60Hz.</p><p>− Độ phân giải tùy chỉnh:</p><p>Chiều rộng tối đa: 8192 pixel (8192×1152@60Hz)</p><p>Chiều cao tối đa: 4095 pixel (2188×4095@60Hz)</p>\",\"th\":\"<p>2x HDMI 2.0</p><p>− สามารถใช้งานร่วมกับ HDMI 1.4 และ HDMI 1.3 ได้</p><p>− รองรับความละเอียดสูงสุด 3840×2160 ที่ 60Hz</p><p>− ความละเอียดแบบกำหนดเอง:</p><p>ความกว้างสูงสุด: 4092 พิกเซล (4092×2263 ที่ 60Hz)</p><p>ความสูงสูงสุด: 4095 พิกเซล (2188×4095 ที่ 60Hz)</p><p>2x DP 1.2</p><p>− สามารถใช้งานร่วมกับ DP 1.1 ได้</p><p>− รองรับความละเอียดสูงสุด 4096×2160 ที่ 60Hz หรือ</p><p>8192×1080 ที่ 60Hz</p><p>− ความละเอียดแบบกำหนดเอง:</p><p>ความกว้างสูงสุด: 8192 พิกเซล (8192×1152 ที่ 60Hz)</p><p>ความสูงสูงสุด: 4095 พิกเซล (2188×4095 ที่ 60Hz)</p>\",\"id\":\"<p>2x HDMI 2.0</p><p>− Kompatibel dengan HDMI 1.4 dan HDMI 1.3</p><p>− Mendukung resolusi maksimum 3840×2160@60Hz.</p><p>− Resolusi khusus:</p><p>Lebar maksimum: 4092 piksel (4092×2263@60Hz)</p><p>Tinggi maksimum: 4095 piksel (2188×4095@60Hz)</p><p>2x DP1.2</p><p>− Kompatibel dengan DP 1.1</p><p>− Mendukung resolusi maksimum 4096×2160@60Hz atau</p><p>8192×1080@60Hz.</p><p>− Resolusi khusus:</p><p>Lebar maksimum: 8192 piksel (8192×1152@60Hz)</p><p>Tinggi maksimum: 4095 piksel (2188×4095@60Hz)</p>\",\"it\":\"<p>2 porte HDMI 2.0</p><p>− Retrocompatibile con HDMI 1.4 e HDMI 1.3</p><p>− Supporta una risoluzione massima di 3840×2160 a 60Hz.</p><p>− Risoluzioni personalizzate:</p><p>Larghezza massima: 4092 pixel (4092×2263 a 60Hz)</p><p>Altezza massima: 4095 pixel (2188×4095 a 60Hz)</p><p>2 porte DP 1.2</p><p>− Retrocompatibile con DP 1.1</p><p>− Supporta una risoluzione massima di 4096×2160 a 60Hz o</p><p>8192×1080 a 60Hz.</p><p>− Risoluzioni personalizzate:</p><p>Larghezza massima: 8192 pixel (8192×1152 a 60Hz)</p><p>Altezza massima: 4095 pixel (2188×4095 a 60Hz)</p>\"}",
+            "haveFactoryProduct": false
+          },
+          {
+            "cascadeSupport": 1,
+            "limitWidth": "16384",
+            "netPortNum": 32,
+            "num": 32,
+            "limitHeight": "16384",
+            "type": 1,
+            "maxInputlimitWidth": 0,
+            "imageUrl": "https://care-sg.oss-ap-southeast-1.aliyuncs.com/v2_care/1680781765872/186011680781765872.png",
+            "name": "H_4xfiber sending card",
+            "maxInputlimitHeight": 0,
+            "bear": 5277760,
+            "subType": 3,
+            "id": 560,
+            "factoryProductInfo": {},
+            "introductionUrl": "",
+            "baseName": "H_4xfiber sending card",
+            "introduction": "{\"zh\":\"<p>1、4X10G光口，最大带载2080万像素点，最大带载宽度16384像素，最大高度16384像素；</p><p>2、支持独立模式、复制模式和主备模式；</p><p>3、1路光口对应传输8路网口数据；</p><p>4、支持8bit和10bit输出。</p><p>5、随卡附带4个10G SFP+ LR单模光模块，并已安装到光纤接口中。</p>\",\"en\":\"<p>Copy</p><p>OPT 1 and OPT 2 are used for main output. OPT 3 copies the output on OPT 1, while</p><p>OPT 4 copies the output on OPT 2.</p><p>Backup</p><p>OPT 1 and OPT 2 are used for main output. OPT 3 serves as the backup of OPT 1,</p><p>while OPT 4 serves as the backup of OPT 2.</p>\",\"es\":\"<p>Copia</p><p>OPT 1 y OPT 2 se utilizan para la salida principal. OPT 3 copia la salida en OPT 1, mientras que</p><p>OPT 4 copia la salida en OPT 2.</p><p>Copia de seguridad</p><p>OPT 1 y OPT 2 se utilizan para la salida principal. OPT 3 sirve como copia de seguridad de OPT 1,</p><p>mientras que OPT 4 sirve como copia de seguridad de OPT 2.</p>\",\"pt\":\"<p>Copiar</p><p>OPT 1 e OPT 2 são usados ​​para saída principal. OPT 3 copia a saída no OPT 1, enquanto</p><p>OPT 4 copia a saída no OPT 2.</p><p>Backup</p><p>OPT 1 e OPT 2 são usados ​​para saída principal. OPT 3 serve como backup do OPT 1,</p><p>enquanto OPT 4 serve como backup do OPT 2.</p>\",\"ko\":\"<p>복사</p><p>OPT 1과 OPT 2는 주 출력에 사용됩니다. OPT 3은 OPT 1의 출력을 복사하고,</p><p>OPT 4는 OPT 2의 출력을 복사합니다.</p><p>백업</p><p>OPT 1과 OPT 2는 주 출력에 사용됩니다. OPT 3은 OPT 1의 백업 역할을 하고,</p><p>OPT 4는 OPT 2의 백업 역할을 합니다.</p>\",\"ja\":\"<p>コピー</p><p>OPT 1とOPT 2はメイン出力に使用されます。OPT 3はOPT 1の出力をコピーし、</p><p>OPT 4はOPT 2の出力をコピーします。</p><p>バックアップ</p><p>OPT 1とOPT 2はメイン出力に使用されます。OPT 3はOPT 1のバックアップとして、</p><p>OPT 4はOPT 2のバックアップとして機能します。</p>\",\"ru\":\"<p>Копирование</p><p>OPT 1 и OPT 2 используются для основного вывода. OPT 3 копирует вывод на OPT 1, а</p><p>OPT 4 копирует вывод на OPT 2.</p><p>Резервное копирование</p><p>OPT 1 и OPT 2 используются для основного вывода. OPT 3 служит резервной копией OPT 1,</p><p>а OPT 4 служит резервной копией OPT 2.</p>\",\"vi\":\"<p>Sao chép</p><p>OPT 1 và OPT 2 được sử dụng cho đầu ra chính. OPT 3 sao chép đầu ra trên OPT 1, trong khi</p><p>OPT 4 sao chép đầu ra trên OPT 2.</p><p>Sao lưu</p><p>OPT 1 và OPT 2 được sử dụng cho đầu ra chính. OPT 3 đóng vai trò là bản sao lưu của OPT 1,</p><p>trong khi OPT 4 đóng vai trò là bản sao lưu của OPT 2.</p>\",\"th\":\"<p>คัดลอก</p><p>OPT 1 และ OPT 2 ใช้สำหรับเอาต์พุตหลัก OPT 3 คัดลอกเอาต์พุตไปยัง OPT 1 ในขณะที่</p><p>OPT 4 คัดลอกเอาต์พุตไปยัง OPT 2</p><p>สำรองข้อมูล</p><p>OPT 1 และ OPT 2 ใช้สำหรับเอาต์พุตหลัก OPT 3 ทำหน้าที่เป็นข้อมูลสำรองของ OPT 1</p><p>ในขณะที่ OPT 4 ทำหน้าที่เป็นข้อมูลสำรองของ OPT 2</p>\",\"id\":\"<p>Salin</p><p>OPT 1 dan OPT 2 digunakan untuk output utama. OPT 3 menyalin output pada OPT 1, sedangkan</p><p>OPT 4 menyalin output pada OPT 2.</p><p>Cadangan</p><p>OPT 1 dan OPT 2 digunakan untuk output utama. OPT 3 berfungsi sebagai cadangan OPT 1,</p><p>sementara OPT 4 berfungsi sebagai cadangan OPT 2.</p>\",\"it\":\"<p>Copia</p><p>OPT 1 e OPT 2 vengono utilizzati per l'output principale. OPT 3 copia l'output su OPT 1, mentre</p><p>OPT 4 copia l'output su OPT 2.</p><p>Backup</p><p>OPT 1 e OPT 2 vengono utilizzati per l'output principale. OPT 3 funge da backup di OPT 1,</p><p>mentre OPT 4 funge da backup di OPT 2.</p>\"}",
+            "haveFactoryProduct": false
+          }
+        ],
+        "labelBear": 0,
+        "lightPortNum": 4,
+        "imageUrl": "https://care-sg.oss-ap-southeast-1.aliyuncs.com/v2_care/1740986034967/186011740986034967.png",
+        "limit": {
+          "width": "16384",
+          "height": "16384"
+        },
+        "maxInputlimitHeight": 0,
+        "bear": 5277760,
+        "id": 557,
+        "isForceCascadeSupport": false,
+        "introductionUrl": "https://www.novastar.tech/download/download.html?catid=7",
+        "baseName": "H15 Enhanced",
+        "introduction": "{\"zh\":\"<p>1、纯硬件插卡式架构设计，19英寸标准机架式安装，15U金属结构机箱；</p><p>2、内置7英寸触摸屏，可通过触摸屏实现设备状态查看、大屏亮度调节、场景切换、参数设置、固件升级、预监回显等操作；</p><p>3、单张输出板卡支持10个图层，支持图层在输出接口间漫游且规格不减，可进行图层参数设置；</p><p>4、支持屏幕背景图显示；支持对输入添加文字或图片台标，文字与图片背景、位置可调；支持添加 OSD 文字或图片，属性可调；</p><p>5、支持对所有输入源同时预监，对所有输出进行回显（包含IP流回显）；</p><p>6、搭配预监卡支持和预编模式，实时模式可实现画面控制实时上屏显示，预编模式支持在软件端进行显示内容预编辑后，再上屏显示；</p><p>7、支持用户权限分级管控，超级管理员可分配用户使用权限，支持多用户同时在线编辑、 控制、 上屏操作， 可预览其他用户操作；</p><p>8、支持二合一网口输出，输出无需其它设备可直接连接LED显示屏显示，并支持LED屏亮度调节。</p>\",\"en\":\"<p>1. Pure hardware plug-in card architecture design, 19 inch standard rack mounted, 15U metal structure chassis;</p><p>2. Built in 7-inch touch screen, which can be used to view device status, adjust large screen brightness, switch scenes, set parameters, upgrade firmware, pre monitor and display, etc;</p><p>3. A single output card supports 10 layers, allowing layers to roam between output interfaces without reducing specifications, and enabling layer parameter settings.</p>\",\"es\":\"<p>1. Diseño de arquitectura de tarjeta de conexión de hardware puro, montaje en bastidor estándar de 19 pulgadas, chasis de estructura metálica de 15U;</p><p>2. Pantalla táctil incorporada de 7 pulgadas, que se puede usar para ver el estado del dispositivo, ajustar el brillo de la pantalla grande, cambiar de escena, establecer parámetros, actualizar el firmware, premonitorear y visualizar, etc.;</p><p>3. Una sola tarjeta de salida admite 10 capas, lo que permite que las capas se desplacen entre las interfaces de salida sin reducir las especificaciones y habilita la configuración de parámetros de capa.</p>\",\"pt\":\"<p>1. Design de arquitetura de placa plug-in de hardware puro, rack padrão de 19 polegadas montado, chassi de estrutura metálica 15U;</p><p>2. Tela sensível ao toque de 7 polegadas integrada, que pode ser usada para visualizar o status do dispositivo, ajustar o brilho da tela grande, alternar cenas, definir parâmetros, atualizar firmware, pré-monitorar e exibir, etc.;</p><p>3. Uma única placa de saída suporta 10 camadas, permitindo que as camadas percorram entre as interfaces de saída sem reduzir as especificações e permitindo as configurações de parâmetros da camada.</p>\",\"ko\":\"<p>1. 순수 하드웨어 플러그인 카드 아키텍처 설계, 19인치 표준 랙 장착형, 15U 금속 구조 섀시</p><p>2. 내장된 7인치 터치스크린을 통해 장치 상태 확인, 대형 화면 밝기 조절, 장면 전환, 매개변수 설정, 펌웨어 업그레이드, 사전 모니터링 및 디스플레이 등을 수행할 수 있습니다.</p><p>3. 단일 출력 카드는 10개의 레이어를 지원하여 사양 저하 없이 출력 인터페이스 간 레이어 이동이 가능하며, 레이어 매개변수 설정이 가능합니다.</p>\",\"ja\":\"<p>1. 純粋なハードウェアプラグインカードアーキテクチャ設計、19インチ標準ラックマウント、15U金属構造シャーシ。</p><p>2. 7インチタッチスクリーンを内蔵し、デバイスステータスの確認、大画面の明るさ調整、シーン切り替え、パラメータ設定、ファームウェアアップグレード、プリモニターとディスプレイの表示などに使用できます。</p><p>3. 1枚の出力カードで10レイヤーをサポートし、仕様を低下させることなく出力インターフェース間でレイヤーを移動でき、レイヤーパラメータの設定も可能です。</p>\",\"ru\":\"<p>1. Архитектура платы с исключительно аппаратным подключением, монтаж в стандартную 19-дюймовую стойку, металлический корпус высотой 15U;</p><p>2. Вст��оенный 7-дюймовый сенсорный экран, который можно использовать для просмотра состояния устройства, регулировки яркости, переключения сцен, настройки параметров, обновления прошивки, предварительного мониторинга и отображения и т. д.;</p><p>3. Одна плата вывода поддерживает 10 слоёв, что позволяет перемещать слои между выходными интерфейсами без ущерба для технических характеристик и позволяет настраивать параметры слоёв.</p>\",\"vi\":\"<p>1. Thiết kế kiến ​​trúc thẻ cắm phần cứng thuần túy, lắp đặt trên giá đỡ tiêu chuẩn 19 inch, khung gầm cấu trúc kim loại 15U;</p><p>2. Màn hình cảm ứng 7 inch tích hợp, có thể được sử dụng để xem trạng thái thiết bị, điều chỉnh độ sáng màn hình lớn, chuyển đổi cảnh, cài đặt thông số, nâng cấp firmware, giám sát và hiển thị trước, v.v.;</p><p>3. Một thẻ đầu ra hỗ trợ 10 lớp, cho phép các lớp di chuyển giữa các giao diện đầu ra mà không làm giảm thông số kỹ thuật và cho phép cài đặt thông số lớp.</p>\",\"th\":\"<p>1. ออกแบบสถาปัตยกรรมแบบเสียบปลั๊กฮาร์ดแวร์ล้วนๆ สำหรับติดตั้งในแร็คมาตรฐาน 19 นิ้ว โครงสร้างตัวเครื่องโลหะ 15U</p><p>2. หน้าจอสัมผัสขนาด 7 นิ้วในตัว สามารถใช้ดูสถานะอุปกรณ์ ปรับความสว่างหน้าจอขนาดใหญ่ สลับฉาก ตั้งค่าพารามิเตอร์ อัปเกรดเฟิร์มแวร์ ตรวจสอบและแสดงผลล่วงหน้า ฯลฯ</p><p>3. การ์ดเอาต์พุตเดียวรองรับได้ถึง 10 เลเยอร์ ทำให้เลเยอร์สามารถย้ายไปมาระหว่างอินเทอร์เฟซเอาต์พุตได้โดยไม่ลดคุณสมบัติ และช่วยให้สามารถตั้งค่าพารามิเตอร์ของเลเยอร์ได้</p>\",\"id\":\"<p>1. Desain arsitektur kartu plug-in perangkat keras murni, dipasang pada rak standar 19 inci, sasis struktur logam 15U;</p><p>2. Layar sentuh 7 inci terintegrasi, yang dapat digunakan untuk melihat status perangkat, menyesuaikan kecerahan layar besar, beralih adegan, mengatur parameter, memperbarui firmware, memantau dan menampilkan terlebih dahulu, dll;</p><p>3. Satu kartu output mendukung 10 lapisan, memungkinkan lapisan untuk berpindah antar antarmuka output tanpa mengurangi spesifikasi, dan memungkinkan pengaturan parameter lapisan.</p>\",\"it\":\"<p>1. Architettura basata su schede plug-in hardware puro, montaggio su rack standard da 19 pollici, chassis con struttura metallica 15U;</p><p>2. Touch screen integrato da 7 pollici, utilizzabile per visualizzare lo stato del dispositivo, regolare la luminosità dello schermo, cambiare scena, impostare parametri, aggiornare il firmware, pre-monitorare e visualizzare, ecc.;</p><p>3. Una singola scheda di uscita supporta 10 layer, consentendo ai layer di spostarsi tra le interfacce di uscita senza ridurre le specifiche e abilitando la configurazione dei parametri dei layer.</p>\"}",
+        "haveFactoryProduct": false
+      }
+    }
+  },
+  "sourceType": 1,
+  "topologyJson": "{\"wiring\":{\"zh\":\"\",\"en\":\"\",\"es\":\"\",\"pt\":\"\",\"ja\":\"\",\"ko\":\"\",\"ru\":\"\",\"vi\":\"\",\"th\":\"\",\"id\":\"\",\"it\":\"\"},\"screenConnection\":{\"zh\":\"\",\"en\":\"\",\"es\":\"\",\"pt\":\"\",\"ja\":\"\",\"ko\":\"\",\"ru\":\"\",\"vi\":\"\",\"th\":\"\",\"id\":\"\",\"it\":\"\"}}"
+}

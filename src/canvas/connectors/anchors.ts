@@ -1,4 +1,4 @@
-import { FabricObject, Point } from 'fabric';
+import { FabricObject, Group, Point, util } from 'fabric';
 import { AnchorSide } from '../../types';
 
 export interface AnchorPoint {
@@ -9,6 +9,28 @@ export interface AnchorPoint {
   y: number;
 }
 
+/** Return the effective bounding rect for anchoring (hardware chassis for product nodes, full bounds for others). */
+export function getObjectAnchorBounds(obj: FabricObject): { left: number; top: number; width: number; height: number } {
+  const rec = obj as unknown as Record<string, unknown>;
+  if (rec.ngType === 'product' && typeof (obj as Group).getObjects === 'function') {
+    const children = (obj as Group).getObjects();
+    const chassis = children[0];
+    if (chassis) {
+      const m = obj.calcTransformMatrix();
+      const center = util.transformPoint(new Point(chassis.left, chassis.top), m);
+      const w = (chassis.width || 0) * (obj.scaleX || 1) * (chassis.scaleX || 1);
+      const h = (chassis.height || 0) * (obj.scaleY || 1) * (chassis.scaleY || 1);
+      return {
+        left: center.x - w / 2,
+        top: center.y - h / 2,
+        width: Math.max(1, w),
+        height: Math.max(1, h),
+      };
+    }
+  }
+  return obj.getBoundingRect();
+}
+
 /** Get the 4 primary edge anchor points (or a point at a custom ratio along an edge) in scene coordinates. */
 export function getObjectEdgePoint(
   obj: FabricObject,
@@ -17,7 +39,7 @@ export function getObjectEdgePoint(
   offset = 0
 ): { x: number; y: number } {
   const r = Math.max(0.08, Math.min(0.92, ratio));
-  const br = obj.getBoundingRect();
+  const br = getObjectAnchorBounds(obj);
   switch (side) {
     case 'top':
       return { x: br.left + br.width * r, y: br.top - offset };
@@ -35,7 +57,7 @@ export function getObjectAnchorPorts(obj: FabricObject, forceOffset?: number): A
   const rec = obj as unknown as Record<string, unknown>;
   const objectId = String(rec.ngId || '');
   if (!objectId) return [];
-  const br = obj.getBoundingRect();
+  const br = getObjectAnchorBounds(obj);
   const isSelected = obj.canvas ? obj.canvas.getActiveObject() === obj : false;
   const offset = forceOffset !== undefined ? forceOffset : isSelected ? 28 : 0;
 
@@ -107,7 +129,7 @@ export function findNearestAnchorPort(
     const offset = isSelected ? 28 : 0;
 
     // Fast AABB check: if scenePt is not within effectiveDist of the bounding rect, skip completely
-    const br = obj.getBoundingRect();
+    const br = getObjectAnchorBounds(obj);
     const effectiveDist = (isAltFreeMode ? Math.max(maxDist, 40) : maxDist) + offset;
     if (
       scenePt.x < br.left - effectiveDist ||

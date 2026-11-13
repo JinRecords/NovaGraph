@@ -30,6 +30,28 @@ import { checkCompatibility } from './compatibility';
 export * from './bundleScraper';
 export * from './compatibility';
 
+/** Resiliently resolve a product thumbnail image from the bundle imageMap or fallback slug. */
+export function findProductImageUrl(
+  imageMap: Record<string, string>,
+  model: string
+): string {
+  if (imageMap[model]) return imageMap[model];
+  if (/^mctrl\s*(\d+)/i.test(model)) {
+    const withSpace = model.replace(/^mctrl\s*(\d+)/i, 'MCTRL $1');
+    if (imageMap[withSpace]) return imageMap[withSpace];
+    const noSpace = model.replace(/^mctrl\s*(\d+)/i, 'MCTRL$1');
+    if (imageMap[noSpace]) return imageMap[noSpace];
+  }
+  const normKey = model.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (imageMap[`__norm__${normKey}`]) return imageMap[`__norm__${normKey}`];
+  for (const [k, v] of Object.entries(imageMap)) {
+    if (!k.startsWith('__norm__') && k.toLowerCase().replace(/[^a-z0-9]/g, '') === normKey) {
+      return v;
+    }
+  }
+  return fallbackSlugImageUrl(model);
+}
+
 export interface CatalogBundleData {
   version: string;
   products: ProductItem[];
@@ -114,7 +136,7 @@ export const DEFAULT_BUNDLE_FALLBACK: CatalogBundleData = {
   products: [
     ...STATIC_PRODUCTS.map((p) => ({
       ...p,
-      imageUrl: p.imageUrl || fallbackSlugImageUrl(p.model),
+      imageUrl: p.imageUrl || findProductImageUrl({}, p.model),
     })),
     ...[...STATIC_H_SERIES_INPUT_CARDS, ...STATIC_H_SERIES_OUTPUT_CARDS].map((c) => {
       const ifaceText = c.interfaces
@@ -369,7 +391,7 @@ export async function loadCatalogData(forceRefresh = false): Promise<CatalogBund
                 typeof v === 'object' ? JSON.stringify(v) : (v as string | number | boolean);
             }
           }
-          const imageUrl = imageMap[model] || fallbackSlugImageUrl(model);
+          const imageUrl = findProductImageUrl(imageMap, model);
           products.push({
             id: `${series}::${model}`,
             model,

@@ -90,7 +90,31 @@ const mockChrome = new MockChromeStorage();
 globalThis.localStorage = mockLocal;
 globalThis.chrome = mockChrome;
 
-// Import storage module via tsx
+let storageModule;
+try {
+  storageModule = await import('../src/storage/boards.ts');
+} catch {
+  const path = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+  const { build } = await import(path.join(root, 'node_modules/vite/dist/node/index.js'));
+  const res = await build({
+    root,
+    configFile: false,
+    logLevel: 'error',
+    build: {
+      write: false,
+      lib: {
+        entry: './src/storage/boards.ts',
+        formats: ['cjs'],
+      },
+    },
+  });
+  const output = res[0].output[0].code;
+  storageModule = {};
+  new Function('exports', 'require', output)(storageModule, () => ({}));
+}
+
 const {
   createEmptyBoard,
   saveAllBoards,
@@ -100,7 +124,7 @@ const {
   getActiveBoardId,
   setActiveBoardId,
   initStorage,
-} = await import('../src/storage/boards.ts');
+} = storageModule;
 
 // Test 1: Normal save and load
 console.log('1. Testing normal board creation & persistence...');

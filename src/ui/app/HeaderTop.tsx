@@ -23,7 +23,8 @@ export interface HeaderTopProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomFit: () => void;
-  onLoadSample: () => void;
+  onLoadSample?: () => void;
+  onOpenVnnoxImport: () => void;
   onImportFile: (e: Event) => void;
   onOpenExport: () => void;
   onToggleLocale: () => void;
@@ -57,6 +58,7 @@ export function HeaderTop({
   onZoomOut,
   onZoomFit,
   onLoadSample,
+  onOpenVnnoxImport,
   onImportFile,
   onOpenExport,
   onToggleLocale,
@@ -217,13 +219,15 @@ export function HeaderTop({
 
         <div className="ng-separator" />
 
+        {/* VNNOX Care Solution Import (Experimental) - Replaces the Template Button */}
         <button
-          className="ng-btn ng-btn-secondary"
-          onClick={onLoadSample}
-          title={t('sampleBoard')}
+          className="ng-btn ng-btn-secondary ng-btn-vnnox"
+          onClick={onOpenVnnoxImport}
+          title={t('vnnoxCareTooltip')}
         >
-          <Icon name="sparkles" size={13} />
-          <span>{t('loadSample')}</span>
+          <Icon name="link" size={13} />
+          <span>{t('vnnoxCareBtn')}</span>
+          <span className="ng-badge-experimental">{t('experimentalBadge')}</span>
         </button>
 
         {/* Import file with metadata */}

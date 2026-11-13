@@ -40,6 +40,11 @@ export function Icon({
     case 'select':
       path = <path d="m3 3 7 18 3-7 7-3L3 3Z" />;
       break;
+    case 'link':
+      path = (
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      );
+      break;
     case 'pan':
       path = (
         <path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v8M10 10.5V6a2 2 0 0 0-4 0v8M6 14.5v-1a2 2 0 0 0-4 0v5a7 7 0 0 0 7 7h5a7 7 0 0 0 7-7v-6a2 2 0 0 0-4 0v3" />

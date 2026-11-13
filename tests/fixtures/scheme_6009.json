@@ -1,0 +1,814 @@
+{
+  "contentBackupPdf": "",
+  "contentBackupPdfJson": "{}",
+  "excelJson": "{\"zh\":\"\",\"en\":\"\",\"es\":\"\",\"pt\":\"\",\"ja\":\"\",\"ko\":\"\",\"ru\":\"\",\"vi\":\"\",\"th\":\"\",\"id\":\"\",\"it\":\"\"}",
+  "id": 6009,
+  "nickName": "",
+  "pdfJson": "{\"zh\":\"\",\"en\":\"\",\"es\":\"\",\"pt\":\"\",\"ja\":\"\",\"ko\":\"\",\"ru\":\"\",\"vi\":\"\",\"th\":\"\",\"id\":\"\",\"it\":\"\"}",
+  "projectId": 6009,
+  "schemeContent": {
+    "schemeBaseInfo": {
+      "uid": "957837",
+      "sourceType": 1,
+      "oemInfo": "",
+      "createTime": 1793323541601,
+      "name": "Display screen Soccer field (outdoor)",
+      "updateTime": 1793324115529,
+      "userName": "JinRecords",
+      "type": "TRADITION",
+      "version": "2"
+    },
+    "schemeUserConfigInfo": {
+      "country": "c67",
+      "note": "",
+      "supCabinetsInfo": {
+        "supBtnStatus": false,
+        "solution": {}
+      },
+      "receiveCardName": "",
+      "customBoxSize": {
+        "width": 999.99,
+        "height": 999.99
+      },
+      "customBoxDetailInfo": [],
+      "interface": {
+        "output": {
+          "outputList": [
+            {
+              "filter": false,
+              "num": 0,
+              "name": "DVI",
+              "icon": "DVI.png",
+              "id": "OX1",
+              "type": 1,
+              "key": "sldvi"
+            },
+            {
+              "filter": false,
+              "num": 0,
+              "name": "HDMI1.3",
+              "icon": "HDMI.png",
+              "id": "OX2",
+              "type": 1,
+              "key": "hdmi1P3"
+            },
+            {
+              "filter": false,
+              "num": 0,
+              "name": "HDMI1.4",
+              "icon": "HDMI.png",
+              "id": "OX3",
+              "type": 1,
+              "key": "hdmi1P4"
+            },
+            {
+              "filter": false,
+              "num": 0,
+              "name": "HDMI2.0",
+              "icon": "HDMI.png",
+              "id": "OX4",
+              "type": 1,
+              "key": "hdmi2P0"
+            }
+          ],
+          "MVRInfo": {
+            "label": "是否需要预监？",
+            "value": 2
+          }
+        },
+        "input": [
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDMI1.3",
+            "icon": "HDMI.png",
+            "id": "IX3",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "hdmi1P3"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "DVI",
+            "icon": "DVI.png",
+            "id": "IX1",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "sldvi"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "3G_SDI",
+            "icon": "SDI.png",
+            "id": "IX9",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "sdi3G"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "VGA",
+            "icon": "VGA.png",
+            "id": "IX12",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "vga"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "CVBS",
+            "icon": "CVBS.png",
+            "id": "IX11",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "cvbs"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDBaseT(2k60)",
+            "icon": "HDbaseT-2k60.png",
+            "id": "IX18",
+            "type": 0,
+            "resolution": "1920*1080",
+            "key": "hdBaseT2k"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDMI1.4",
+            "icon": "HDMI.png",
+            "id": "IX4",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "hdmi1P4"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "DP1.1",
+            "icon": "4K_DP.png",
+            "id": "IX6",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "dp1P1"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDBaseT(4k30)",
+            "icon": "HDbaseT-4k30.png",
+            "id": "IX19",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "hdBaseT4k"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDMI2.0",
+            "icon": "HDMI.png",
+            "id": "IX5",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "hdmi2P0"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "DP1.2",
+            "icon": "4K_DP.png",
+            "id": "IX7",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "dp1P2"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "12G_SDI",
+            "icon": "SDI.png",
+            "id": "IX10",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "sdi12G"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "NDI",
+            "icon": "NDI.png",
+            "id": "IX20",
+            "type": 0,
+            "resolution": "3840*2160",
+            "key": "ndi"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "RJ45 (IP decoding)",
+            "icon": "IP.png",
+            "id": "IX8",
+            "type": 0,
+            "resolution": "7680*4320",
+            "key": "rj45"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "DP1.4",
+            "icon": "4K_DP.png",
+            "id": "IX13",
+            "type": 0,
+            "resolution": "7680*4320",
+            "key": "dp1P4"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "HDMI2.1",
+            "icon": "HDMI.png",
+            "id": "IX14",
+            "type": 0,
+            "resolution": "8192*4392",
+            "key": "hdmi2P1"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "Video over IP",
+            "icon": "VoIP.png",
+            "id": "IX15",
+            "type": 0,
+            "resolution": "4096*2160",
+            "key": "voIp"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "OPT",
+            "icon": "光口.png",
+            "id": "IX16",
+            "type": 0,
+            "resolution": "4096*2160",
+            "key": "fibreOptical"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "ST2110(25G)",
+            "icon": "ST2110.png",
+            "id": "IX17",
+            "type": 0,
+            "resolution": "4096*2160",
+            "key": "st2110"
+          },
+          {
+            "filter": false,
+            "num": 0,
+            "name": "ST2110(100G)",
+            "icon": "ST2110.png",
+            "id": "IX21",
+            "type": 0,
+            "resolution": "4096*2160",
+            "key": "st2110100G"
+          }
+        ]
+      },
+      "manufacturer": "General",
+      "isCustomPointSpace": false,
+      "receiveCardNum": 0,
+      "mediaServer": [],
+      "isCustomBox": true,
+      "dimension": {
+        "ftWidth": 18,
+        "screenBgUrl": "",
+        "unit": 0,
+        "screenParam": 1,
+        "width": 18,
+        "realUnit": 1,
+        "isFtUnit": false,
+        "ftHeight": 5,
+        "height": 5
+      },
+      "rcData": [
+        {
+          "cableMaxWidth": 0,
+          "moduleHeight": 999.99,
+          "moduleNum": "999.99*999.99",
+          "num": 90,
+          "moduleWidth": 999.99,
+          "recommend": false,
+          "rgb": 0,
+          "carryingCapacityWidth": 208,
+          "version": "",
+          "carryingCapacity": "208x208",
+          "hubType": "高密接插件",
+          "hub": "999.99x999.99",
+          "receivingCardTagId": 5,
+          "width": 208,
+          "model": "",
+          "carryingCapacityHeight": 208,
+          "id": "rc0",
+          "cableMaxHeight": 0,
+          "height": 208,
+          "receivingCardId": 360
+        }
+      ],
+      "pointRatio": "4.8076",
+      "supModuleInfo": {
+        "sizeWidth": 999.99,
+        "numWidth": 1,
+        "resolutionHeight": 208,
+        "numHeight": 1,
+        "sizeHeight": 999.99,
+        "resolutionWidth": 208
+      },
+      "displayNums": {
+        "rowNum": "",
+        "colNum": ""
+      },
+      "moduleType": 1,
+      "highLevelAttribute": {
+        "frameRate": "60",
+        "multilayerNumber": [
+          {
+            "interfaceType": "HDMI1.3",
+            "value": "",
+            "key": "2K*1K"
+          },
+          {
+            "interfaceType": "HDMI1.4",
+            "value": "",
+            "key": "4K*1K"
+          },
+          {
+            "interfaceType": "HDMI2.0",
+            "value": "",
+            "key": "4K*2K"
+          },
+          {
+            "interfaceType": "DP1.4",
+            "value": "",
+            "key": "8K*2K"
+          }
+        ],
+        "bitDepth": "8",
+        "selectedOptions": [
+          "longDistance"
+        ],
+        "fiberDistance": "0.3",
+        "isUltraWideScreen": false
+      },
+      "more": {
+        "screenRadio": "-1",
+        "realHeight": 5,
+        "supCalcBoxStatus": {},
+        "ACTIVE_SHUTTER_3D": false,
+        "DISTRIBUTE": false,
+        "screenTotal": "3.894million",
+        "moduleHeightCount": 5,
+        "moduleWidthCount": 18,
+        "screenArea": 90,
+        "onSiteApply": [],
+        "realPixWidth": 3744,
+        "realPixHeight": 1040,
+        "sizeRatio": "18:5",
+        "realArea": 89.999,
+        "isFtUnit": false,
+        "enterpriseId": 6114638,
+        "realWidth": 17.9998,
+        "applyScene": "",
+        "productModelId": "customProductId",
+        "isUltraWideScreen": false,
+        "screenEffect": [],
+        "multiLayer": ""
+      },
+      "moreProductInfo": {
+        "heatReleaseCoefficient": 0,
+        "currentSpecification": 0,
+        "manufacturerId": 0,
+        "weight": 0,
+        "partNumber": "",
+        "maximumPower": 0,
+        "averagePower": 0
+      },
+      "modelType": "",
+      "productInfo": "",
+      "scanNum": "",
+      "moduleRealSize": {
+        "width": "999.99",
+        "height": "999.99"
+      },
+      "series": "",
+      "moduleRatio": {
+        "width": "208",
+        "height": "208"
+      },
+      "centralCtrl": [],
+      "countryName": {
+        "ruName": "",
+        "itName": "",
+        "zhName": "",
+        "idName": "",
+        "viName": "",
+        "enName": "Malaysia",
+        "koName": "",
+        "ptName": "",
+        "esName": "",
+        "jaName": "",
+        "thName": ""
+      },
+      "graphicsInfo": [],
+      "moduleInterface": ""
+    },
+    "screenType": "LED",
+    "schemeContent": {
+      "accessoryInfo": {
+        "steelStructure": 89.999,
+        "parvicostellae": 90,
+        "originData": [],
+        "windingDisplacement": 90,
+        "list": [
+          {
+            "unit": "pcs",
+            "quantity": 6,
+            "detailName": "",
+            "name": "Long Ethernet Cable",
+            "tag": "part",
+            "source": "SYSTEM",
+            "sort": 1,
+            "url": [
+              {
+                "path": "./img/deviceDefault/主网线.png",
+                "name": "LongEthernetCable.png"
+              }
+            ],
+            "key": "mainCable"
+          },
+          {
+            "unit": "pcs",
+            "quantity": 84,
+            "detailName": "",
+            "name": "Short Ethernet Cable",
+            "tag": "part",
+            "source": "SYSTEM",
+            "sort": 2,
+            "url": [
+              {
+                "path": "./img/deviceDefault/短网线.png",
+                "name": "ShortEthernetCable.png"
+              }
+            ],
+            "key": "shortCable"
+          },
+          {
+            "unit": "pc",
+            "quantity": 1,
+            "detailName": "",
+            "name": "Optical Fiber",
+            "tag": "part",
+            "source": "SYSTEM",
+            "sort": 6,
+            "url": [
+              {
+                "path": "./img/deviceDefault/光纤.png",
+                "name": "Optical Fiber.png"
+              }
+            ],
+            "key": "lightLine"
+          },
+          {
+            "unit": "pc",
+            "quantity": 1,
+            "detailName": "",
+            "name": "Remote Control",
+            "tag": "part",
+            "source": "SYSTEM",
+            "sort": 13,
+            "url": [
+              {
+                "path": "./img/deviceDefault/遥控器.png",
+                "name": "Remote Control.png"
+              }
+            ]
+          },
+          {
+            "unit": "pc",
+            "quantity": 1,
+            "detailName": "",
+            "name": "Mirroring Dongle",
+            "tag": "part",
+            "source": "SYSTEM",
+            "sort": 14,
+            "url": [
+              {
+                "path": "./img/deviceDefault/投屏器.png",
+                "name": "Mirroring Dongle.png"
+              }
+            ]
+          },
+          {
+            "unit": "pc",
+            "quantity": "1",
+            "detailName": "",
+            "name": "NovaLCT",
+            "model": "Desktop PC",
+            "remark": "Professional LED display control software suitable for hardware configuration and real-time monitoring in complex applications.",
+            "tag": "soft",
+            "source": "SYSTEM",
+            "type": "device",
+            "priority": 1,
+            "url": [
+              {
+                "path": "./img/deviceDefault/LCT.png",
+                "name": "LCT.png"
+              }
+            ],
+            "key": "T"
+          },
+          {
+            "unit": "pc",
+            "quantity": "1",
+            "detailName": "",
+            "name": "VNNOX",
+            "model": "Desktop PC",
+            "remark": "VNNOX allows for content publishing and cluster management. For more information, please go to https://www.vnnox.com/?l=en",
+            "tag": "soft",
+            "source": "SYSTEM",
+            "type": "device",
+            "priority": 2,
+            "url": [
+              {
+                "path": "./img/deviceDefault/vnnox.png",
+                "name": "VNNOX.png"
+              }
+            ],
+            "key": "T"
+          },
+          {
+            "unit": "pc",
+            "quantity": "1",
+            "detailName": "",
+            "name": "VNNOX Care",
+            "model": "Mobile App/Web Cloud",
+            "remark": "VNNOX Care supports pre-sales solution configuration, remote screen monitoring and maintenance, as well as cluster management. For more information, visit the official website: https://www.vnnox.com/?l=en.",
+            "tag": "soft",
+            "source": "SYSTEM",
+            "type": "device",
+            "priority": 3,
+            "url": [
+              {
+                "path": "./img/deviceDefault/vnnoxCare.png",
+                "name": "VNNOX.png"
+              }
+            ],
+            "key": "T"
+          }
+        ]
+      },
+      "mediaServers": [],
+      "fiberConverterInfo": {
+        "hardwareProductName": "CVT10-M",
+        "limitWidth": 0,
+        "ACTIVE_SHUTTER_3D": false,
+        "supportFreeWiring": false,
+        "netPortNum": 10,
+        "cascadeNum": 0,
+        "tenBitConfigs": [
+          {
+            "devices": [],
+            "maxLoad": {
+              "value": ""
+            }
+          }
+        ],
+        "SUPPORT_5G": false,
+        "MAX_FRAME_FREQUENCY": "",
+        "customerType": 0,
+        "pairByNetPort": true,
+        "subCardType": "",
+        "receiveCardType": "",
+        "FRAME_FREQUENCY_DOUBLING": false,
+        "bear": 0,
+        "factoryProductInfo": {},
+        "id": 1233,
+        "haveFactoryProduct": false,
+        "networkPortLoad": "650000",
+        "slotNum": 0,
+        "inputCarryingCapacity": "",
+        "SUPPORT_LOW_LATENCY": false,
+        "supportFreeConversion": false,
+        "customerName": "CVT10-M",
+        "props": {
+          "ACTIVE_SHUTTER_3D": false,
+          "HDR": false,
+          "MULTI_LAYER": false
+        },
+        "limitWH": "--",
+        "maxInputlimitWidth": 0,
+        "chassisSize": 0,
+        "lightPortNum": 1,
+        "bitDepth": {
+          "BIT8_DEPTH": true,
+          "BIT12_DEPTH": false,
+          "BIT10_DEPTH": false
+        },
+        "needLightPortNum": 1,
+        "name": "CVT10-M",
+        "introductionUrl": "https://www.novastar.tech/accessories/accessories.html?catid=6",
+        "note": "",
+        "cascadeSupport": 0,
+        "distance": "0.3",
+        "tagId": 3489,
+        "plugInCard": 0,
+        "remark": 1,
+        "fiberConverters": "",
+        "limitHeight": 0,
+        "lightLineQuantity": 2,
+        "hardwareProductType": "PHOTOVOLTAIC_CONVERSION",
+        "imageUrl": "https://care-sg.oss-ap-southeast-1.aliyuncs.com/v2_care/1763016565990/186011763016565990.png",
+        "HDR": false,
+        "ctrlBackUp": 1,
+        "freeTransformWindowCount": "",
+        "REMOTE_PLAY_CONTROL": false,
+        "interfaceHash": {
+          "FIBREOPTICAL": {
+            "resolutionHeight": "",
+            "interfaceVersion": "0",
+            "updateAt": "2026-07-07T12:40:14.000",
+            "hardwareProductId": 1233,
+            "hardwareProductInterfaceId": 21,
+            "createAt": "2026-07-07T12:40:14.000",
+            "muid": 18601,
+            "interfaceType": 1,
+            "id": 11242,
+            "interfaceName": "光口",
+            "interfaceCode": "FIBREOPTICAL",
+            "resolutionWidth": "",
+            "interfaceNum": 1
+          },
+          "NETWORKPORT": {
+            "resolutionHeight": "",
+            "interfaceVersion": "0",
+            "updateAt": "2026-07-07T12:40:14.000",
+            "hardwareProductId": 1233,
+            "hardwareProductInterfaceId": 20,
+            "createAt": "2026-07-07T12:40:14.000",
+            "muid": 18601,
+            "interfaceType": 1,
+            "id": 11241,
+            "interfaceName": "网口",
+            "interfaceCode": "NETWORKPORT",
+            "resolutionWidth": "",
+            "interfaceNum": 10
+          }
+        },
+        "isFactory": false,
+        "introduction": "{\"zh\":\"<p>1、2 路光纤接口，支持光纤热插拔，单个接口带宽 10Gbit/s，传输距离：300m。（出厂安装光模块）</p><p>2、10 路千兆网口，单个网口带宽 1Gbit/s。 </p><p>− 光口输入网口输出：输入设备是 8 网口或 16 网口时，CVT10 的前 8 路网口可用。 输入设备是 10 网口或 20 网口时，CVT10 的 10 路网口都可用。如果网口 9 和 10 不可用， 后续升级可支持。 </p><p>− 网口输入光口输出：CVT10 的 10 路网口都可用。 </p><p>3、 1 路 USB（Type B）控制接口。</p>\",\"es\":\"<ol><li style=\\\"text-align: start;\\\"><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">2 interfaces de fibra óptica compatibles con extracción y conexión en caliente (hot-swapping), con un ancho de banda por interfaz de 10 Gbit/s y una distancia de transmisión de 300 m (módulos ópticos preinstalados de fábrica).</span></li><li style=\\\"text-align: start;\\\"><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">10 puertos Ethernet Gigabit, cada uno con un ancho de banda de 1 Gbit/s.</span></li><li style=\\\"text-align: start;\\\"><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">1 interfaz de control USB (Tipo B).</span></li></ol>\",\"en\":\"<ol><li style=\\\"text-align: start;\\\">2 fiber optic interfaces supporting hot-swapping, with a single interface bandwidth of 10 Gbit/s and a transmission distance of 300 m (optical modules pre-installed at the factory).</li><li style=\\\"text-align: start;\\\">10 Gigabit Ethernet ports, each with a bandwidth of 1 Gbit/s.</li><li style=\\\"text-align: start;\\\">1 USB (Type B) control interface.</li></ol>\",\"pt\":\"<ol><li style=\\\"text-align: start;\\\"><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">2 interfaces de fibra óptica compatível com hot-swapping (troca em quente), com largura de banda por interface de 10 Gbit/s e distância de transmissão de 300 m (módulos ópticos pré-instalados de fábrica).</span></li><li style=\\\"text-align: start;\\\"><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">10 portas Ethernet Gigabit, cada uma com largura de banda de 1 Gbit/s.</span></li><li style=\\\"text-align: start;\\\"><span style=\\\"color: rgba(0, 0, 0, 0.85); background-color: rgb(255, 255, 255);\\\">1 interface de controle USB (Tipo B).</span></li></ol>\",\"ko\":\"<ol><li style=\\\"text-align: start;\\\">핫 스왑을 지원하는 광섬유 인터페이스 2개로, 단일 인터페이스 대역폭 10 Gbit/s, 전송 거리 300m (공장에서 사전 설치된 광 모듈 포함).</li><li style=\\\"text-align: start;\\\">기가비트 이더넷 포트 10개, 각 포트 대역폭 1 Gbit/s.</li><li style=\\\"text-align: start;\\\">USB (Type B) 제어 인터페이스 1개.</li></ol>\",\"ja\":\"<ol><li style=\\\"text-align: start;\\\">ホットスワップ対応の光ファイバーインターフェース 2 基、単一インターフェース帯域幅 10 Gbit/s、伝送距離 300m（工場出荷時に光モジュールがプリインストール）。</li><li style=\\\"text-align: start;\\\">ギガビットイーサネットポート 10 基、各ポート帯域幅 1 Gbit/s。</li><li style=\\\"text-align: start;\\\">USB (Type B) 制御インターフェース 1 基。</li></ol>\",\"ru\":\"<ol><li style=\\\"text-align: start;\\\">2 интерфейса волоконно-оптической связи с поддержкой горячей замены, ширина полосы пропускания одного интерфейса 10 Гбит/с, длина передачи 300 м (оптические модули предустановлены на заводе).</li><li style=\\\"text-align: start;\\\">10 портов Gigabit Ethernet, каждая с шириной полосы пропускания 1 Гбит/с.</li><li style=\\\"text-align: start;\\\">1 интерфейс управления USB (Тип B).</li></ol>\",\"vi\":\"<p>1.2 Giao diện quang hỗ trợ cắm nóng, với băng thông giao diện đơn là 10 Gbit/s và khoảng cách truyền dẫn 300 m (các mô-đun quang được lắp đặt sẵn tại nhà máy).</p><p>2.10 Cổng Ethernet Gigabit, mỗi cổng có băng thông 1 Gbit/s.</p><p>3.1 Giao diện điều khiển USB (Loại B).</p>\",\"th\":\"<p>1.2 อินเทอร์เฟซไฟเบอร์ออปติก รองรับการเสียบใช้งานขณะเครื่องทำงาน (Hot-swapping) โดยมีแบนด์วิดท์ต่ออินเทอร์เฟซ 10 Gbit/s และระยะการส่งสัญญาณ 300 เมตร (โมดูลออปติกติดตั้งมาจากโรงงานแล้ว)</p><p>2.10 พอร์ต Gigabit Ethernet แต่ละพอร์ตมีแบนด์วิดท์ 1 Gbit/s</p><p>3.1 อินเทอร์เฟซควบคุม USB (Type B)</p>\",\"id\":\"<p>1.2 antarmuka serat optik yang mendukung hot-swapping, dengan bandwidth antarmuka tunggal 10 Gbit/s dan jarak transmisi 300 m (modul optik telah terpasang di pabrik).</p><p>2.10 port Gigabit Ethernet, masing-masing dengan bandwidth 1 Gbit/s.</p><p>3.1 antarmuka kontrol USB (Tipe B).</p>\",\"it\":\"<p>1.2 interfacce in fibra ottica con supporto hot-swapping, con una larghezza di banda per singola interfaccia di 10 Gbit/s e una distanza di trasmissione di 300 m (moduli ottici preinstallati in fabbrica).</p><p>2.10 porte Gigabit Ethernet, ciascuna con una larghezza di banda di 1 Gbit/s.</p><p>3.1 interfaccia di controllo USB (Tipo B).</p>\"}",
+        "productProperties": [
+          {
+            "muid": 18601,
+            "propertyCode": "DISTANCE",
+            "propertyName": "传输距离",
+            "propertyVal": "0.3",
+            "updateAt": "2026-07-07T12:40:14.000",
+            "hardwareProductCode": "CVT10-M",
+            "hardwareProductId": 1233,
+            "id": 98190,
+            "createAt": "2026-07-07T12:40:14.000"
+          },
+          {
+            "muid": 18601,
+            "propertyCode": "INTRODUCTION_URL",
+            "propertyName": "产品规格书URL",
+            "propertyVal": "https://www.novastar.tech/accessories/accessories.html?catid=6",
+            "updateAt": "2026-07-07T12:40:14.000",
+            "hardwareProductCode": "CVT10-M",
+            "hardwareProductId": 1233,
+            "id": 98191,
+            "createAt": "2026-07-07T12:40:14.000"
+          },
+          {
+            "muid": 18601,
+            "propertyCode": "FRONT_VIEW",
+            "propertyName": "图片",
+            "propertyVal": "v2_care/1763016565990/186011763016565990.png",
+            "updateAt": "2026-07-07T12:40:14.000",
+            "hardwareProductCode": "CVT10-M",
+            "hardwareProductId": 1233,
+            "id": 98192,
+            "createAt": "2026-07-07T12:40:14.000"
+          }
+        ],
+        "quantity": 2,
+        "SUPPORT_UPLAY": false,
+        "mainCableQuantity": 12,
+        "mvr": 0,
+        "groups": [
+          {
+            "layers": [
+              {
+                "windowCount": ""
+              }
+            ]
+          }
+        ],
+        "label": "",
+        "defaultQuantity": 2,
+        "eightBitConfigs": [
+          {
+            "devices": [],
+            "maxLoad": {
+              "value": ""
+            }
+          }
+        ],
+        "productAttribute": "",
+        "supportMultilayer": false,
+        "twelveBitConfigs": [
+          {
+            "devices": [],
+            "maxLoad": {
+              "value": ""
+            }
+          }
+        ],
+        "MIN_FRAME_FREQUENCY": "",
+        "labelBear": 0,
+        "maxInputlimitHeight": 0,
+        "hardwareProductCode": "CVT10-M",
+        "maxInputlimitWH": "--",
+        "powerBackUp": 1,
+        "networkPortNumber": 8
+      },
+      "mediaServer": [],
+      "topology": {
+        "subCabinetTopo": {},
+        "selectedFoldNum": 1,
+        "diagramGroupInfo": {},
+        "cableLoad": 655360,
+        "drawStyle": "VLT2RB",
+        "drawPrior": 1,
+        "isUltraWideScreen": false
+      },
+      "centralCtrl": [],
+      "receiveCardInventory": {
+        "rcNum": 90,
+        "cableMaxWidth": 0,
+        "module": {
+          "width": 999.99,
+          "height": 999.99
+        },
+        "num": 90,
+        "rgb": 0,
+        "factoryReceivingCardName": "",
+        "selectedFoldNum": 1,
+        "receivingCardName": "",
+        "carryingCapacity": "208x208",
+        "receivingCardTagId": 5,
+        "imageUrl": "",
+        "bear": {
+          "width": 208,
+          "height": 208
+        },
+        "selectedFoldName": "Standard",
+        "introduction": "",
+        "cableMaxHeight": 0
+      },
+      "sendCardInventory": {
+        "hardwareProductName": "TU20 Pro",
+        "cascadeSupport": 0,
+        "supportFreeWiring": true,
+        "inputCarryingCapacity": "",
+        "num": 1,
+        "type": 3,
+        "version": "TU20 Pro",
+        "maxInputlimitWidth": "3840",
+        "internetAccess": 6,
+        "children": [],
+        "labelBear": "3900000",
+        "lightPortNum": 0,
+        "imageUrl": "https://care-sg.oss-ap-southeast-1.aliyuncs.com/v2_care/1691992875748/186011691992875748.png",
+        "limit": {
+          "width": "4096",
+          "height": "1920"
+        },
+        "maxInputlimitHeight": "3840",
+        "bear": 3900000,
+        "id": 551,
+        "isForceCascadeSupport": false,
+        "introductionUrl": "https://www.novastar.tech/product/detail.html?catid=4&id=44",
+        "baseName": "TU20 Pro",
+        "introduction": "{\"zh\":\"\",\"en\":\"<p>TU20 Pro intelligent broadcasting processor integrates Android application system and sending function into one, and can add third-party APP application, with powerful interaction and broadcasting control ability, and video processing ability, which can be widely used in commercial display, conference and exhibition hall and other scenarios, and truly achieve one machine to handle multiple scenarios. </p>\",\"es\":\"<p>El procesador de transmisión inteligente TU20 Pro integra el sistema de aplicación Android y la función de envío en uno, y puede agregar aplicaciones de terceros, con una poderosa capacidad de interacción y control de transmisión, y capacidad de procesamiento de video, que puede usarse ampliamente en exhibiciones comerciales, salas de conferencias y exposiciones y otros escenarios, y realmente lograr que una máquina maneje múltiples escenarios.</p>\",\"pt\":\"<p>O processador de transmissão inteligente TU20 Pro integra o sistema de aplicativo Android e a função de envio em um, e pode adicionar aplicativo APP de terceiros, com poderosa interação e capacidade de controle de transmissão, e capacidade de processamento de vídeo, que pode ser amplamente utilizado em exibição comercial, sala de conferências e exposições e outros cenários, e realmente consegue uma máquina para lidar com vários cenários.</p>\",\"ko\":\"<p>TU20 Pro 지능형 방송 프로세서는 안드로이드 애플리케이션 시스템과 전송 기능을 하나로 통합하였으며, 강력한 상호작용 및 방송 제어 기능과 영상 처리 기능을 갖춘 타사 APP 애플리케이션을 추가할 수 있어 상업용 디스플레이, 회의 및 전시장 등 다양한 시나리오에서 널리 활용 가능하며, 진정한 의미에서 하나의 기계로 다양한 시나리오를 처리할 수 있습니다.</p>\",\"ja\":\"<p>TU20 Pro インテリジェント ブロードキャスト プロセッサは、Android アプリケーション システムと送信機能を 1 つに統合し、強力なインタラクションとブロードキャスト制御機能、ビデオ処理機能を備えたサードパーティの APP アプリケーションを追加できるため、商業用ディスプレイ、会議場、展示場などのシナリオで幅広く使用でき、1 台のマシンで複数のシナリオを処理できます。</p>\",\"ru\":\"<p>Интеллектуальный вещательный процессор TU20 Pro объединяет в себе систему приложений Android и функцию отправки, а также может добавлять сторонние приложения с мощными возможностями взаимодействия и управления вещанием, а также обработки видео, что позволяет широко использовать его в коммерческих демонстрационных залах, конференц-залах, выставочных залах и других сценариях, позволяя по-настоящему реализовать на одной машине множество сценариев.</p>\",\"vi\":\"<p>Bộ xử lý phát sóng thông minh TU20 Pro tích hợp hệ thống ứng dụng Android và chức năng phát sóng vào một thiết bị duy nhất, có thể thêm ứng dụng APP của bên thứ ba, với khả năng tương tác và điều khiển phát sóng mạnh mẽ, cùng khả năng xử lý video, có thể được sử dụng rộng rãi trong màn hình thương mại, phòng hội nghị và triển lãm và các kịch bản khác, thực sự đạt được mục tiêu một thiết bị xử lý nhiều nhiệm vụ.</p>\",\"th\":\"<p>โปรเซสเซอร์กระจายเสียงอัจฉริยะ TU20 Pro ผสานรวมระบบแอปพลิเคชัน Android และฟังก์ชันการส่งเข้าไว้ในเครื่องเดียว และสามารถเพิ่มแอปพลิเคชัน APP จากภายนอกได้ มีความสามารถในการโต้ตอบและควบคุมการกระจายเสียงอย่างมีประสิทธิภาพ รวมถึงความสามารถในการประมวลผลวิดีโอ ซึ่งสามารถใช้งานได้อย่างกว้างขวางในจอแสดงผลเชิงพาณิชย์ ห้องประชุม และห้องนิทรรศการ และสถานการณ์อื่นๆ และทำให้เครื่องเดียวสามารถจัดการได้หลายสถานการณ์อย่างแท้จริง</p>\",\"id\":\"<p>Prosesor penyiaran cerdas TU20 Pro mengintegrasikan sistem aplikasi Android dan fungsi pengiriman menjadi satu, dan dapat menambahkan aplikasi pihak ketiga, dengan kemampuan interaksi dan kontrol penyiaran yang kuat, serta kemampuan pemrosesan video, yang dapat digunakan secara luas di layar komersial, ruang konferensi dan pameran, dan skenario lainnya, dan benar-benar mewujudkan satu mesin untuk menangani berbagai skenario.</p>\",\"it\":\"<p>Il processore di trasmissione intelligente TU20 Pro integra il sistema di applicazioni Android e la funzione di trasmissione in un unico dispositivo, e può essere dotato di applicazioni di terze parti, offrendo potenti capacità di interazione e controllo della trasmissione, nonché di elaborazione video. Può essere ampiamente utilizzato in contesti come display commerciali, sale conferenze e fiere, realizzando così una soluzione completa per molteplici scenari con un unico dispositivo.</p>\"}",
+        "haveFactoryProduct": false
+      }
+    }
+  },
+  "sourceType": 1,
+  "topologyJson": "{\"wiring\":{\"zh\":\"\",\"en\":\"\",\"es\":\"\",\"pt\":\"\",\"ja\":\"\",\"ko\":\"\",\"ru\":\"\",\"vi\":\"\",\"th\":\"\",\"id\":\"\",\"it\":\"\"},\"screenConnection\":{\"zh\":\"\",\"en\":\"\",\"es\":\"\",\"pt\":\"\",\"ja\":\"\",\"ko\":\"\",\"ru\":\"\",\"vi\":\"\",\"th\":\"\",\"id\":\"\",\"it\":\"\"}}"
+}

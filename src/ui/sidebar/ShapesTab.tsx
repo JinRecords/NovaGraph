@@ -86,6 +86,30 @@ export function ShapesTab({
     e.dataTransfer!.effectAllowed = 'copy';
   };
 
+  const handleShapeDragStart = (e: DragEvent, kind: ShapeKind) => {
+    e.dataTransfer?.setData('application/novagraph-shape', kind);
+    e.dataTransfer?.setData('text/plain', `shape:${kind}`);
+    e.dataTransfer!.effectAllowed = 'copy';
+  };
+
+  const handleTextDragStart = (e: DragEvent) => {
+    e.dataTransfer?.setData('application/novagraph-text', 'Text');
+    e.dataTransfer?.setData('text/plain', 'text:note');
+    e.dataTransfer!.effectAllowed = 'copy';
+  };
+
+  const handleStickyDragStart = (e: DragEvent) => {
+    e.dataTransfer?.setData('application/novagraph-sticky', 'true');
+    e.dataTransfer?.setData('text/plain', 'sticky:note');
+    e.dataTransfer!.effectAllowed = 'copy';
+  };
+
+  const handleFrameDragStart = (e: DragEvent) => {
+    e.dataTransfer?.setData('application/novagraph-frame', 'true');
+    e.dataTransfer?.setData('text/plain', 'frame:group');
+    e.dataTransfer!.effectAllowed = 'copy';
+  };
+
   return (
     <div className="ng-sidebar-body">
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
@@ -102,8 +126,11 @@ export function ShapesTab({
           <button
             key={s.id}
             className="ng-btn ng-btn-secondary"
-            style={{ justifyContent: 'flex-start', padding: '10px 8px' }}
+            style={{ justifyContent: 'flex-start', padding: '10px 8px', cursor: 'grab' }}
+            draggable
+            onDragStart={(e) => handleShapeDragStart(e, s.id as ShapeKind)}
             onClick={() => controller.addShape(s.id as ShapeKind)}
+            title={t('dragOrClickToAdd') || 'Drag to canvas or click to add'}
           >
             <Icon name={s.id} size={14} />
             <span style={{ fontSize: '11px' }}>{s.label}</span>
@@ -112,15 +139,36 @@ export function ShapesTab({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-        <button className="ng-btn ng-btn-secondary" onClick={() => controller.addText()}>
+        <button
+          className="ng-btn ng-btn-secondary"
+          draggable
+          onDragStart={handleTextDragStart}
+          onClick={() => controller.addText()}
+          title={t('dragOrClickToAdd') || 'Drag to canvas or click to add'}
+          style={{ cursor: 'grab' }}
+        >
           <Icon name="text" size={14} />
           {t('addText')}
         </button>
-        <button className="ng-btn ng-btn-secondary" onClick={() => controller.addStickyNote()}>
+        <button
+          className="ng-btn ng-btn-secondary"
+          draggable
+          onDragStart={handleStickyDragStart}
+          onClick={() => controller.addStickyNote()}
+          title={t('dragOrClickToAdd') || 'Drag to canvas or click to add'}
+          style={{ cursor: 'grab' }}
+        >
           <Icon name="sticky" size={14} />
           {t('addStickyNote')}
         </button>
-        <button className="ng-btn ng-btn-secondary" onClick={() => controller.addFrame()} title="Add container Frame for grouping nodes">
+        <button
+          className="ng-btn ng-btn-secondary"
+          draggable
+          onDragStart={handleFrameDragStart}
+          onClick={() => controller.addFrame()}
+          title="Drag container Frame to canvas or click to add"
+          style={{ cursor: 'grab' }}
+        >
           <Icon name="frame" size={14} />
           <span>Frame</span>
         </button>

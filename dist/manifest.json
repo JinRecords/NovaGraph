@@ -29,6 +29,7 @@
   ],
   "host_permissions": [
     "*://novastar.show/*",
+    "*://*.vnnox.com/*",
     "https://api.iconify.design/*",
     "https://api.simplesvg.com/*",
     "https://api.unisvg.com/*"

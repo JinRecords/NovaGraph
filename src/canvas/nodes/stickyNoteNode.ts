@@ -20,7 +20,16 @@ export function createStickyNoteNode(options: {
   const text = options.text ?? 'Double-click or use inspector to edit sticky note...';
   const includeInExport = options.includeInExport ?? true;
   const w = Math.max(120, options.width ?? 180);
-  const h = Math.max(80, options.height ?? 150);
+
+  // Auto-expand sticky note height to cleanly enclose all lines of text without spilling out
+  const maxTextWidth = Math.max(40, w - 24);
+  const rawLines = text.split('\n');
+  const approxLines = rawLines.reduce((acc, line) => {
+    const charsPerLine = Math.max(1, Math.floor(maxTextWidth / (fontSize * 0.58)));
+    return acc + Math.max(1, Math.ceil((line.length || 1) / charsPerLine));
+  }, 0);
+  const neededH = Math.ceil(approxLines * (fontSize * 1.35) + 48);
+  const h = Math.max(80, options.height ?? 150, neededH);
 
   const bg = new Rect({
     width: w,

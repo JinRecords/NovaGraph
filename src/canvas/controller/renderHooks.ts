@@ -8,7 +8,7 @@ import {
   renderAnchorPortsOverlay,
   renderConnectorsOnContext,
 } from '../connectors';
-import { getLedVisualSize } from '../ledScreen';
+import { getLedVisualSize, getScreenLocalOffset } from '../ledScreen';
 import { drawCanvasBackground } from './viewport';
 import { getHighlightedConnectorIds } from './connectorsManager';
 
@@ -20,16 +20,17 @@ export function getPartitionSceneLine(
   const rec = group as unknown as Record<string, unknown>;
   const cfg = rec.ngLedConfig as LedScreenConfig;
   const { innerW, innerH } = getLedVisualSize(cfg);
+  const { ox, oy } = getScreenLocalOffset(group);
   const matrix = group.calcTransformMatrix();
   if (axis === 'v') {
-    const x = -innerW / 2 + ratio * innerW;
-    const p1 = util.transformPoint(new Point(x, -innerH / 2), matrix);
-    const p2 = util.transformPoint(new Point(x, innerH / 2), matrix);
+    const x = ox - innerW / 2 + ratio * innerW;
+    const p1 = util.transformPoint(new Point(x, oy - innerH / 2), matrix);
+    const p2 = util.transformPoint(new Point(x, oy + innerH / 2), matrix);
     return { p1, p2 };
   } else {
-    const y = -innerH / 2 + ratio * innerH;
-    const p1 = util.transformPoint(new Point(-innerW / 2, y), matrix);
-    const p2 = util.transformPoint(new Point(innerW / 2, y), matrix);
+    const y = oy - innerH / 2 + ratio * innerH;
+    const p1 = util.transformPoint(new Point(ox - innerW / 2, y), matrix);
+    const p2 = util.transformPoint(new Point(ox + innerW / 2, y), matrix);
     return { p1, p2 };
   }
 }

@@ -30,6 +30,7 @@ export function ProductsTab({
   const [query, setQuery] = useState('');
   const [seriesFilter, setSeriesFilter] = useState('ALL');
   const [failedImgs, setFailedImgs] = useState<Set<string>>(new Set());
+  const [retryImgs, setRetryImgs] = useState<Map<string, string>>(new Map());
 
   const filteredProducts = useMemo(() => {
     return searchProducts(products, query, seriesFilter);
@@ -40,8 +41,21 @@ export function ProductsTab({
     e.dataTransfer!.effectAllowed = 'copy';
   };
 
-  const markImgFailed = (id: string) => {
-    setFailedImgs((prev) => new Set(prev).add(id));
+  const handleImgError = (prod: ProductItem, currentSrc: string) => {
+    // If the image fails and has alternate hyphenation (e.g. mctrl660-pro vs mctrl-660-pro), retry once with alternate
+    if (!retryImgs.has(prod.id)) {
+      if (currentSrc.includes('mctrl660-pro')) {
+        const alt = currentSrc.replace('mctrl660-pro', 'mctrl-660-pro');
+        setRetryImgs((prev) => new Map(prev).set(prod.id, alt));
+        return;
+      }
+      if (currentSrc.includes('mctrl-660-pro')) {
+        const alt = currentSrc.replace('mctrl-660-pro', 'mctrl660-pro');
+        setRetryImgs((prev) => new Map(prev).set(prod.id, alt));
+        return;
+      }
+    }
+    setFailedImgs((prev) => new Set(prev).add(prod.id));
   };
 
   const isScrapingActive = Boolean(scrapingProgress?.active && !scrapingProgress?.completed);
@@ -138,6 +152,7 @@ export function ProductsTab({
         ) : (
           filteredProducts.map((prod) => {
             const hasPhoto = Boolean(prod.imageUrl) && !failedImgs.has(prod.id);
+            const currentSrc = retryImgs.get(prod.id) || prod.imageUrl || '';
             return (
               <div
                 key={prod.id}
@@ -150,10 +165,10 @@ export function ProductsTab({
                 <div className="ng-product-thumb-container">
                   {hasPhoto ? (
                     <img
-                      src={prod.imageUrl!}
+                      src={currentSrc}
                       alt={prod.model}
                       className="ng-product-thumb"
-                      onError={() => markImgFailed(prod.id)}
+                      onError={() => handleImgError(prod, currentSrc)}
                     />
                   ) : (
                     <Icon name="logo" size={18} />

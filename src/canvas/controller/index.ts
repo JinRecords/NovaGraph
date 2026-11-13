@@ -70,6 +70,10 @@ import { HistoryManager } from './history';
 import { exportDiagram as exportDiagramHelper } from './exportManager';
 import { loadSampleTopology as loadSampleTopologyHelper } from './sampleTopology';
 import {
+  loadVnnoxCareTopology as loadVnnoxCareTopologyHelper,
+  type VnnoxExtractedData,
+} from '../../data/vnnoxCare';
+import {
   addConnector as addConnectorHelper,
   getHighlightedConnectorIds as getHighlightedConnectorIdsHelper,
   normalizeConnectorSelection as normalizeConnectorSelectionHelper,
@@ -135,7 +139,7 @@ export class CanvasController {
 
   public historyManager: HistoryManager;
 
-  private onChangeCallbacks = new Set<() => void>();
+  private onChangeCallbacks = new Set<(scheduleAutosave?: boolean) => void>();
   private onToastCallback?: (msg: string, kind?: 'info' | 'warn' | 'ok') => void;
 
   constructor(
@@ -185,7 +189,7 @@ export class CanvasController {
     this.historyManager.pushHistorySnapshot();
   }
 
-  public onChange(fn: () => void): () => void {
+  public onChange(fn: (scheduleAutosave?: boolean) => void): () => void {
     this.onChangeCallbacks.add(fn);
     return () => this.onChangeCallbacks.delete(fn);
   }
@@ -227,7 +231,7 @@ export class CanvasController {
   }
 
   public notifyChange(scheduleAutosave = true) {
-    this.onChangeCallbacks.forEach((fn) => fn());
+    this.onChangeCallbacks.forEach((fn) => fn(scheduleAutosave));
     if (scheduleAutosave) {
       this.historyManager.scheduleAutosave();
     }
@@ -385,8 +389,8 @@ export class CanvasController {
     this.notifyChange(true);
   }
 
-  public addShape(kind: ShapeKind) {
-    const center = this.getViewportCenter();
+  public addShape(kind: ShapeKind, pt?: { x: number; y: number }) {
+    const center = pt || this.getViewportCenter();
     const node = createShapeNode(kind, { left: center.x, top: center.y });
     this.canvas.add(node);
     this.canvas.setActiveObject(node);
@@ -409,9 +413,9 @@ export class CanvasController {
     this.notifyChange(true);
   }
 
-  public addStickyNote() {
-    const center = this.getViewportCenter();
-    const node = createStickyNoteNode({ left: center.x, top: center.y });
+  public addStickyNote(pt?: { x: number; y: number }, text?: string) {
+    const center = pt || this.getViewportCenter();
+    const node = createStickyNoteNode({ left: center.x, top: center.y, text });
     this.canvas.add(node);
     this.canvas.setActiveObject(node);
     this.canvas.requestRenderAll();
@@ -517,8 +521,8 @@ export class CanvasController {
     ensureFramesAtBackHelper(this);
   }
 
-  public addFrame(title?: string) {
-    const center = this.getViewportCenter();
+  public addFrame(title?: string, pt?: { x: number; y: number }) {
+    const center = pt || this.getViewportCenter();
     const count = this.canvas.getObjects().filter((o) => (o as any).ngType === 'frame').length;
     const frame = createFrameNode({
       left: center.x,
@@ -684,6 +688,14 @@ export class CanvasController {
 
   public async loadSampleTopology(catalogProducts: ProductItem[]) {
     await loadSampleTopologyHelper(this, catalogProducts);
+  }
+
+  public async loadVnnoxCareTopology(
+    vnnoxData: VnnoxExtractedData,
+    catalogProducts: ProductItem[],
+    options?: { append?: boolean }
+  ) {
+    await loadVnnoxCareTopologyHelper(this, vnnoxData, catalogProducts, options);
   }
 }
 

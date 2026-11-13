@@ -33,6 +33,7 @@ export function fallbackSlugImageUrl(model: string): string {
     })
     .trim()
     .toLowerCase()
+    .replace(/^mctrl(\d+)/, 'mctrl-$1')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
   return `/api/img?path=${encodeURIComponent(`/products/${base}.webp`)}&v=1`;
@@ -64,7 +65,19 @@ export function parseMainBundleSource(src: string): {
     for (const [k, v] of Object.entries(rawImgObj as Record<string, unknown>)) {
       if (typeof v === 'string') {
         const proxied = toProxyImageUrl(v);
-        if (proxied) imageMap[k] = proxied;
+        if (proxied) {
+          imageMap[k] = proxied;
+          // Register normalized lookup key for resilient matching
+          const normKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          imageMap[`__norm__${normKey}`] = proxied;
+          // Handle MCTRL space variants (e.g. "MCTRL660 Pro" <-> "MCTRL 660 Pro")
+          if (/^mctrl\s*\d+/i.test(k)) {
+            const withSpace = k.replace(/^mctrl\s*(\d+)/i, 'MCTRL $1');
+            imageMap[withSpace] = proxied;
+            const noSpace = k.replace(/^mctrl\s*(\d+)/i, 'MCTRL$1');
+            imageMap[noSpace] = proxied;
+          }
+        }
       }
     }
   }

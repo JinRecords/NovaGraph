@@ -132,12 +132,17 @@ export async function createProductNode(
     imgDataUrl?: string | null;
     labelColor?: string;
     labelSize?: number;
+    scale?: number;
+    scaleX?: number;
+    scaleY?: number;
   } = {}
 ): Promise<Group> {
   const selectedSpecs = options.selectedSpecs || [];
   const titlePos: SpecPosition = options.titlePos || 'bottom';
   const targetLeft = options.left ?? 300;
   const targetTop = options.top ?? 240;
+  const scaleX = options.scaleX ?? options.scale ?? 1;
+  const scaleY = options.scaleY ?? options.scale ?? 1;
 
   const { children, dataUrl } = await buildProductChildObjects(
     product,
@@ -151,6 +156,8 @@ export async function createProductNode(
   const group = new Group(children, {
     left: targetLeft,
     top: targetTop,
+    scaleX,
+    scaleY,
     originX: 'center',
     originY: 'center',
     subTargetCheck: false,
@@ -162,8 +169,8 @@ export async function createProductNode(
   const imgChild = group.getObjects()[0];
   if (imgChild) {
     group.set({
-      left: targetLeft - imgChild.left,
-      top: targetTop - imgChild.top,
+      left: targetLeft - imgChild.left * scaleX,
+      top: targetTop - imgChild.top * scaleY,
     });
     group.setCoords();
   }
@@ -211,12 +218,12 @@ export async function rebuildProductNodeInPlace(
     imgDataUrl: finalImgUrl,
     labelColor: finalLabelColor,
     labelSize: finalLabelSize,
+    scaleX: oldGroup.scaleX,
+    scaleY: oldGroup.scaleY,
   });
   const newRec = newGroup as unknown as Record<string, unknown>;
   newRec.ngIsCustomImage = isCustom;
   newGroup.set({
-    scaleX: oldGroup.scaleX,
-    scaleY: oldGroup.scaleY,
     angle: oldGroup.angle,
   });
   if (canvas) {

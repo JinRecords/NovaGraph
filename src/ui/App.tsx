@@ -1,6 +1,7 @@
 import { h } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { CanvasController } from '../canvas/controller';
+import { ShapeKind } from '../canvas/nodes';
 import {
   CatalogBundleData,
   getCachedCatalog,
@@ -25,6 +26,12 @@ import { ContextMenu } from './ContextMenu';
 import { CustomProductModal } from './CustomProductModal';
 import { ExportModal } from './ExportModal';
 import { HSeriesConfiguratorModal } from './HSeriesConfiguratorModal';
+import { VnnoxImportModal } from './VnnoxImportModal';
+import {
+  extractVnnoxCareData,
+  fetchVnnoxCareData,
+  parseVnnoxCareUrl,
+} from '../data/vnnoxCare';
 import { Inspector } from './Inspector';
 import { SidebarLeft } from './SidebarLeft';
 import { hasCompletedTutorial, TutorialModal } from './TutorialModal';
@@ -63,6 +70,7 @@ export function App({ onClose }: { onClose: () => void }) {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isCustomProdOpen, setIsCustomProdOpen] = useState(false);
   const [isHSeriesOpen, setIsHSeriesOpen] = useState(false);
+  const [isVnnoxModalOpen, setIsVnnoxModalOpen] = useState(false);
   const [scrapingProgress, setScrapingProgress] = useState<ScrapingProgress | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const [isTutorialOpen, setIsTutorialOpen] = useState(() => !hasCompletedTutorial());
@@ -116,15 +124,18 @@ export function App({ onClose }: { onClose: () => void }) {
       }
     });
 
-    // Auto-save on diagram changes (debounced by 300ms)
+    // Auto-save on diagram changes (debounced by 800ms)
     let autoSaveTimer: number | null = null;
-    const unsub = ctrl.onChange(() => {
+    const unsub = ctrl.onChange((scheduleAutosave = true) => {
       const sel = ctrl.getSelectionState();
       setSelection({
         activeObject: sel.activeObject,
         activeConnector: sel.activeConnector,
       });
       setActiveTool(ctrl.activeTool);
+
+      // Viewport navigation (panning, zooming), anchor hovering, etc. should NOT schedule autosave
+      if (scheduleAutosave === false) return;
 
       if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
       autoSaveTimer = window.setTimeout(() => {
@@ -134,7 +145,7 @@ export function App({ onClose }: { onClose: () => void }) {
         const curName = all.find((b) => b.id === curId)?.name || 'Untitled Diagram';
         const curDoc = ctrl.serializeBoard(curId, curName);
         upsertBoard(curDoc);
-      }, 300);
+      }, 800);
     });
 
     const removeShortcuts = installGlobalShortcuts({
@@ -303,6 +314,54 @@ export function App({ onClose }: { onClose: () => void }) {
       } catch {}
     }
 
+    // Direct drag-and-drop: Shapes from left sidebar
+    const shapeKind = e.dataTransfer?.getData('application/novagraph-shape') as ShapeKind;
+    if (shapeKind) {
+      controllerRef.current.addShape(shapeKind, scenePt);
+      return;
+    }
+
+    // Direct drag-and-drop: Text box from left sidebar
+    const isText = e.dataTransfer?.getData('application/novagraph-text');
+    if (isText) {
+      controllerRef.current.addText(undefined, scenePt);
+      return;
+    }
+
+    // Direct drag-and-drop: Sticky note from left sidebar
+    const isSticky = e.dataTransfer?.getData('application/novagraph-sticky');
+    if (isSticky) {
+      controllerRef.current.addStickyNote(scenePt);
+      return;
+    }
+
+    // Direct drag-and-drop: Frame container from left sidebar
+    const isFrame = e.dataTransfer?.getData('application/novagraph-frame');
+    if (isFrame) {
+      controllerRef.current.addFrame(undefined, scenePt);
+      return;
+    }
+
+    // Fallback: Plain text drag-and-drop
+    const plainText = e.dataTransfer?.getData('text/plain') || '';
+    if (plainText.startsWith('shape:')) {
+      const kind = plainText.slice(6) as ShapeKind;
+      controllerRef.current.addShape(kind, scenePt);
+      return;
+    }
+    if (plainText === 'text:note') {
+      controllerRef.current.addText(undefined, scenePt);
+      return;
+    }
+    if (plainText === 'sticky:note') {
+      controllerRef.current.addStickyNote(scenePt);
+      return;
+    }
+    if (plainText === 'frame:group') {
+      controllerRef.current.addFrame(undefined, scenePt);
+      return;
+    }
+
     const prodJson = e.dataTransfer?.getData('application/novagraph-product');
     if (prodJson) {
       try {
@@ -389,6 +448,47 @@ export function App({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const handleImportVnnoxCare = async (url: string, createNew: boolean) => {
+    const parsed = parseVnnoxCareUrl(url);
+    if (!parsed) {
+      throw new Error(t('vnnoxInvalidUrlError'));
+    }
+
+    const rawData = await fetchVnnoxCareData(parsed);
+    const vnnox = extractVnnoxCareData(rawData);
+
+    let targetBoardId = activeBoardIdRef.current;
+    const boardName = vnnox.projectName || 'VNNOX Care Solution';
+
+    if (createNew) {
+      const newDoc = createEmptyBoard(boardName);
+      const next = upsertBoard(newDoc);
+      setBoards(next);
+      await switchBoard(newDoc.id);
+      targetBoardId = newDoc.id;
+    } else {
+      // User chose to import into current board: do NOT overwrite existing contents or diagram name
+      const cur = boards.find((b) => b.id === targetBoardId);
+      if (cur && cur.name === 'Untitled Diagram') {
+        const updated = { ...cur, name: boardName };
+        setBoards(upsertBoard(updated));
+      }
+    }
+
+    if (controllerRef.current) {
+      await controllerRef.current.loadVnnoxCareTopology(vnnox, allProducts, {
+        append: !createNew,
+      });
+      const activeName =
+        boards.find((b) => b.id === targetBoardId)?.name || boardName;
+      const curDoc = controllerRef.current.serializeBoard(targetBoardId, activeName);
+      upsertBoard(curDoc);
+      controllerRef.current.zoomToFit();
+    }
+
+    showToast(t('vnnoxSuccessToast'), 'ok');
+  };
+
   const currentBoard = boards.find((b) => b.id === activeBoardId) || boards[0];
 
   return (
@@ -415,6 +515,7 @@ export function App({ onClose }: { onClose: () => void }) {
         onZoomOut={() => controllerRef.current?.setZoom((controllerRef.current?.canvas.getZoom() || 1) * 0.85)}
         onZoomFit={() => controllerRef.current?.zoomToFit()}
         onLoadSample={() => controllerRef.current?.loadSampleTopology(allProducts)}
+        onOpenVnnoxImport={() => setIsVnnoxModalOpen(true)}
         onImportFile={handleImportFile}
         onOpenExport={() => setIsExportOpen(true)}
         onToggleLocale={() => setLocale(locale === 'en' ? 'zh' : 'en')}
@@ -509,6 +610,12 @@ export function App({ onClose }: { onClose: () => void }) {
           );
           showToast(`Exported as ${format.toUpperCase()}`, 'ok');
         }}
+      />
+
+      <VnnoxImportModal
+        isOpen={isVnnoxModalOpen}
+        onClose={() => setIsVnnoxModalOpen(false)}
+        onImport={handleImportVnnoxCare}
       />
 
       {/* Context Menu */}

@@ -99,6 +99,60 @@ export function LedPartitionColorModal({
   const previewW = 460;
   const previewH = Math.max(150, Math.min(280, Math.round(previewW / aspect)));
 
+  const isLargeGrid = numCols * numRows > 800;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (!isLargeGrid || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, previewW, previewH);
+    for (let r = 0; r < numRows; r++) {
+      const y0 = hStops[r] * previewH;
+      const y1 = hStops[r + 1] * previewH;
+      const h = Math.max(1, y1 - y0);
+      for (let c = 0; c < numCols; c++) {
+        const x0 = vStops[c] * previewW;
+        const x1 = vStops[c + 1] * previewW;
+        const w = Math.max(1, x1 - x0);
+        const key = `${r}_${c}`;
+        const fill = cellColors[key] || cfg.fillColor || '#ffffff';
+        ctx.fillStyle = fill;
+        ctx.fillRect(x0, y0, w, h);
+      }
+    }
+
+    // Grid lines
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 0.5;
+    for (let c = 0; c <= numCols; c++) {
+      const x = vStops[c] * previewW;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, previewH);
+      ctx.stroke();
+    }
+    for (let r = 0; r <= numRows; r++) {
+      const y = hStops[r] * previewH;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(previewW, y);
+      ctx.stroke();
+    }
+  }, [isLargeGrid, numRows, numCols, cellColors, cfg.fillColor]);
+
+  const handleCanvasPaint = (e: MouseEvent) => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const xRatio = Math.max(0, Math.min(0.999, (e.clientX - rect.left) / rect.width));
+    const yRatio = Math.max(0, Math.min(0.999, (e.clientY - rect.top) / rect.height));
+    const c = Math.min(numCols - 1, Math.floor(xRatio * numCols));
+    const r = Math.min(numRows - 1, Math.floor(yRatio * numRows));
+    applyToolToCell(`${r}_${c}`);
+  };
+
   return (
     <div
       className="ng-modal-backdrop"
@@ -327,115 +381,136 @@ export function LedPartitionColorModal({
               }}
               onMouseLeave={() => setHoveredCell(null)}
             >
-              {Array.from({ length: numRows }).map((_, r) => {
-                const y0 = hStops[r] * 100;
-                const y1 = hStops[r + 1] * 100;
-                const hPct = y1 - y0;
-                const rowPx = cfg.resHeight ? Math.round((hStops[r + 1] - hStops[r]) * cfg.resHeight) : 0;
+              {isLargeGrid ? (
+                <canvas
+                  ref={canvasRef}
+                  width={previewW}
+                  height={previewH}
+                  style={{ display: 'block', width: `${previewW}px`, height: `${previewH}px` }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setIsPainting(true);
+                    handleCanvasPaint(e);
+                  }}
+                  onMouseMove={(e) => {
+                    if (isPainting || (e.buttons & 1) === 1) {
+                      handleCanvasPaint(e);
+                    }
+                  }}
+                />
+              ) : (
+                Array.from({ length: numRows }).map((_, r) => {
+                  const y0 = hStops[r] * 100;
+                  const y1 = hStops[r + 1] * 100;
+                  const hPct = y1 - y0;
+                  const rowPx = cfg.resHeight ? Math.round((hStops[r + 1] - hStops[r]) * cfg.resHeight) : 0;
 
-                return Array.from({ length: numCols }).map((__, c) => {
-                  const x0 = vStops[c] * 100;
-                  const x1 = vStops[c + 1] * 100;
-                  const wPct = x1 - x0;
-                  const colPx = cfg.resWidth ? Math.round((vStops[c + 1] - vStops[c]) * cfg.resWidth) : 0;
-                  const key = `${r}_${c}`;
-                  const hasCustomColor = Boolean(cellColors[key]);
-                  const fill = cellColors[key] || cfg.fillColor || '#ffffff';
-                  const isHovered = hoveredCell === key;
+                  return Array.from({ length: numCols }).map((__, c) => {
+                    const x0 = vStops[c] * 100;
+                    const x1 = vStops[c + 1] * 100;
+                    const wPct = x1 - x0;
+                    const colPx = cfg.resWidth ? Math.round((vStops[c + 1] - vStops[c]) * cfg.resWidth) : 0;
+                    const key = `${r}_${c}`;
+                    const hasCustomColor = Boolean(cellColors[key]);
+                    const fill = cellColors[key] || cfg.fillColor || '#ffffff';
+                    const isHovered = hoveredCell === key;
 
-                  return (
-                    <div
-                      key={key}
-                      data-cell-key={key}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setIsPainting(true);
-                        setHoveredCell(key);
-                        applyToolToCell(key);
-                      }}
-                      onMouseEnter={(e) => {
-                        setHoveredCell(key);
-                        if (isPainting || (e.buttons & 1) === 1) {
+                    return (
+                      <div
+                        key={key}
+                        data-cell-key={key}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setIsPainting(true);
+                          setHoveredCell(key);
                           applyToolToCell(key);
-                        }
-                      }}
-                      onMouseMove={(e) => {
-                        if (isPainting || (e.buttons & 1) === 1) {
-                          applyToolToCell(key);
-                        }
-                      }}
-                      style={{
-                        position: 'absolute',
-                        left: `${x0}%`,
-                        top: `${y0}%`,
-                        width: `${wPct}%`,
-                        height: `${hPct}%`,
-                        background: fill,
-                        borderRight: c < numCols - 1 ? '1.5px dashed #94a3b8' : 'none',
-                        borderBottom: r < numRows - 1 ? '1.5px dashed #94a3b8' : 'none',
-                        boxSizing: 'border-box',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        outline: isHovered
-                          ? tool === 'erase'
-                            ? '2px solid #ef4444'
-                            : '2px solid #ff6a2b'
-                          : 'none',
-                        outlineOffset: '-2px',
-                        zIndex: isHovered ? 2 : 1,
-                        transition: 'background 0.06s ease',
-                      }}
-                    >
-                      <span
+                        }}
+                        onMouseEnter={(e) => {
+                          setHoveredCell(key);
+                          if (isPainting || (e.buttons & 1) === 1) {
+                            applyToolToCell(key);
+                          }
+                        }}
+                        onMouseMove={(e) => {
+                          if (isPainting || (e.buttons & 1) === 1) {
+                            applyToolToCell(key);
+                          }
+                        }}
                         style={{
-                          fontSize: '10.5px',
-                          fontWeight: 700,
-                          color: '#1e293b',
-                          background: 'rgba(255,255,255,0.82)',
-                          padding: '1px 6px',
-                          borderRadius: '4px',
-                          pointerEvents: 'none',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                          position: 'absolute',
+                          left: `${x0}%`,
+                          top: `${y0}%`,
+                          width: `${wPct}%`,
+                          height: `${hPct}%`,
+                          background: fill,
+                          borderRight: c < numCols - 1 ? '1.5px dashed #94a3b8' : 'none',
+                          borderBottom: r < numRows - 1 ? '1.5px dashed #94a3b8' : 'none',
+                          boxSizing: 'border-box',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          outline: isHovered
+                            ? tool === 'erase'
+                              ? '2px solid #ef4444'
+                              : '2px solid #ff6a2b'
+                            : 'none',
+                          outlineOffset: '-2px',
+                          zIndex: isHovered ? 2 : 1,
+                          transition: 'background 0.06s ease',
                         }}
                       >
-                        R{r + 1}·C{c + 1}
-                      </span>
-                      {colPx > 0 && rowPx > 0 && (
-                        <span
-                          style={{
-                            fontSize: '9.5px',
-                            color: '#475569',
-                            background: 'rgba(255,255,255,0.72)',
-                            padding: '0 4px',
-                            borderRadius: '3px',
-                            marginTop: '2px',
-                            pointerEvents: 'none',
-                          }}
-                        >
-                          {colPx}×{rowPx}
-                        </span>
-                      )}
-                      {hasCustomColor && (
-                        <span
-                          style={{
-                            position: 'absolute',
-                            top: '4px',
-                            right: '4px',
-                            width: '7px',
-                            height: '7px',
-                            borderRadius: '50%',
-                            background: fill,
-                            border: '1.5px solid rgba(15,23,42,0.45)',
-                            pointerEvents: 'none',
-                          }}
-                        />
-                      )}
-                    </div>
-                  );
-                });
-              })}
+                        {numCols <= 12 && numRows <= 12 && (
+                          <span
+                            style={{
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              color: '#1e293b',
+                              background: 'rgba(255,255,255,0.82)',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              pointerEvents: 'none',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                            }}
+                          >
+                            R{r + 1}·C{c + 1}
+                          </span>
+                        )}
+                        {numCols <= 12 && numRows <= 12 && colPx > 0 && rowPx > 0 && (
+                          <span
+                            style={{
+                              fontSize: '9.5px',
+                              color: '#475569',
+                              background: 'rgba(255,255,255,0.72)',
+                              padding: '0 4px',
+                              borderRadius: '3px',
+                              marginTop: '2px',
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            {colPx}×{rowPx}
+                          </span>
+                        )}
+                        {hasCustomColor && (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              top: '4px',
+                              right: '4px',
+                              width: '7px',
+                              height: '7px',
+                              borderRadius: '50%',
+                              background: fill,
+                              border: '1.5px solid rgba(15,23,42,0.45)',
+                              pointerEvents: 'none',
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  });
+                })
+              )}
             </div>
           </div>
         </div>

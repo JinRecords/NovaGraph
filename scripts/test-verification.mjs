@@ -1,12 +1,43 @@
 import assert from 'node:assert';
-import {
+
+let metadataModule;
+try {
+  metadataModule = await import('../src/export/metadata.ts');
+} catch {
+  const path = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const { createRequire } = await import('node:module');
+  const require = createRequire(import.meta.url);
+  const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+  const { build } = await import(path.join(root, 'node_modules/vite/dist/node/index.js'));
+  const res = await build({
+    root,
+    configFile: false,
+    logLevel: 'error',
+    build: {
+      write: false,
+      lib: {
+        entry: './src/export/metadata.ts',
+        formats: ['cjs'],
+      },
+      rollupOptions: {
+        external: ['pdf-lib'],
+      },
+    },
+  });
+  const output = res[0].output[0].code;
+  metadataModule = {};
+  new Function('exports', 'require', output)(metadataModule, require);
+}
+
+const {
   embedMetadataInPng,
   extractMetadataFromPng,
   embedMetadataInJpeg,
   extractMetadataFromJpeg,
   generatePdfWithMetadata,
   extractMetadataFromPdf,
-} from '../src/export/metadata.ts';
+} = metadataModule;
 
 // 1. Create a dummy PNG (1x1 red PNG)
 const dummyPng = Buffer.from(

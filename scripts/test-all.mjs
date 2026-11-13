@@ -16,12 +16,22 @@ const suites = [
   {
     name: 'Metadata Roundtrip Verification (PNG iTXt, JPEG, PDF)',
     cmd: process.execPath,
-    args: [tsxCli, path.join(root, 'scripts', 'test-verification.mjs')],
+    args: [path.join(root, 'scripts', 'test-verification.mjs')],
+  },
+  {
+    name: 'VNNOX Care Experimental Feature Suite',
+    cmd: process.execPath,
+    args: [path.join(root, 'scripts', 'test-vnnox-care.mjs')],
+  },
+  {
+    name: 'IndexedDB Multi-Tier Storage Subsystem',
+    cmd: process.execPath,
+    args: [path.join(root, 'scripts', 'test-indexeddb-storage.mjs')],
   },
   {
     name: 'Storage Quota Recovery & Degradation Fallbacks',
     cmd: process.execPath,
-    args: [tsxCli, path.join(root, 'scripts', 'test-quota-recovery.mjs')],
+    args: [path.join(root, 'scripts', 'test-quota-recovery.mjs')],
   },
   {
     name: 'First-Run Scraping Progress Bar Suite',
@@ -37,6 +47,11 @@ const suites = [
     name: 'Latest Batch Suite (Nudge, Snap, Frames, Lines, Context Menu)',
     cmd: process.execPath,
     args: [path.join(root, 'scripts', 'test-latest-batch.mjs')],
+  },
+  {
+    name: 'IndexedDB Multi-Tier Storage, Thumbnails & Sidebar Dragging Suite',
+    cmd: process.execPath,
+    args: [path.join(root, 'scripts', 'test-new-tasks.mjs')],
   },
   {
     name: 'New Fixes Suite (Close Btn, Specs, Sticky Inline, Textbox)',

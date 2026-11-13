@@ -70,6 +70,40 @@ chrome.runtime?.onMessage?.addListener((request, _sender, sendResponse) => {
     })();
     return true;
   }
+
+  if (request.type === 'FETCH_VNNOX_CARE') {
+    (async () => {
+      try {
+        const targetUrl = String(request.url || '');
+        const domain = String(request.domain || 'au.vnnox.com');
+        const res = await fetch(targetUrl, {
+          method: 'GET',
+          headers: {
+            'Action': '1',
+            'Referer': `https://${domain}/care/`,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept-Language': 'en-us',
+            'language': 'en-us',
+          },
+        });
+        if (!res.ok) {
+          sendResponse({ ok: false, error: `VNNOX Care returned HTTP ${res.status}` });
+          return;
+        }
+        const text = await res.text();
+        let data: unknown;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = text;
+        }
+        sendResponse({ ok: true, data });
+      } catch (err: any) {
+        sendResponse({ ok: false, error: err?.message || 'VNNOX Care request failed' });
+      }
+    })();
+    return true;
+  }
 });
 
 

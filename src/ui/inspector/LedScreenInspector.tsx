@@ -154,9 +154,9 @@ export function LedScreenInspector({
             <input
               type="number"
               min="0"
-              max="16"
+              max="999"
               className="ng-input-text"
-              style={{ width: '56px' }}
+              style={{ width: '64px' }}
               value={cfg.verticalPartitions.length}
               onInput={(e) => setVPartitionsCount(Number((e.target as HTMLInputElement).value))}
             />
@@ -176,9 +176,9 @@ export function LedScreenInspector({
             <input
               type="number"
               min="0"
-              max="16"
+              max="999"
               className="ng-input-text"
-              style={{ width: '56px' }}
+              style={{ width: '64px' }}
               value={cfg.horizontalPartitions.length}
               onInput={(e) => setHPartitionsCount(Number((e.target as HTMLInputElement).value))}
             />
