@@ -569,51 +569,97 @@ console.log('✓ background service worker handles FETCH_VNNOX_CARE');
 
 // 8. Verify Screen Partitioning and Card Palette Logic
 console.log('\n--- 8. Testing screen partitioning and card coloring logic ---');
-const vnnoxSrc = fs.readFileSync(
-  path.join(root, 'src', 'data', 'vnnoxCare.ts'),
-  'utf8'
-);
+const vnnoxDir = path.join(root, 'src', 'data', 'vnnoxCare');
+const vnnoxSrc = [
+  'index.ts',
+  'types.ts',
+  'api.ts',
+  'extractor.ts',
+  'topologyHelpers.ts',
+  'topologyBuilder.ts',
+]
+  .map((f) => fs.readFileSync(path.join(vnnoxDir, f), 'utf8'))
+  .join('\n');
+
 assert.ok(
-  vnnoxSrc.includes("cellColors[`${i}_0`] = pal.bg"),
-  'vnnoxCare.ts missing horizontal cellColors assignment'
+  vnnoxSrc.includes('cellColors[`${i}_0`] = pal.bg'),
+  'vnnoxCare extractor missing horizontal cellColors assignment'
 );
 assert.ok(
   vnnoxSrc.includes('horizontalPartitions: vnnox.horizontalPartitions'),
-  'vnnoxCare.ts missing passing horizontalPartitions to createLedScreenNode'
+  'vnnoxCare topologyBuilder missing passing horizontalPartitions to createLedScreenNode'
 );
 assert.ok(
   vnnoxSrc.includes('cellColors: vnnox.cellColors'),
-  'vnnoxCare.ts missing passing cellColors to createLedScreenNode'
+  'vnnoxCare topologyBuilder missing passing cellColors to createLedScreenNode'
 );
 assert.ok(
   vnnoxSrc.includes('cellLabels: vnnox.cellLabels'),
-  'vnnoxCare.ts missing passing cellLabels to createLedScreenNode'
+  'vnnoxCare topologyBuilder missing passing cellLabels to createLedScreenNode'
 );
 assert.ok(
   vnnoxSrc.includes('#e8f7ed'),
-  'vnnoxCare.ts missing green palette color #e8f7ed'
+  'vnnoxCare types missing green palette color #e8f7ed'
 );
 assert.ok(
   vnnoxSrc.includes('#fff1db'),
-  'vnnoxCare.ts missing orange palette color #fff1db'
+  'vnnoxCare types missing orange palette color #fff1db'
 );
 assert.ok(
   vnnoxSrc.includes('cabinetGrid: vnnox.cabinetGrid'),
-  'vnnoxCare.ts missing passing cabinetGrid to createLedScreenNode'
+  'vnnoxCare topologyBuilder missing passing cabinetGrid to createLedScreenNode'
 );
 assert.ok(
   vnnoxSrc.includes('Dual 10G OPT (OPT1 Primary + OPT2 Backup)'),
-  'vnnoxCare.ts missing dual redundant 10G OPT fiber lines'
+  'vnnoxCare topologyBuilder missing dual redundant 10G OPT fiber lines'
 );
 assert.ok(
   vnnoxSrc.includes('Slot 1 Bus'),
-  'vnnoxCare.ts missing Slot 1 backplane bus'
+  'vnnoxCare topologyBuilder missing Slot 1 backplane bus'
 );
 assert.ok(
   vnnoxSrc.includes('Slot 2 Bus'),
-  'vnnoxCare.ts missing Slot 2 backplane bus'
+  'vnnoxCare topologyBuilder missing Slot 2 backplane bus'
 );
-console.log('✓ Screen partitioning, cabinet grid, and dual OPT redundancy verified');
+assert.ok(
+  vnnoxSrc.includes('conn.zIndex = nonFrameCountBeforeNote'),
+  'vnnoxCare topologyBuilder missing zIndex behind sticky note'
+);
+console.log('✓ Modular VNNOX Care partitioning, cabinet grid, sticky note layering, and dual OPT redundancy verified');
+
+// 9. Verify Bug #1-#6 and Feat #1-#2 source invariants
+console.log('\n--- 9. Verifying Bug #1-#6 and Cabinet Wiring Tool invariants ---');
+const ledScreenSrc = fs.readFileSync(path.join(root, 'src', 'canvas', 'ledScreen.ts'), 'utf8');
+const ledWiringSrc = fs.readFileSync(path.join(root, 'src', 'canvas', 'ledWiring.ts'), 'utf8');
+const iconsSrc = fs.readFileSync(path.join(root, 'src', 'ui', 'Icons.tsx'), 'utf8');
+const tutorialSrc = fs.readFileSync(path.join(root, 'src', 'ui', 'TutorialModal.tsx'), 'utf8');
+const inspectorSrc = fs.readFileSync(path.join(root, 'src', 'ui', 'inspector', 'LedScreenInspector.tsx'), 'utf8');
+
+assert.ok(
+  ledWiringSrc.includes('Math.ceil(cols / cabsPerPort)'),
+  'ledWiring.ts missing Math.ceil(cols / cabsPerPort) fix for remainder ports (Bug #1)'
+);
+assert.ok(
+  !iconsSrc.includes('A9 9 0 0 0 6.7 2.7'),
+  'Icons.tsx refresh icon still uses CCW arc sweep (Bug #2)'
+);
+assert.ok(
+  !ledScreenSrc.includes('Card ${i + 1}'),
+  'ledScreen.ts still emits receiving card labels (Bug #3 / #6)'
+);
+assert.ok(
+  ledScreenSrc.includes("partitionLineStyle: 'dashed'") && ledScreenSrc.includes('!cfg.cabinetGrid'),
+  'ledScreen.ts missing dashed default or !cfg.cabinetGrid edge label guard (Bug #5 / #6)'
+);
+assert.ok(
+  tutorialSrc.includes('.ng-btn-vnnox'),
+  'TutorialModal.tsx missing VNNOX Care import step (Feat #1)'
+);
+assert.ok(
+  inspectorSrc.includes('LedCabinetWiringModal') && inspectorSrc.includes('ng-btn-cabinet-wiring'),
+  'LedScreenInspector.tsx missing Cabinet Wiring Tool modal/trigger (Feat #2)'
+);
+console.log('✓ Bug #1-#6 fixes, modular VNNOX Care split, Tutorial step, and Cabinet Wiring Tool verified');
 
 console.log('\n🎉 ALL VNNOX CARE FEATURE TESTS PASSED SUCCESSFULLY! 🎉\n');
 

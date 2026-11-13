@@ -1,6 +1,7 @@
 import { h } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { CanvasController } from '../canvas/controller';
+import { t } from '../i18n';
 
 export interface ContextMenuProps {
   x: number;
@@ -95,181 +96,181 @@ export function ContextMenu({ x, y, scenePt, targetType, targetConnector, contro
         onMouseDown={(e) => e.stopPropagation()}
         onContextMenu={(e) => e.preventDefault()}
       >
-      {/* Object, Frame & Connector Layering Actions */}
-      {(isObject || isConnector) && (
-        <>
-          <div className="ng-ctx-item" onClick={() => act(() => controller.bringToFront())}>
-            <span>Bring to Front</span>
-            <span className="ng-ctx-key">⌘⇧]</span>
-          </div>
-          <div className="ng-ctx-item" onClick={() => act(() => controller.bringForward())}>
-            <span>Bring Forward</span>
-            <span className="ng-ctx-key">⌘]</span>
-          </div>
-          <div className="ng-ctx-item" onClick={() => act(() => controller.sendBackwards())}>
-            <span>Send Backward</span>
-            <span className="ng-ctx-key">⌘[</span>
-          </div>
-          <div className="ng-ctx-item" onClick={() => act(() => controller.sendToBack())}>
-            <span>Send to Back</span>
-            <span className="ng-ctx-key">⌘⇧[</span>
-          </div>
-          <div className="ng-ctx-divider" />
-        </>
-      )}
-
-      {/* Connector Actions */}
-      {isConnector && (
-        <>
-          <div
-            className="ng-ctx-item"
-            onClick={() =>
-              act(() => {
-                const conns = controller.connectors.filter(
-                  (c) =>
-                    controller.selectedConnectorId === c.id ||
-                    controller.multiSelectedConnectorIds.has(c.id) ||
-                    targetConnector?.id === c.id
-                );
-                for (const conn of conns) {
-                  controller.updateConnector(conn.id, { routing: 'straight' });
-                }
-              })
-            }
-          >
-            <span>Straight Line</span>
-          </div>
-          <div
-            className="ng-ctx-item"
-            onClick={() =>
-              act(() => {
-                const conns = controller.connectors.filter(
-                  (c) =>
-                    controller.selectedConnectorId === c.id ||
-                    controller.multiSelectedConnectorIds.has(c.id) ||
-                    targetConnector?.id === c.id
-                );
-                for (const conn of conns) {
-                  controller.updateConnector(conn.id, { routing: 'elbow' });
-                }
-              })
-            }
-          >
-            <span>Elbow Line (90°)</span>
-          </div>
-          <div
-            className="ng-ctx-item"
-            onClick={() =>
-              act(() => {
-                const conns = controller.connectors.filter(
-                  (c) =>
-                    controller.selectedConnectorId === c.id ||
-                    controller.multiSelectedConnectorIds.has(c.id) ||
-                    targetConnector?.id === c.id
-                );
-                for (const conn of conns) {
-                  controller.updateConnector(conn.id, { routing: 'curved' });
-                }
-              })
-            }
-          >
-            <span>Curved Line</span>
-          </div>
-          <div
-            className="ng-ctx-item"
-            onClick={() =>
-              act(() => {
-                const conns = controller.connectors.filter(
-                  (c) =>
-                    controller.selectedConnectorId === c.id ||
-                    controller.multiSelectedConnectorIds.has(c.id) ||
-                    targetConnector?.id === c.id
-                );
-                for (const conn of conns) {
-                  controller.updateConnector(conn.id, {
-                    fromId: conn.toId,
-                    toId: conn.fromId,
-                    fromSide: conn.toSide,
-                    toSide: conn.fromSide,
-                    fromRatio: conn.toRatio,
-                    toRatio: conn.fromRatio,
-                  });
-                }
-              })
-            }
-          >
-            <span>Reverse Direction</span>
-          </div>
-          <div className="ng-ctx-divider" />
-        </>
-      )}
-
-      {/* Clipboard actions */}
-      {(isObject || isConnector) && (
-        <>
-          <div className="ng-ctx-item" onClick={() => act(() => controller.cutSelected())}>
-            <span>Cut</span>
-            <span className="ng-ctx-key">⌘X</span>
-          </div>
-          <div className="ng-ctx-item" onClick={() => act(() => controller.copySelected())}>
-            <span>Copy</span>
-            <span className="ng-ctx-key">⌘C</span>
-          </div>
-          <div className="ng-ctx-item" onClick={() => act(() => controller.duplicateSelected())}>
-            <span>Duplicate</span>
-            <span className="ng-ctx-key">⌘D</span>
-          </div>
-          {isObject && (
-            <div className="ng-ctx-item" onClick={() => act(() => controller.copyAsPng())}>
-              <span>Copy as PNG</span>
+        {/* Object, Frame & Connector Layering Actions */}
+        {(isObject || isConnector) && (
+          <>
+            <div className="ng-ctx-item" onClick={() => act(() => controller.bringToFront())}>
+              <span>{t('ctxBringFront')}</span>
+              <span className="ng-ctx-key">⌘⇧]</span>
             </div>
-          )}
-          <div className="ng-ctx-divider" />
-        </>
-      )}
+            <div className="ng-ctx-item" onClick={() => act(() => controller.bringForward())}>
+              <span>{t('ctxBringForward')}</span>
+              <span className="ng-ctx-key">⌘]</span>
+            </div>
+            <div className="ng-ctx-item" onClick={() => act(() => controller.sendBackwards())}>
+              <span>{t('ctxSendBackward')}</span>
+              <span className="ng-ctx-key">⌘[</span>
+            </div>
+            <div className="ng-ctx-item" onClick={() => act(() => controller.sendToBack())}>
+              <span>{t('ctxSendBack')}</span>
+              <span className="ng-ctx-key">⌘⇧[</span>
+            </div>
+            <div className="ng-ctx-divider" />
+          </>
+        )}
 
-      {/* Canvas actions */}
-      <div className="ng-ctx-item" onClick={() => act(() => controller.pasteAt(scenePt))}>
-        <span>Paste</span>
-        <span className="ng-ctx-key">⌘V</span>
-      </div>
-      <div className="ng-ctx-item" onClick={() => act(() => controller.selectAll())}>
-        <span>Select All</span>
-        <span className="ng-ctx-key">⌘A</span>
-      </div>
+        {/* Connector Actions */}
+        {isConnector && (
+          <>
+            <div
+              className="ng-ctx-item"
+              onClick={() =>
+                act(() => {
+                  const conns = controller.connectors.filter(
+                    (c) =>
+                      controller.selectedConnectorId === c.id ||
+                      controller.multiSelectedConnectorIds.has(c.id) ||
+                      targetConnector?.id === c.id
+                  );
+                  for (const conn of conns) {
+                    controller.updateConnector(conn.id, { routing: 'straight' });
+                  }
+                })
+              }
+            >
+              <span>{t('ctxStraightLine')}</span>
+            </div>
+            <div
+              className="ng-ctx-item"
+              onClick={() =>
+                act(() => {
+                  const conns = controller.connectors.filter(
+                    (c) =>
+                      controller.selectedConnectorId === c.id ||
+                      controller.multiSelectedConnectorIds.has(c.id) ||
+                      targetConnector?.id === c.id
+                  );
+                  for (const conn of conns) {
+                    controller.updateConnector(conn.id, { routing: 'elbow' });
+                  }
+                })
+              }
+            >
+              <span>{t('ctxElbowLine')}</span>
+            </div>
+            <div
+              className="ng-ctx-item"
+              onClick={() =>
+                act(() => {
+                  const conns = controller.connectors.filter(
+                    (c) =>
+                      controller.selectedConnectorId === c.id ||
+                      controller.multiSelectedConnectorIds.has(c.id) ||
+                      targetConnector?.id === c.id
+                  );
+                  for (const conn of conns) {
+                    controller.updateConnector(conn.id, { routing: 'curved' });
+                  }
+                })
+              }
+            >
+              <span>{t('ctxCurvedLine')}</span>
+            </div>
+            <div
+              className="ng-ctx-item"
+              onClick={() =>
+                act(() => {
+                  const conns = controller.connectors.filter(
+                    (c) =>
+                      controller.selectedConnectorId === c.id ||
+                      controller.multiSelectedConnectorIds.has(c.id) ||
+                      targetConnector?.id === c.id
+                  );
+                  for (const conn of conns) {
+                    controller.updateConnector(conn.id, {
+                      fromId: conn.toId,
+                      toId: conn.fromId,
+                      fromSide: conn.toSide,
+                      toSide: conn.fromSide,
+                      fromRatio: conn.toRatio,
+                      toRatio: conn.fromRatio,
+                    });
+                  }
+                })
+              }
+            >
+              <span>{t('ctxReverseDirection')}</span>
+            </div>
+            <div className="ng-ctx-divider" />
+          </>
+        )}
 
-      {targetType === 'canvas' && (
-        <>
-          <div className="ng-ctx-item" onClick={() => act(() => controller.addFrame())}>
-            <span>Add Frame</span>
-          </div>
-          <div className="ng-ctx-item" onClick={() => act(() => controller.zoomToFit())}>
-            <span>Zoom to Fit</span>
-          </div>
-        </>
-      )}
+        {/* Clipboard actions */}
+        {(isObject || isConnector) && (
+          <>
+            <div className="ng-ctx-item" onClick={() => act(() => controller.cutSelected())}>
+              <span>{t('ctxCut')}</span>
+              <span className="ng-ctx-key">⌘X</span>
+            </div>
+            <div className="ng-ctx-item" onClick={() => act(() => controller.copySelected())}>
+              <span>{t('ctxCopy')}</span>
+              <span className="ng-ctx-key">⌘C</span>
+            </div>
+            <div className="ng-ctx-item" onClick={() => act(() => controller.duplicateSelected())}>
+              <span>{t('ctxDuplicate')}</span>
+              <span className="ng-ctx-key">⌘D</span>
+            </div>
+            {isObject && (
+              <div className="ng-ctx-item" onClick={() => act(() => controller.copyAsPng())}>
+                <span>{t('ctxCopyAsPng')}</span>
+              </div>
+            )}
+            <div className="ng-ctx-divider" />
+          </>
+        )}
 
-      {/* Reset Properties */}
-      {isObject && (
-        <div className="ng-ctx-item" onClick={() => act(() => controller.resetSelectedProperties())}>
-          <span>Reset Properties</span>
+        {/* Canvas actions */}
+        <div className="ng-ctx-item" onClick={() => act(() => controller.pasteAt(scenePt))}>
+          <span>{t('ctxPaste')}</span>
+          <span className="ng-ctx-key">⌘V</span>
         </div>
-      )}
+        <div className="ng-ctx-item" onClick={() => act(() => controller.selectAll())}>
+          <span>{t('ctxSelectAll')}</span>
+          <span className="ng-ctx-key">⌘A</span>
+        </div>
 
-      {/* Delete Action */}
-      {(isObject || isConnector) && (
-        <>
-          <div className="ng-ctx-divider" />
-          <div
-            className="ng-ctx-item ng-ctx-danger"
-            onClick={() => act(() => controller.deleteSelected())}
-          >
-            <span>Delete</span>
-            <span className="ng-ctx-key">⌫</span>
+        {targetType === 'canvas' && (
+          <>
+            <div className="ng-ctx-item" onClick={() => act(() => controller.addFrame())}>
+              <span>{t('ctxAddFrame')}</span>
+            </div>
+            <div className="ng-ctx-item" onClick={() => act(() => controller.zoomToFit())}>
+              <span>{t('ctxZoomToFit')}</span>
+            </div>
+          </>
+        )}
+
+        {/* Reset Properties */}
+        {isObject && (
+          <div className="ng-ctx-item" onClick={() => act(() => controller.resetSelectedProperties())}>
+            <span>{t('ctxResetProps')}</span>
           </div>
-        </>
-      )}
-    </div>
+        )}
+
+        {/* Delete Action */}
+        {(isObject || isConnector) && (
+          <>
+            <div className="ng-ctx-divider" />
+            <div
+              className="ng-ctx-item ng-ctx-danger"
+              onClick={() => act(() => controller.deleteSelected())}
+            >
+              <span>{t('ctxDelete')}</span>
+              <span className="ng-ctx-key">⌫</span>
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }

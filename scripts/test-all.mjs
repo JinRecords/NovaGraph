@@ -68,6 +68,21 @@ const suites = [
     cmd: process.execPath,
     args: [path.join(root, 'scripts', 'test-tutorial.mjs')],
   },
+  {
+    name: 'Cabinet Wiring, VNNOX Bug Fixes & Defaults Unit Suite',
+    cmd: process.execPath,
+    args: [tsxCli, path.join(root, 'scripts', 'test-wiring-and-vnnox-unit.ts')],
+  },
+  {
+    name: 'Cabinet Wiring & Partition Fixes E2E Browser Suite',
+    cmd: process.execPath,
+    args: [path.join(root, 'scripts', 'test-cabinet-wiring-fixes.mjs')],
+  },
+  {
+    name: 'Sample Topology, Bounds, Resize & Firefox Import E2E Suite',
+    cmd: process.execPath,
+    args: [path.join(root, 'scripts', 'test-latest-regressions.mjs')],
+  },
 ];
 
 console.log('===========================================================');

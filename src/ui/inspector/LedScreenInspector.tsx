@@ -6,6 +6,7 @@ import { makeEqualPartitions } from '../../canvas/ledScreen';
 import { t } from '../../i18n';
 import type { LedScreenConfig } from '../../types';
 import { Icon } from '../Icons';
+import { LedCabinetWiringModal } from '../LedCabinetWiringModal';
 import { LedPartitionColorModal } from '../LedPartitionColorModal';
 
 export function LedScreenInspector({
@@ -16,6 +17,7 @@ export function LedScreenInspector({
   activeObject: Group;
 }) {
   const [isPartitionColorOpen, setIsPartitionColorOpen] = useState(false);
+  const [isWiringModalOpen, setIsWiringModalOpen] = useState(false);
 
   useEffect(() => {
     const handler = () => setIsPartitionColorOpen(true);
@@ -85,7 +87,7 @@ export function LedScreenInspector({
               type="number"
               className="ng-input-text"
               style={{ flex: 1 }}
-              placeholder="Width"
+              placeholder={t('resWidthPlaceholder')}
               value={cfg.resWidth}
               onInput={(e) =>
                 handleResChange(Number((e.target as HTMLInputElement).value), cfg.resHeight)
@@ -96,7 +98,7 @@ export function LedScreenInspector({
               type="number"
               className="ng-input-text"
               style={{ flex: 1 }}
-              placeholder="Height"
+              placeholder={t('resHeightPlaceholder')}
               value={cfg.resHeight}
               onInput={(e) =>
                 handleResChange(cfg.resWidth, Number((e.target as HTMLInputElement).value))
@@ -147,7 +149,7 @@ export function LedScreenInspector({
 
       {/* Partitions */}
       <div className="ng-inspector-section">
-        <span className="ng-section-title">Partitions (Interactive)</span>
+        <span className="ng-section-title">{t('partitionsSection')}</span>
         <div className="ng-field-row">
           <span className="ng-field-label">{t('verticalPartitions')}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -165,7 +167,7 @@ export function LedScreenInspector({
               style={{ padding: '4px 6px', fontSize: '10.5px' }}
               onClick={() => setVPartitionsCount(cfg.verticalPartitions.length)}
             >
-              Reset
+              {t('partitionReset')}
             </button>
           </div>
         </div>
@@ -187,10 +189,31 @@ export function LedScreenInspector({
               style={{ padding: '4px 6px', fontSize: '10.5px' }}
               onClick={() => setHPartitionsCount(cfg.horizontalPartitions.length)}
             >
-              Reset
+              {t('partitionReset')}
             </button>
           </div>
         </div>
+
+        <div className="ng-field-row">
+          <span className="ng-field-label">{t('partitionLineStyle')}</span>
+          <div className="ng-segmented">
+            <button
+              type="button"
+              className={`ng-seg-btn ${(cfg.partitionLineStyle || 'dashed') === 'dashed' ? 'active' : ''}`}
+              onClick={() => updateCfg({ partitionLineStyle: 'dashed' })}
+            >
+              {t('dashDashed')}
+            </button>
+            <button
+              type="button"
+              className={`ng-seg-btn ${cfg.partitionLineStyle === 'solid' ? 'active' : ''}`}
+              onClick={() => updateCfg({ partitionLineStyle: 'solid' })}
+            >
+              {t('dashSolid')}
+            </button>
+          </div>
+        </div>
+
         <div style={{ fontSize: '10.5px', color: '#ff6a2b', marginTop: '2px' }}>
           {t('partitionDragHint')}
         </div>
@@ -201,15 +224,24 @@ export function LedScreenInspector({
           onClick={() => setIsPartitionColorOpen(true)}
         >
           <Icon name="grid" size={14} />
-          <span>Color Partition Cells...</span>
+          <span>{t('partitionColorCellsBtn')}</span>
+        </button>
+        <button
+          type="button"
+          className="ng-btn ng-btn-secondary ng-btn-cabinet-wiring"
+          style={{ width: '100%', marginTop: '6px', justifyContent: 'center' }}
+          onClick={() => setIsWiringModalOpen(true)}
+        >
+          <Icon name="connect" size={14} />
+          <span>{t('cabinetWiringBtn')}</span>
         </button>
       </div>
 
       {/* Screen Fill & Text Color */}
       <div className="ng-inspector-section">
-        <span className="ng-section-title">Screen Fill & Text</span>
+        <span className="ng-section-title">{t('screenFillAndText')}</span>
         <div className="ng-field-row">
-          <span className="ng-field-label">Fill Color</span>
+          <span className="ng-field-label">{t('fillColor')}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <input
               type="color"
@@ -267,7 +299,7 @@ export function LedScreenInspector({
         </div>
 
         <div className="ng-field-row" style={{ marginTop: '6px' }}>
-          <span className="ng-field-label">Text Size</span>
+          <span className="ng-field-label">{t('textSize')}</span>
           <input
             type="number"
             min="8"
@@ -282,7 +314,7 @@ export function LedScreenInspector({
 
       {/* Border / Frame */}
       <div className="ng-inspector-section">
-        <span className="ng-section-title">Border / Frame</span>
+        <span className="ng-section-title">{t('borderFrameSection')}</span>
         <div className="ng-field-row">
           <span className="ng-field-label">{t('borderThickness')}</span>
           <input
@@ -336,6 +368,12 @@ export function LedScreenInspector({
       <LedPartitionColorModal
         isOpen={isPartitionColorOpen}
         onClose={() => setIsPartitionColorOpen(false)}
+        cfg={cfg}
+        onUpdateCfg={updateCfg}
+      />
+      <LedCabinetWiringModal
+        isOpen={isWiringModalOpen}
+        onClose={() => setIsWiringModalOpen(false)}
         cfg={cfg}
         onUpdateCfg={updateCfg}
       />

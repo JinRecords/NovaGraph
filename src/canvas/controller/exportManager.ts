@@ -21,9 +21,11 @@ export async function exportDiagram(
   boardId: string,
   boardName: string
 ) {
-  const safeFilename = (boardName || 'novagraph-diagram')
-    .toLowerCase()
-    .replace(/[^a-z0-9-_]+/g, '-');
+  const safeFilename =
+    (boardName || 'novagraph-diagram')
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'novagraph-diagram';
 
   // Build BoardDocument to embed in metadata
   const activeObjects = [...ctrl.canvas.getActiveObjects()];
@@ -102,8 +104,10 @@ export async function exportDiagram(
   }
 
   // Cap raster output dimensions so huge diagrams never exceed browser HTML5 canvas limits (which return "data:,")
-  const MAX_EXPORT_DIM = 8192;
-  const MAX_EXPORT_AREA = 33_554_432; // 32 MP safe ceiling across Chrome/Edge/Firefox
+  // PDF uses a balanced 4K/8MP raster ceiling so pure-JS PDF embedding finishes quickly within user activation
+  const isPdf = format === 'pdf';
+  const MAX_EXPORT_DIM = isPdf ? 4096 : 8192;
+  const MAX_EXPORT_AREA = isPdf ? 8_388_608 : 33_554_432;
   const scaleByDim = Math.min(
     MAX_EXPORT_DIM / Math.max(1, cropWidth),
     MAX_EXPORT_DIM / Math.max(1, cropHeight)
@@ -144,6 +148,10 @@ export async function exportDiagram(
       exportScale *= 0.5;
     }
 
+    if (rawBytes.length < 24) {
+      throw new Error('Failed to render diagram bitmap from canvas');
+    }
+
     if (format === 'png') {
       const pngWithMeta = embedMetadataInPng(rawBytes, exportDoc);
       triggerDownload(pngWithMeta, `${safeFilename}.png`, 'image/png');
@@ -151,9 +159,8 @@ export async function exportDiagram(
       const jpgWithMeta = embedMetadataInJpeg(rawBytes, exportDoc);
       triggerDownload(jpgWithMeta, `${safeFilename}.jpg`, 'image/jpeg');
     } else if (format === 'pdf') {
-      const pngWithMeta = embedMetadataInPng(rawBytes, exportDoc);
       const pdfBytes = await generatePdfWithMetadata(
-        pngWithMeta,
+        rawBytes,
         outW,
         outH,
         exportDoc

@@ -141,6 +141,9 @@ export class CanvasController {
 
   private onChangeCallbacks = new Set<(scheduleAutosave?: boolean) => void>();
   private onToastCallback?: (msg: string, kind?: 'info' | 'warn' | 'ok') => void;
+  private replaceHoverTarget: Group | null = null;
+  private replaceHoverOrigOpacity = 1;
+  private replacePulseRafId: number | null = null;
 
   constructor(
     canvasEl: HTMLCanvasElement,
@@ -364,6 +367,85 @@ export class CanvasController {
     this.notifyChange(true);
   }
 
+  /** Find the topmost visible product Group containing `scenePt` (used for drag-to-replace). */
+  public findProductAtPoint(scenePt: { x: number; y: number }): Group | null {
+    const objs = this.canvas.getObjects();
+    for (let i = objs.length - 1; i >= 0; i--) {
+      const obj = objs[i];
+      const rec = obj as unknown as Record<string, unknown>;
+      if (!obj.visible || !rec.ngId || rec.ngType !== 'product') continue;
+      const br = obj.getBoundingRect();
+      if (
+        scenePt.x >= br.left &&
+        scenePt.x <= br.left + br.width &&
+        scenePt.y >= br.top &&
+        scenePt.y <= br.top + br.height
+      ) {
+        return obj as Group;
+      }
+    }
+    return null;
+  }
+
+  /** Smoothly pulse a product's opacity while dragging another product over it, or restore it. */
+  public setReplaceHoverTarget(target: Group | null) {
+    if (target === this.replaceHoverTarget) return;
+
+    if (this.replacePulseRafId !== null) {
+      cancelAnimationFrame(this.replacePulseRafId);
+      this.replacePulseRafId = null;
+    }
+    if (this.replaceHoverTarget) {
+      this.replaceHoverTarget.set({ opacity: this.replaceHoverOrigOpacity });
+      this.replaceHoverTarget = null;
+      this.canvas.requestRenderAll();
+    }
+
+    if (!target) return;
+
+    this.replaceHoverTarget = target;
+    this.replaceHoverOrigOpacity = typeof target.opacity === 'number' ? target.opacity : 1;
+    const startTime = performance.now();
+
+    const step = (now: number) => {
+      if (this.replaceHoverTarget !== target || !target.canvas) {
+        this.replacePulseRafId = null;
+        return;
+      }
+      const elapsedSec = (now - startTime) / 1000;
+      const opacity = 0.625 + 0.375 * Math.cos(elapsedSec * ((Math.PI * 2) / 0.9));
+      target.set({ opacity });
+      this.canvas.requestRenderAll();
+      this.replacePulseRafId = requestAnimationFrame(step);
+    };
+
+    this.replacePulseRafId = requestAnimationFrame(step);
+  }
+
+  /** Replace an existing product node in-place while preserving its ngId and attached lines. */
+  public async replaceProductNode(targetGroup: Group, newProduct: ProductItem): Promise<Group> {
+    this.setReplaceHoverTarget(null);
+    const liveGroup = (this.findObjectById(String((targetGroup as any).ngId)) as Group) || targetGroup;
+    const rec = liveGroup as unknown as Record<string, unknown>;
+    const oldSpecs = (Array.isArray(rec.ngSelectedSpecs) ? rec.ngSelectedSpecs : []) as SelectedSpecEntry[];
+    const preservedSpecs = oldSpecs.filter((s) => {
+      const val = newProduct.specs?.[s.key];
+      return val !== undefined && val !== '';
+    });
+    const titlePos = (rec.ngTitlePos as SpecPosition) || 'bottom';
+    const nextGroup = await rebuildProductNodeInPlace(
+      liveGroup,
+      preservedSpecs,
+      titlePos,
+      undefined,
+      undefined,
+      undefined,
+      newProduct
+    );
+    this.notifyChange(true);
+    return nextGroup;
+  }
+
   public async addHSeriesConfigured(config: HSeriesConfiguration) {
     const center = this.getViewportCenter();
     const node = await createHSeriesConfiguredNode(config, center.x, center.y);
@@ -373,8 +455,8 @@ export class CanvasController {
     this.notifyChange(true);
   }
 
-  public addLedScreen(config?: Partial<LedScreenConfig>): Group {
-    const center = this.getViewportCenter();
+  public addLedScreen(config?: Partial<LedScreenConfig>, pt?: { x: number; y: number }): Group {
+    const center = pt || this.getViewportCenter();
     const node = createLedScreenNode(config, { left: center.x, top: center.y });
     this.canvas.add(node);
     this.canvas.setActiveObject(node);
@@ -662,6 +744,7 @@ export class CanvasController {
   }
 
   public async loadBoardDocument(doc: BoardDocument) {
+    this.setReplaceHoverTarget(null);
     await this.historyManager.loadBoardDocument(doc);
   }
 

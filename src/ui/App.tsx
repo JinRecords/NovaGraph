@@ -9,7 +9,7 @@ import {
   onCatalogScrapeProgress,
   ScrapingProgress,
 } from '../data/catalog';
-import { extractBoardFromFile } from '../export/metadata';
+import { extractBoardFromFile, isLikelyImageFile } from '../export/metadata';
 import { getLocale, onLocaleChange, setLocale, t } from '../i18n';
 import {
   createEmptyBoard,
@@ -21,7 +21,7 @@ import {
   setActiveBoardId,
   upsertBoard,
 } from '../storage/boards';
-import { BoardDocument, ProductItem } from '../types';
+import { BoardDocument, LedScreenConfig, ProductItem } from '../types';
 import { ContextMenu } from './ContextMenu';
 import { CustomProductModal } from './CustomProductModal';
 import { ExportModal } from './ExportModal';
@@ -32,6 +32,7 @@ import {
   fetchVnnoxCareData,
   parseVnnoxCareUrl,
 } from '../data/vnnoxCare';
+import { fetchViaBackgroundOrDirect } from './sidebar/iconify';
 import { Inspector } from './Inspector';
 import { SidebarLeft } from './SidebarLeft';
 import { hasCompletedTutorial, TutorialModal } from './TutorialModal';
@@ -75,6 +76,7 @@ export function App({ onClose }: { onClose: () => void }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [isTutorialOpen, setIsTutorialOpen] = useState(() => !hasCompletedTutorial());
   const [tutorialRunId, setTutorialRunId] = useState(0);
+  const [replaceHint, setReplaceHint] = useState<{ visible: boolean; x: number; y: number } | null>(null);
   const [toasts, setToasts] = useState<Array<{ id: number; text: string; kind: 'info' | 'warn' | 'ok' }>>([]);
 
   const showToast = (text: string, kind: 'info' | 'warn' | 'ok' = 'info') => {
@@ -87,6 +89,15 @@ export function App({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     return onLocaleChange((l) => setCurrentLocale(l));
+  }, []);
+
+  useEffect(() => {
+    const onGlobalDragEnd = () => {
+      controllerRef.current?.setReplaceHoverTarget(null);
+      setReplaceHint(null);
+    };
+    window.addEventListener('dragend', onGlobalDragEnd);
+    return () => window.removeEventListener('dragend', onGlobalDragEnd);
   }, []);
 
   // Initialize Canvas and CanvasController
@@ -255,13 +266,13 @@ export function App({ onClose }: { onClose: () => void }) {
     const next = upsertBoard(newDoc);
     setBoards(next);
     switchBoard(newDoc.id);
-    showToast('New board created', 'ok');
+    showToast(t('newBoardToast'), 'ok');
   };
 
   const renameCurrentBoard = () => {
     const cur = boards.find((b) => b.id === activeBoardId);
     if (!cur) return;
-    const name = window.prompt('Rename diagram:', cur.name);
+    const name = window.prompt(t('renameBoardPrompt'), cur.name);
     if (name && name.trim()) {
       const updated = { ...cur, name: name.trim() };
       setBoards(upsertBoard(updated));
@@ -270,10 +281,10 @@ export function App({ onClose }: { onClose: () => void }) {
 
   const deleteCurrentBoard = () => {
     if (boards.length <= 1) {
-      showToast('Cannot delete the last board', 'warn');
+      showToast(t('lastBoardWarn'), 'warn');
       return;
     }
-    if (window.confirm('Delete this diagram board?')) {
+    if (window.confirm(t('deleteBoardConfirm'))) {
       const next = deleteBoardById(activeBoardId);
       setBoards(next);
       setActiveId(next[0].id);
@@ -281,19 +292,29 @@ export function App({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const handleDrop = async (e: DragEvent) => {
-    e.preventDefault();
-    if (!controllerRef.current || !containerRef.current) return;
-
+  const getDropScenePoint = (e: DragEvent) => {
+    if (!controllerRef.current || !containerRef.current) return null;
     const rect = containerRef.current.getBoundingClientRect();
     const rawX = e.clientX - rect.left;
     const rawY = e.clientY - rect.top;
     const vpt = controllerRef.current.canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
     const zoom = vpt[0] || 1;
-    const scenePt = {
+    return {
       x: Math.round((rawX - vpt[4]) / zoom),
       y: Math.round((rawY - vpt[5]) / zoom),
     };
+  };
+
+  const clearReplaceHover = () => {
+    controllerRef.current?.setReplaceHoverTarget(null);
+    setReplaceHint((prev) => (prev ? null : prev));
+  };
+
+  const handleDrop = async (e: DragEvent) => {
+    e.preventDefault();
+    clearReplaceHover();
+    const scenePt = getDropScenePoint(e);
+    if (!controllerRef.current || !scenePt) return;
 
     const iconKey = e.dataTransfer?.getData('application/novagraph-icon-key');
     const iconSvg = e.dataTransfer?.getData('application/novagraph-icon');
@@ -303,15 +324,16 @@ export function App({ onClose }: { onClose: () => void }) {
       return;
     }
     if (iconKey) {
-      const svg = `https://api.iconify.design/${iconKey.replace(':', '/')}.svg?color=%231e293b`;
       try {
-        const res = await fetch(svg);
-        if (res.ok) {
-          const text = await res.text();
+        const text = await fetchViaBackgroundOrDirect(
+          { type: 'FETCH_ICONIFY_SVG', iconKey },
+          `https://api.iconify.design/${iconKey.replace(':', '/')}.svg?color=%231e293b`
+        );
+        if (typeof text === 'string' && text.includes('<svg')) {
           await controllerRef.current.addSvgFromString(text, scenePt, iconLabel);
           return;
         }
-      } catch {}
+      } catch { }
     }
 
     // Direct drag-and-drop: Shapes from left sidebar
@@ -342,6 +364,18 @@ export function App({ onClose }: { onClose: () => void }) {
       return;
     }
 
+    // Direct drag-and-drop: LED Screen preset or custom from left sidebar
+    const ledJson = e.dataTransfer?.getData('application/novagraph-led-screen');
+    if (ledJson) {
+      try {
+        const cfg = JSON.parse(ledJson) as Partial<LedScreenConfig>;
+        controllerRef.current.addLedScreen(cfg, scenePt);
+      } catch {
+        controllerRef.current.addLedScreen(undefined, scenePt);
+      }
+      return;
+    }
+
     // Fallback: Plain text drag-and-drop
     const plainText = e.dataTransfer?.getData('text/plain') || '';
     if (plainText.startsWith('shape:')) {
@@ -361,14 +395,23 @@ export function App({ onClose }: { onClose: () => void }) {
       controllerRef.current.addFrame(undefined, scenePt);
       return;
     }
+    if (plainText === 'led-screen') {
+      controllerRef.current.addLedScreen(undefined, scenePt);
+      return;
+    }
 
     const prodJson = e.dataTransfer?.getData('application/novagraph-product');
     if (prodJson) {
       try {
         const prod = JSON.parse(prodJson) as ProductItem;
-        await controllerRef.current.addProduct(prod, scenePt);
+        const targetProd = controllerRef.current.findProductAtPoint(scenePt);
+        if (targetProd) {
+          await controllerRef.current.replaceProductNode(targetProd, prod);
+        } else {
+          await controllerRef.current.addProduct(prod, scenePt);
+        }
         return;
-      } catch {}
+      } catch { }
     }
 
     // File drop (NovaGraph diagram file with embedded metadata or standard image)
@@ -377,33 +420,55 @@ export function App({ onClose }: { onClose: () => void }) {
       try {
         const doc = await extractBoardFromFile(f);
         if (doc && doc.fabricJson) {
-          const importedName = doc.name || f.name.replace(/\.[^.]+$/, '');
-          const newDoc: BoardDocument = {
-            ...doc,
-            version: 1,
-            id: `board_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            name: importedName,
-            updatedAt: new Date().toISOString(),
-          };
-          const next = upsertBoard(newDoc);
-          setBoards(next);
-          await switchBoard(newDoc.id);
-          controllerRef.current?.zoomToFit();
+          const importedName = await applyImportedBoard(doc, f.name);
           showToast(`Imported "${importedName}" successfully!`, 'ok');
           continue;
         }
-      } catch {}
-      if (f.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          controllerRef.current?.addImageFromDataUrl(
-            String(reader.result),
-            f.name,
-            scenePt
-          );
-        };
-        reader.readAsDataURL(f);
+      } catch { }
+      if (await isLikelyImageFile(f)) {
+        await importImageFileToCanvas(f, scenePt);
       }
+    }
+  };
+
+  const applyImportedBoard = async (doc: BoardDocument, fallbackFilename: string): Promise<string> => {
+    if (controllerRef.current && activeBoardIdRef.current) {
+      const curId = activeBoardIdRef.current;
+      const all = loadAllBoards();
+      const curName = all.find((b) => b.id === curId)?.name || 'Untitled Diagram';
+      upsertBoard(controllerRef.current.serializeBoard(curId, curName));
+    }
+    const importedName = doc.name || fallbackFilename.replace(/\.[^.]+$/, '');
+    const newDoc: BoardDocument = {
+      ...doc,
+      version: 1,
+      id: `board_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name: importedName,
+      updatedAt: new Date().toISOString(),
+    };
+    const next = upsertBoard(newDoc);
+    setBoards(next);
+    await switchBoard(newDoc.id);
+    controllerRef.current?.zoomToFit();
+    return importedName;
+  };
+
+  const importImageFileToCanvas = async (file: File, scenePt?: { x: number; y: number }) => {
+    const ctrl = controllerRef.current;
+    if (!ctrl) return;
+    if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+      const text = await file.text();
+      await ctrl.addSvgFromString(text, scenePt, file.name);
+      return;
+    }
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error || new Error('Failed to read image'));
+      reader.readAsDataURL(file);
+    });
+    if (dataUrl) {
+      await ctrl.addImageFromDataUrl(dataUrl, file.name, scenePt);
     }
   };
 
@@ -411,6 +476,23 @@ export function App({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = 'copy';
+    }
+    const ctrl = controllerRef.current;
+    if (!ctrl) return;
+    const types = e.dataTransfer?.types ? Array.from(e.dataTransfer.types) : [];
+    if (!types.includes('application/novagraph-product')) {
+      clearReplaceHover();
+      return;
+    }
+    const scenePt = getDropScenePoint(e);
+    const targetProd = scenePt ? ctrl.findProductAtPoint(scenePt) : null;
+    ctrl.setReplaceHoverTarget(targetProd);
+    if (targetProd) {
+      const x = e.clientX;
+      const y = e.clientY;
+      setReplaceHint((prev) => (prev && prev.x === x && prev.y === y ? prev : { visible: true, x, y }));
+    } else {
+      setReplaceHint((prev) => (prev ? null : prev));
     }
   };
 
@@ -421,28 +503,20 @@ export function App({ onClose }: { onClose: () => void }) {
 
     try {
       const doc = await extractBoardFromFile(file);
-      if (!doc) throw new Error('Could not parse board');
-      if (controllerRef.current && activeBoardIdRef.current) {
-        const curId = activeBoardIdRef.current;
-        const all = loadAllBoards();
-        const curName = all.find((b) => b.id === curId)?.name || 'Untitled Diagram';
-        upsertBoard(controllerRef.current.serializeBoard(curId, curName));
+      if (doc && doc.fabricJson) {
+        const importedName = await applyImportedBoard(doc, file.name);
+        showToast(`Imported "${importedName}" successfully!`, 'ok');
+        return;
       }
-      const importedName = doc.name || file.name.replace(/\.[^.]+$/, '');
-      const newDoc: BoardDocument = {
-        ...doc,
-        version: 1,
-        id: `board_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        name: importedName,
-        updatedAt: new Date().toISOString(),
-      };
-      const next = upsertBoard(newDoc);
-      setBoards(next);
-      await switchBoard(newDoc.id);
-      controllerRef.current?.zoomToFit();
-      showToast(`Imported "${importedName}" successfully!`, 'ok');
+      if (await isLikelyImageFile(file)) {
+        await importImageFileToCanvas(file);
+        showToast(t('importError'), 'warn');
+        return;
+      }
+      const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+      throw new Error(isPdf ? t('importNoMetadataPdf') : t('importInvalidFile'));
     } catch (err: any) {
-      showToast(`Import failed: ${err.message || 'Corrupt or incompatible file'}`, 'warn');
+      showToast(`Import failed: ${err?.message || t('importInvalidFile')}`, 'warn');
     } finally {
       input.value = '';
     }
@@ -542,6 +616,11 @@ export function App({ onClose }: { onClose: () => void }) {
           className="ng-canvas-container"
           onDrop={handleDrop}
           onDragOver={handleDragOver}
+          onDragLeave={(e) => {
+            if (!e.relatedTarget || !containerRef.current?.contains(e.relatedTarget as Node)) {
+              clearReplaceHover();
+            }
+          }}
         >
           <canvas ref={canvasRef} className="ng-canvas-el" />
         </div>
@@ -600,15 +679,20 @@ export function App({ onClose }: { onClose: () => void }) {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         hasSelection={Boolean(selection.activeObject)}
-        onExport={(format, scope) => {
+        onExport={async (format, scope) => {
           if (!controllerRef.current) return;
-          controllerRef.current.exportDiagram(
-            format,
-            scope,
-            currentBoard.id,
-            currentBoard.name
-          );
-          showToast(`Exported as ${format.toUpperCase()}`, 'ok');
+          try {
+            await controllerRef.current.exportDiagram(
+              format,
+              scope,
+              currentBoard.id,
+              currentBoard.name
+            );
+            showToast(`Exported as ${format.toUpperCase()}`, 'ok');
+          } catch (err: any) {
+            console.error('[NovaGraph] Export error:', err);
+            showToast(`${t('exportFailed')}: ${err?.message || 'Unable to generate file'}`, 'warn');
+          }
         }}
       />
 
@@ -629,6 +713,17 @@ export function App({ onClose }: { onClose: () => void }) {
           controller={controller}
           onClose={() => setContextMenu(null)}
         />
+      )}
+
+      {/* Replace Product Cursor Hint */}
+      {replaceHint?.visible && (
+        <div
+          className="ng-replace-hint"
+          data-testid="replace-product-hint"
+          style={{ left: `${replaceHint.x}px`, top: `${replaceHint.y}px` }}
+        >
+          {t('replaceProductHint')}
+        </div>
       )}
 
       {/* Toasts */}

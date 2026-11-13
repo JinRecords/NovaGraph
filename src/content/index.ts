@@ -299,11 +299,13 @@ function tryInjectHConfiguratorButton() {
 }
 
 // Background script listener
-chrome.runtime?.onMessage?.addListener((msg) => {
-  if (msg?.action === 'toggle_novagraph') {
-    toggleNovaGraph();
-  }
-});
+if (typeof chrome !== 'undefined') {
+  chrome.runtime?.onMessage?.addListener((msg) => {
+    if (msg?.action === 'toggle_novagraph') {
+      toggleNovaGraph();
+    }
+  });
+}
 
 // Periodic & mutation checks for SPA reactivity
 function checkDom() {

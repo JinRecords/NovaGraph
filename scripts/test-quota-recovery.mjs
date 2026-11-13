@@ -95,9 +95,9 @@ try {
   storageModule = await import('../src/storage/boards.ts');
 } catch {
   const path = await import('node:path');
-  const { fileURLToPath } = await import('node:url');
+  const { fileURLToPath, pathToFileURL } = await import('node:url');
   const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-  const { build } = await import(path.join(root, 'node_modules/vite/dist/node/index.js'));
+  const { build } = await import(pathToFileURL(path.join(root, 'node_modules/vite/dist/node/index.js')).href);
   const res = await build({
     root,
     configFile: false,

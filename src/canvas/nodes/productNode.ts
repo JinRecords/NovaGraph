@@ -194,18 +194,25 @@ export async function rebuildProductNodeInPlace(
   titlePos: SpecPosition,
   newImgDataUrl?: string | null,
   labelColor?: string,
-  labelSize?: number
+  labelSize?: number,
+  overrideProduct?: ProductItem
 ): Promise<Group> {
   const canvas = oldGroup.canvas;
   const rec = oldGroup as unknown as Record<string, unknown>;
-  const product = rec.ngProduct as ProductItem;
+  const product = overrideProduct ?? (rec.ngProduct as ProductItem);
 
   const oldImg = oldGroup.getObjects()[0];
   const imgCenter = oldImg ? oldImg.getCenterPoint() : oldGroup.getCenterPoint();
 
-  const isResetting = newImgDataUrl === null || newImgDataUrl === '';
-  const isCustom = newImgDataUrl ? true : (isResetting ? false : Boolean(rec.ngIsCustomImage));
-  const finalImgUrl = isResetting ? null : (newImgDataUrl !== undefined ? newImgDataUrl : (rec.ngImgDataUrl as string) || null);
+  const isResetting =
+    overrideProduct !== undefined || newImgDataUrl === null || newImgDataUrl === '';
+  const isCustom =
+    !overrideProduct && newImgDataUrl ? true : isResetting ? false : Boolean(rec.ngIsCustomImage);
+  const finalImgUrl = isResetting
+    ? null
+    : newImgDataUrl !== undefined
+      ? newImgDataUrl
+      : (rec.ngImgDataUrl as string) || null;
   const finalLabelColor = labelColor ?? (rec.ngLabelColor as string) ?? '#0f172a';
   const finalLabelSize = labelSize ?? (rec.ngLabelSize as number) ?? 13;
 
@@ -218,8 +225,8 @@ export async function rebuildProductNodeInPlace(
     imgDataUrl: finalImgUrl,
     labelColor: finalLabelColor,
     labelSize: finalLabelSize,
-    scaleX: oldGroup.scaleX,
-    scaleY: oldGroup.scaleY,
+    scaleX: overrideProduct ? 1 : oldGroup.scaleX,
+    scaleY: overrideProduct ? 1 : oldGroup.scaleY,
   });
   const newRec = newGroup as unknown as Record<string, unknown>;
   newRec.ngIsCustomImage = isCustom;

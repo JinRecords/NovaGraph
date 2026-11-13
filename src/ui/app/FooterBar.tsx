@@ -13,7 +13,7 @@ export function FooterBar({
       <span>{t('shortcutsHint')}</span>
       <span className="ng-footer-right">
         <span>
-          {boardName} • NovaStar System Topology Designer
+          {boardName} • {t('footerSubtitle')}
         </span>
         <button
           type="button"

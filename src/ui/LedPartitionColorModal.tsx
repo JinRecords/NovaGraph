@@ -1,5 +1,6 @@
 import { h } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { t } from '../i18n';
 import type { LedScreenConfig } from '../types';
 import { Icon } from './Icons';
 
@@ -127,6 +128,7 @@ export function LedPartitionColorModal({
     // Grid lines
     ctx.strokeStyle = '#cbd5e1';
     ctx.lineWidth = 0.5;
+    ctx.setLineDash(cfg.partitionLineStyle === 'solid' ? [] : [4, 4]);
     for (let c = 0; c <= numCols; c++) {
       const x = vStops[c] * previewW;
       ctx.beginPath();
@@ -141,7 +143,8 @@ export function LedPartitionColorModal({
       ctx.lineTo(previewW, y);
       ctx.stroke();
     }
-  }, [isLargeGrid, numRows, numCols, cellColors, cfg.fillColor]);
+    ctx.setLineDash([]);
+  }, [isLargeGrid, numRows, numCols, cellColors, cfg.fillColor, cfg.partitionLineStyle]);
 
   const handleCanvasPaint = (e: MouseEvent) => {
     if (!canvasRef.current) return;
@@ -165,7 +168,7 @@ export function LedPartitionColorModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="ng-modal-header">
-          <span>Partition Cell Colors — {cfg.name || 'LED Screen'}</span>
+          <span>{t('partitionColorsModalTitle')} — {cfg.name || t('toolLedScreen')}</span>
           <button className="ng-btn-icon" onClick={onClose}>
             <Icon name="close" size={16} />
           </button>
@@ -219,7 +222,7 @@ export function LedPartitionColorModal({
                     <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                     <path d="m15 5 4 4" />
                   </svg>
-                  <span>Pencil</span>
+                  <span>{t('pencilTool')}</span>
                   <span
                     style={{
                       width: '11px',
@@ -257,7 +260,7 @@ export function LedPartitionColorModal({
                     <path d="M22 21H7" />
                     <path d="m5 11 9 9" />
                   </svg>
-                  <span>Erase</span>
+                  <span>{t('eraseTool')}</span>
                 </button>
               </div>
 
@@ -273,9 +276,8 @@ export function LedPartitionColorModal({
                     color: '#334155',
                     cursor: 'pointer',
                   }}
-                  title="Custom Pencil Color"
                 >
-                  <span>Color</span>
+                  <span>{t('colorLabel')}</span>
                   <input
                     type="color"
                     className="ng-input-color"
@@ -293,7 +295,7 @@ export function LedPartitionColorModal({
                   style={{ padding: '4px 8px', fontSize: '11px' }}
                   onClick={handleFillAll}
                 >
-                  Fill All
+                  {t('fillAllBtn')}
                 </button>
                 <button
                   type="button"
@@ -301,7 +303,7 @@ export function LedPartitionColorModal({
                   style={{ padding: '4px 8px', fontSize: '11px' }}
                   onClick={handleClearAll}
                 >
-                  Clear All
+                  {t('clearAllBtn')}
                 </button>
               </div>
             </div>
@@ -314,7 +316,7 @@ export function LedPartitionColorModal({
                   <button
                     key={c}
                     type="button"
-                    title={`Paint with ${c}`}
+                    title={c}
                     onClick={() => handlePickSwatch(c)}
                     style={{
                       width: '23px',
@@ -345,12 +347,10 @@ export function LedPartitionColorModal({
             }}
           >
             <span>
-              {tool === 'pencil'
-                ? 'Pencil mode: Click or drag across partition cells to paint them.'
-                : 'Erase mode: Click or drag across partition cells to reset their color.'}
+              {tool === 'pencil' ? t('pencilModeHint') : t('eraseModeHint')}
             </span>
             <span style={{ fontWeight: 600, color: '#475569' }}>
-              {numCols} × {numRows} Grid
+              {numCols} × {numRows} {t('gridLabel')}
             </span>
           </div>
 
@@ -443,8 +443,8 @@ export function LedPartitionColorModal({
                           width: `${wPct}%`,
                           height: `${hPct}%`,
                           background: fill,
-                          borderRight: c < numCols - 1 ? '1.5px dashed #94a3b8' : 'none',
-                          borderBottom: r < numRows - 1 ? '1.5px dashed #94a3b8' : 'none',
+                          borderRight: c < numCols - 1 ? `1.5px ${cfg.partitionLineStyle === 'solid' ? 'solid' : 'dashed'} #94a3b8` : 'none',
+                          borderBottom: r < numRows - 1 ? `1.5px ${cfg.partitionLineStyle === 'solid' ? 'solid' : 'dashed'} #94a3b8` : 'none',
                           boxSizing: 'border-box',
                           display: 'flex',
                           flexDirection: 'column',
@@ -517,7 +517,7 @@ export function LedPartitionColorModal({
 
         <div className="ng-modal-footer">
           <button className="ng-btn ng-btn-accent" onClick={onClose}>
-            Done
+            {t('doneBtn')}
           </button>
         </div>
       </div>

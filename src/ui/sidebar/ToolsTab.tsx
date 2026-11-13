@@ -29,7 +29,7 @@ export function ToolsTab({
     <div className="ng-sidebar-body">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a' }}>
-          Built-in System Tools
+          {t('builtInTools')}
         </div>
 
         <button
@@ -39,9 +39,9 @@ export function ToolsTab({
         >
           <Icon name="sliders" size={16} />
           <div style={{ textAlign: 'left' }}>
-            <div style={{ fontWeight: 600, fontSize: '12px' }}>H Series Configurator</div>
+            <div style={{ fontWeight: 600, fontSize: '12px' }}>{t('hSeriesConfiguratorTitle')}</div>
             <div style={{ fontSize: '10.5px', color: '#64748b' }}>
-              Configure chassis host + input/output cards
+              {t('hSeriesConfiguratorDesc')}
             </div>
           </div>
         </button>
@@ -55,7 +55,7 @@ export function ToolsTab({
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontWeight: 600, fontSize: '12px' }}>{t('sampleBoard')}</div>
             <div style={{ fontSize: '10.5px', color: '#64748b' }}>
-              Recreate exact sample1.jpg LED topology
+              {t('sampleTopologyDesc')}
             </div>
           </div>
         </button>

@@ -142,13 +142,47 @@ export function embedMetadataInPng(pngBytes: Uint8Array, doc: BoardDocument): Ui
   return out;
 }
 
+function isValidBoardDocument(obj: unknown): obj is BoardDocument {
+  if (!obj || typeof obj !== 'object') return false;
+  const rec = obj as Record<string, unknown>;
+  return Boolean(
+    rec.fabricJson &&
+    typeof rec.fabricJson === 'object' &&
+    Array.isArray(rec.connectors)
+  );
+}
+
+function tryParseBoardJson(raw: string): BoardDocument | null {
+  try {
+    const clean = raw.replace(/^[\0\s]+|[\0\s]+$/g, '');
+    if (!clean.startsWith('{')) return null;
+    const parsed = JSON.parse(clean);
+    return isValidBoardDocument(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function inflateZlibBytes(bytes: Uint8Array): Promise<Uint8Array | null> {
+  if (typeof DecompressionStream === 'undefined') return null;
+  try {
+    const ds = new DecompressionStream('deflate');
+    const stream = new Blob([new Uint8Array(bytes)]).stream().pipeThrough(ds);
+    const ab = await new Response(stream).arrayBuffer();
+    return new Uint8Array(ab);
+  } catch {
+    return null;
+  }
+}
+
 /** Extract BoardDocument JSON from a PNG binary's iTXt / tEXt chunks. */
 export function extractMetadataFromPng(pngBytes: Uint8Array): BoardDocument | null {
   if (pngBytes.length < 24) return null;
   for (let i = 0; i < 8; i++) {
     if (pngBytes[i] !== PNG_SIG[i]) return null;
   }
-  const dec = new TextDecoder();
+  const utf8 = new TextDecoder();
+  const latin1 = new TextDecoder('latin1');
   let offset = 8;
   while (offset + 12 <= pngBytes.length) {
     const len = readU32BE(pngBytes, offset);
@@ -162,19 +196,80 @@ export function extractMetadataFromPng(pngBytes: Uint8Array): BoardDocument | nu
     if (type === 'iTXt') {
       const data = pngBytes.subarray(offset + 8, offset + 8 + len);
       const nul = data.indexOf(0);
-      if (nul > 0) {
-        const kw = dec.decode(data.subarray(0, nul));
-        if (kw === KEYWORD) {
+      if (nul > 0 && nul + 3 <= data.length) {
+        const kw = utf8.decode(data.subarray(0, nul));
+        if (kw === KEYWORD && data[nul + 1] === 0) {
           // Skip compressionFlag(1) + compressionMethod(1) + langTag(\0) + transKw(\0)
           let p = nul + 3;
           while (p < data.length && data[p] !== 0) p++;
-          p++;
+          if (p < data.length) p++;
           while (p < data.length && data[p] !== 0) p++;
-          p++;
-          const raw = dec.decode(data.subarray(p));
-          // Strip any leading null bytes or whitespace
-          const jsonStr = raw.replace(/^[\0\s]+/, '');
-          return JSON.parse(jsonStr) as BoardDocument;
+          if (p < data.length) p++;
+          if (p < data.length) {
+            const parsed = tryParseBoardJson(utf8.decode(data.subarray(p)));
+            if (parsed) return parsed;
+          }
+        }
+      }
+    } else if (type === 'tEXt') {
+      const data = pngBytes.subarray(offset + 8, offset + 8 + len);
+      const nul = data.indexOf(0);
+      if (nul > 0 && nul + 1 < data.length) {
+        const kw = latin1.decode(data.subarray(0, nul));
+        if (kw === KEYWORD) {
+          const parsed = tryParseBoardJson(utf8.decode(data.subarray(nul + 1)));
+          if (parsed) return parsed;
+        }
+      }
+    }
+    if (type === 'IEND') break;
+    offset += 12 + len;
+  }
+  return null;
+}
+
+async function extractCompressedPngMetadata(pngBytes: Uint8Array): Promise<BoardDocument | null> {
+  if (pngBytes.length < 24) return null;
+  for (let i = 0; i < 8; i++) {
+    if (pngBytes[i] !== PNG_SIG[i]) return null;
+  }
+  const utf8 = new TextDecoder();
+  const latin1 = new TextDecoder('latin1');
+  let offset = 8;
+  while (offset + 12 <= pngBytes.length) {
+    const len = readU32BE(pngBytes, offset);
+    if (offset + 12 + len > pngBytes.length) break;
+    const type = String.fromCharCode(
+      pngBytes[offset + 4],
+      pngBytes[offset + 5],
+      pngBytes[offset + 6],
+      pngBytes[offset + 7]
+    );
+    const data = pngBytes.subarray(offset + 8, offset + 8 + len);
+    if (type === 'iTXt') {
+      const nul = data.indexOf(0);
+      if (nul > 0 && nul + 3 <= data.length && utf8.decode(data.subarray(0, nul)) === KEYWORD) {
+        const compFlag = data[nul + 1];
+        let p = nul + 3;
+        while (p < data.length && data[p] !== 0) p++;
+        if (p < data.length) p++;
+        while (p < data.length && data[p] !== 0) p++;
+        if (p < data.length) p++;
+        if (compFlag === 1 && p < data.length) {
+          const inflated = await inflateZlibBytes(data.subarray(p));
+          if (inflated) {
+            const parsed = tryParseBoardJson(utf8.decode(inflated));
+            if (parsed) return parsed;
+          }
+        }
+      }
+    } else if (type === 'zTXt') {
+      const nul = data.indexOf(0);
+      if (nul > 0 && nul + 2 < data.length && latin1.decode(data.subarray(0, nul)) === KEYWORD) {
+        const inflated = await inflateZlibBytes(data.subarray(nul + 2));
+        if (inflated) {
+          const parsed = tryParseBoardJson(utf8.decode(inflated));
+          if (parsed) return parsed;
         }
       }
     }
@@ -234,6 +329,24 @@ export function embedMetadataInJpeg(jpegBytes: Uint8Array, doc: BoardDocument): 
   return out;
 }
 
+function decodeJpegChunks(chunks: Map<number, string>, expectedTotal: number): BoardDocument | null {
+  if (expectedTotal <= 0 || chunks.size !== expectedTotal) return null;
+  let b64 = '';
+  for (let i = 0; i < expectedTotal; i++) {
+    const part = chunks.get(i);
+    if (part === undefined) return null;
+    b64 += part;
+  }
+  try {
+    const binStr = atob(b64);
+    const bytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+    return tryParseBoardJson(new TextDecoder().decode(bytes));
+  } catch {
+    return null;
+  }
+}
+
 /** Extract BoardDocument JSON from a JPEG binary's APP11 segments. */
 export function extractMetadataFromJpeg(jpegBytes: Uint8Array): BoardDocument | null {
   if (jpegBytes.length < 4 || jpegBytes[0] !== 0xff || jpegBytes[1] !== 0xd8) {
@@ -245,9 +358,21 @@ export function extractMetadataFromJpeg(jpegBytes: Uint8Array): BoardDocument | 
   let expectedTotal = 0;
 
   let offset = 2;
-  while (offset + 4 < jpegBytes.length && jpegBytes[offset] === 0xff) {
+  while (offset + 2 <= jpegBytes.length) {
+    // Skip any 0xFF padding bytes
+    while (offset < jpegBytes.length && jpegBytes[offset] === 0xff) {
+      if (offset + 1 < jpegBytes.length && jpegBytes[offset + 1] !== 0xff) break;
+      offset++;
+    }
+    if (offset + 2 > jpegBytes.length || jpegBytes[offset] !== 0xff) break;
     const marker = jpegBytes[offset + 1];
     if (marker === 0xda || marker === 0xd9) break; // SOS or EOI
+    // Standalone markers without a length field
+    if (marker === 0x00 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) {
+      offset += 2;
+      continue;
+    }
+    if (offset + 4 > jpegBytes.length) break;
     const segLen = (jpegBytes[offset + 2] << 8) | jpegBytes[offset + 3];
     if (segLen < 2 || offset + 2 + segLen > jpegBytes.length) break;
     if (marker === 0xeb && segLen > 2 + magicLen + 4) {
@@ -264,17 +389,63 @@ export function extractMetadataFromJpeg(jpegBytes: Uint8Array): BoardDocument | 
     offset += 2 + segLen;
   }
 
-  if (expectedTotal > 0 && chunks.size === expectedTotal) {
-    let b64 = '';
-    for (let i = 0; i < expectedTotal; i++) {
-      b64 += chunks.get(i) || '';
+  const fromSegments = decodeJpegChunks(chunks, expectedTotal);
+  if (fromSegments) return fromSegments;
+
+  // Fallback binary search in case non-standard markers disrupted header stepping
+  const magicBytes = new TextEncoder().encode(JPEG_MAGIC);
+  const scanChunks = new Map<number, string>();
+  let scanTotal = 0;
+  for (let i = 2; i + 4 + magicLen + 4 < jpegBytes.length; i++) {
+    if (jpegBytes[i] !== 0xff || jpegBytes[i + 1] !== 0xeb) continue;
+    const segLen = (jpegBytes[i + 2] << 8) | jpegBytes[i + 3];
+    if (segLen <= 2 + magicLen + 4 || i + 2 + segLen > jpegBytes.length) continue;
+    let match = true;
+    for (let m = 0; m < magicLen; m++) {
+      if (jpegBytes[i + 4 + m] !== magicBytes[m]) {
+        match = false;
+        break;
+      }
     }
-    const binStr = atob(b64);
-    const bytes = new Uint8Array(binStr.length);
-    for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
-    return JSON.parse(dec.decode(bytes)) as BoardDocument;
+    if (!match) continue;
+    const hdr = i + 4 + magicLen;
+    const idx = (jpegBytes[hdr] << 8) | jpegBytes[hdr + 1];
+    scanTotal = (jpegBytes[hdr + 2] << 8) | jpegBytes[hdr + 3];
+    scanChunks.set(idx, dec.decode(jpegBytes.subarray(hdr + 4, i + 2 + segLen)));
+    i += 1 + segLen;
   }
-  return null;
+  return decodeJpegChunks(scanChunks, scanTotal);
+}
+
+/** Check whether a File looks like a standard raster/SVG image via MIME, extension, or magic bytes. */
+export async function isLikelyImageFile(file: File): Promise<boolean> {
+  const name = (file.name || '').toLowerCase();
+  if (
+    file.type.startsWith('image/') ||
+    /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(name)
+  ) {
+    return true;
+  }
+  try {
+    const head = toOwnedUint8Array(await file.slice(0, 512).arrayBuffer());
+    if (head.length >= 4) {
+      if (head[0] === 137 && head[1] === 80 && head[2] === 78 && head[3] === 71) return true; // PNG
+      if (head[0] === 0xff && head[1] === 0xd8) return true; // JPEG
+      if (head[0] === 0x47 && head[1] === 0x49 && head[2] === 0x46 && head[3] === 0x38) return true; // GIF
+      if (
+        head.length >= 12 &&
+        head[0] === 0x52 && head[1] === 0x49 && head[2] === 0x46 && head[3] === 0x46 &&
+        head[8] === 0x57 && head[9] === 0x45 && head[10] === 0x42 && head[11] === 0x50
+      ) {
+        return true; // WEBP
+      }
+    }
+    const textHead = new TextDecoder().decode(head).trimStart();
+    if (textHead.startsWith('<svg') || (textHead.startsWith('<?xml') && textHead.includes('<svg'))) {
+      return true;
+    }
+  } catch { }
+  return false;
 }
 
 /** Generate a PDF containing the rendered diagram PNG and embedded BoardDocument metadata. */
@@ -285,33 +456,47 @@ export async function generatePdfWithMetadata(
   doc: BoardDocument
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.setTitle(doc.name || 'NovaGraph Diagram');
-  pdfDoc.setCreator('NovaGraph Chrome Extension (novastar.show)');
-  pdfDoc.setProducer('NovaGraph');
+  const safeTitle = String(doc.name || 'NovaGraph Diagram').replace(/[\x00-\x1f]/g, ' ').trim() || 'NovaGraph Diagram';
+  try {
+    pdfDoc.setTitle(safeTitle);
+    pdfDoc.setCreator('NovaGraph Extension (novastar.show)');
+    pdfDoc.setProducer('NovaGraph');
+  } catch { }
 
   const enc = new TextEncoder();
   const jsonStr = JSON.stringify(doc);
   const jsonBytes = enc.encode(jsonStr);
   const b64 = uint8ToBase64(jsonBytes);
   if (b64.length < 32768) {
-    pdfDoc.setSubject(`${PDF_START_MARKER}${b64}${PDF_END_MARKER}`);
+    try {
+      pdfDoc.setSubject(`${PDF_START_MARKER}${b64}${PDF_END_MARKER}`);
+    } catch { }
   }
 
-  await pdfDoc.attach(jsonBytes, 'diagram.novagraph.json', {
-    mimeType: 'application/json',
-    description: 'NovaGraph Editable System Diagram Data',
-  });
-
-  let pngImage;
   try {
-    pngImage = await pdfDoc.embedPng(pngBytes);
-  } catch {
-    pngImage = await pdfDoc.embedPng(FALLBACK_1X1_PNG);
+    await pdfDoc.attach(jsonBytes, 'diagram.novagraph.json', {
+      mimeType: 'application/json',
+      description: 'NovaGraph Editable System Diagram Data',
+    });
+  } catch (err) {
+    console.warn('[NovaGraph] PDF attachment warning:', err);
   }
-  const pageWidth = Math.max(400, Math.round(widthPx * 0.75));
-  const pageHeight = Math.max(300, Math.round(heightPx * 0.75));
+
+  let embeddedImage;
+  try {
+    const isJpeg = pngBytes.length >= 2 && pngBytes[0] === 0xff && pngBytes[1] === 0xd8;
+    embeddedImage = isJpeg ? await pdfDoc.embedJpg(pngBytes) : await pdfDoc.embedPng(pngBytes);
+  } catch {
+    embeddedImage = await pdfDoc.embedPng(FALLBACK_1X1_PNG);
+  }
+
+  const rawW = Math.max(1, widthPx * 0.75);
+  const rawH = Math.max(1, heightPx * 0.75);
+  const upScale = Math.max(1, 400 / rawW, 300 / rawH);
+  const pageWidth = Math.round(rawW * upScale);
+  const pageHeight = Math.round(rawH * upScale);
   const page = pdfDoc.addPage([pageWidth, pageHeight]);
-  page.drawImage(pngImage, {
+  page.drawImage(embeddedImage, {
     x: 0,
     y: 0,
     width: pageWidth,
@@ -336,51 +521,59 @@ export async function extractMetadataFromPdf(pdfBytes: Uint8Array): Promise<Boar
     const contentStart = startIdx + PDF_START_MARKER.length;
     const endIdx = rawText.indexOf(PDF_END_MARKER, contentStart);
     if (endIdx > contentStart) {
-      const b64 = rawText.slice(contentStart, endIdx).trim();
-      const binStr = atob(b64);
-      const bytes = new Uint8Array(binStr.length);
-      for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
-      return JSON.parse(new TextDecoder().decode(bytes)) as BoardDocument;
+      try {
+        const b64 = rawText.slice(contentStart, endIdx).trim();
+        const binStr = atob(b64);
+        const bytes = new Uint8Array(binStr.length);
+        for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+        const parsed = tryParseBoardJson(new TextDecoder().decode(bytes));
+        if (parsed) return parsed;
+      } catch { }
     }
   }
   return null;
 }
 
+/** Copy external ArrayBuffer bytes into an extension-owned Uint8Array to avoid Firefox Xray permission errors. */
+function toOwnedUint8Array(ab: ArrayBuffer): Uint8Array {
+  const view = new Uint8Array(ab);
+  const owned = new Uint8Array(view.length);
+  owned.set(view);
+  return owned;
+}
+
 /** Auto-detect file format (PNG, JPEG, PDF, JSON) and extract embedded BoardDocument if present. */
 export async function extractBoardFromFile(file: File): Promise<BoardDocument | null> {
-  const buf = new Uint8Array(await file.arrayBuffer());
-  const name = file.name.toLowerCase();
+  const buf = toOwnedUint8Array(await file.arrayBuffer());
+  const name = (file.name || '').toLowerCase();
 
   // 1. JSON file
   if (name.endsWith('.json') || file.type === 'application/json') {
-    try {
-      const text = new TextDecoder().decode(buf);
-      const parsed = JSON.parse(text);
-      if (parsed && parsed.fabricJson && Array.isArray(parsed.connectors)) {
-        return parsed as BoardDocument;
-      }
-    } catch {}
+    const parsed = tryParseBoardJson(new TextDecoder().decode(buf));
+    if (parsed) return parsed;
   }
 
   // 2. PNG
-  if (buf[0] === 137 && buf[1] === 80 && buf[2] === 78 && buf[3] === 71) {
+  if (buf.length >= 8 && buf[0] === 137 && buf[1] === 80 && buf[2] === 78 && buf[3] === 71) {
     try {
-      return extractMetadataFromPng(buf);
-    } catch {}
+      const direct = extractMetadataFromPng(buf);
+      if (direct) return direct;
+      return await extractCompressedPngMetadata(buf);
+    } catch { }
   }
 
   // 3. JPEG
-  if (buf[0] === 0xff && buf[1] === 0xd8) {
+  if (buf.length >= 4 && buf[0] === 0xff && buf[1] === 0xd8) {
     try {
       return extractMetadataFromJpeg(buf);
-    } catch {}
+    } catch { }
   }
 
   // 4. PDF (%PDF)
-  if (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46) {
+  if (buf.length >= 4 && buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46) {
     try {
       return await extractMetadataFromPdf(buf);
-    } catch {}
+    } catch { }
   }
 
   return null;
@@ -401,15 +594,18 @@ export function triggerDownload(data: Uint8Array | string, filename: string, mim
   const blob =
     typeof data === 'string'
       ? new Blob([data], { type: mimeType })
-      : new Blob([data.buffer as ArrayBuffer], { type: mimeType });
+      : new Blob([new Uint8Array(data)], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
-  document.body.appendChild(a);
+  a.rel = 'noopener';
+  a.style.display = 'none';
+  a.addEventListener('click', (ev) => ev.stopPropagation());
+  (document.body || document.documentElement).appendChild(a);
   a.click();
   setTimeout(() => {
     a.remove();
     URL.revokeObjectURL(url);
-  }, 500);
+  }, 60_000);
 }

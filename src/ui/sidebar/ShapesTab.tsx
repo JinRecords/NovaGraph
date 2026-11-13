@@ -166,11 +166,11 @@ export function ShapesTab({
           draggable
           onDragStart={handleFrameDragStart}
           onClick={() => controller.addFrame()}
-          title="Drag container Frame to canvas or click to add"
+          title={t('dragFrameHint')}
           style={{ cursor: 'grab' }}
         >
           <Icon name="frame" size={14} />
-          <span>Frame</span>
+          <span>{t('shapeFrame')}</span>
         </button>
 
         {/* SVG File Upload / Import */}
@@ -194,7 +194,7 @@ export function ShapesTab({
         <div style={{ marginTop: '14px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Online Icons
+              {t('onlineIcons')}
             </div>
             <span style={{ fontSize: '10px', color: '#94a3b8' }}>Iconify</span>
           </div>
@@ -203,7 +203,7 @@ export function ShapesTab({
             <input
               type="text"
               className="ng-search-input"
-              placeholder="Search icons (e.g. server, camera)..."
+              placeholder={t('searchIconsPlaceholder')}
               value={iconQuery}
               onInput={(e) => setIconQuery((e.target as HTMLInputElement).value)}
             />
@@ -211,7 +211,7 @@ export function ShapesTab({
               <button
                 className="ng-search-clear"
                 onClick={() => setIconQuery('')}
-                title="Clear"
+                title={t('clearSearch')}
               >
                 ×
               </button>
@@ -220,11 +220,11 @@ export function ShapesTab({
 
           {isLoadingIcons ? (
             <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '12px', color: '#64748b' }}>
-              Searching icons...
+              {t('searchingIcons')}
             </div>
           ) : iconList.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '12px', color: '#94a3b8' }}>
-              No icons found
+              {t('noIconsFound')}
             </div>
           ) : (
             <div

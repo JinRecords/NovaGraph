@@ -112,6 +112,19 @@ export interface LedCabinetGridConfig {
   splitAxis?: 'horizontal' | 'vertical';
 }
 
+export interface LedPortRouteCell {
+  row: number;
+  col: number;
+}
+
+export interface LedPortRoute {
+  id: string;
+  portNumber: number;
+  cardNumber?: number;
+  color: string;
+  cells: LedPortRouteCell[];
+}
+
 export interface LedScreenConfig {
   name: string;
   resWidth: number;
@@ -123,6 +136,8 @@ export interface LedScreenConfig {
   verticalPartitions: number[];
   /** Normalized positions (0..1) of horizontal partition lines (moving up-down) */
   horizontalPartitions: number[];
+  /** Line style for internal partition dividers (default 'dashed') */
+  partitionLineStyle?: 'dashed' | 'solid';
   borderThickness: number;
   borderColor: string;
   borderLabel: string;
@@ -135,6 +150,8 @@ export interface LedScreenConfig {
   cellLabels?: Record<string, string>;
   /** Optional cabinet matrix grid overlay (e.g. 8x8 cabinets and port routing) */
   cabinetGrid?: LedCabinetGridConfig;
+  /** Custom ethernet port wiring routes across partition cells */
+  portRoutes?: LedPortRoute[];
   showSpecsLabel: boolean;
 }
 

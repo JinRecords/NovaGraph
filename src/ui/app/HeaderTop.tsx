@@ -125,7 +125,7 @@ export function HeaderTop({
             title={t('selectTool')}
           >
             <Icon name="select" size={13} />
-            <span>Select</span>
+            <span>{t('toolSelect')}</span>
           </button>
           <button
             className={`ng-tool-tab ${activeTool === 'pan' ? 'active' : ''}`}
@@ -133,7 +133,7 @@ export function HeaderTop({
             title={t('panTool')}
           >
             <Icon name="pan" size={13} />
-            <span>Pan</span>
+            <span>{t('toolPan')}</span>
           </button>
           <button
             className={`ng-tool-tab ${activeTool === 'connect' ? 'active' : ''}`}
@@ -141,7 +141,7 @@ export function HeaderTop({
             title={t('connectTool')}
           >
             <Icon name="connect" size={13} />
-            <span>Connect</span>
+            <span>{t('toolConnect')}</span>
           </button>
         </div>
 
@@ -153,7 +153,7 @@ export function HeaderTop({
           title={t('addLedScreen')}
         >
           <Icon name="monitor" size={14} />
-          <span>LED Screen</span>
+          <span>{t('toolLedScreen')}</span>
         </button>
         <button
           className="ng-btn ng-btn-secondary"
@@ -161,7 +161,7 @@ export function HeaderTop({
           title={t('addText')}
         >
           <Icon name="text" size={14} />
-          <span>Text</span>
+          <span>{t('toolText')}</span>
         </button>
         <button
           className="ng-btn ng-btn-secondary"
@@ -169,13 +169,13 @@ export function HeaderTop({
           title={t('addStickyNote')}
         >
           <Icon name="sticky" size={14} />
-          <span>Note</span>
+          <span>{t('toolNote')}</span>
         </button>
 
         {/* Image Import */}
         <label className="ng-btn ng-btn-secondary" style={{ cursor: 'pointer' }} title={t('uploadImage')}>
           <Icon name="image" size={14} />
-          <span>Image</span>
+          <span>{t('toolImage')}</span>
           <input
             type="file"
             accept="image/*"

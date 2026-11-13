@@ -12,12 +12,24 @@ export function ExportModal({
   isOpen: boolean;
   onClose: () => void;
   hasSelection: boolean;
-  onExport: (format: 'png' | 'jpeg' | 'pdf' | 'json', scope: 'all' | 'selected') => void;
+  onExport: (format: 'png' | 'jpeg' | 'pdf' | 'json', scope: 'all' | 'selected') => void | Promise<void>;
 }) {
   const [format, setFormat] = useState<'png' | 'jpeg' | 'pdf' | 'json'>('png');
   const [scope, setScope] = useState<'all' | 'selected'>('all');
+  const [isExporting, setIsExporting] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleDownloadClick = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await onExport(format, scope);
+      onClose();
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="ng-modal-backdrop" onClick={onClose}>
@@ -66,6 +78,7 @@ export function ExportModal({
                 return (
                   <label
                     key={f.id}
+                    onClick={() => setFormat(f.id as any)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -94,18 +107,16 @@ export function ExportModal({
         </div>
 
         <div className="ng-modal-footer">
-          <button className="ng-btn ng-btn-secondary" onClick={onClose}>
+          <button className="ng-btn ng-btn-secondary" disabled={isExporting} onClick={onClose}>
             {t('close')}
           </button>
           <button
             className="ng-btn ng-btn-accent"
-            onClick={() => {
-              onExport(format, scope);
-              onClose();
-            }}
+            disabled={isExporting}
+            onClick={handleDownloadClick}
           >
             <Icon name="download" size={14} />
-            {t('downloadExport')}
+            {isExporting ? t('exportingProgress') : t('downloadExport')}
           </button>
         </div>
       </div>

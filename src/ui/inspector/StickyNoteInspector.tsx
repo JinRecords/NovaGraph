@@ -56,9 +56,9 @@ export function StickyNoteInspector({
       </div>
 
       <div className="ng-inspector-section" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <span className="ng-section-title">Note Content</span>
+        <span className="ng-section-title">{t('noteContentSection')}</span>
         <div className="ng-field-row" style={{ marginBottom: '6px' }}>
-          <span className="ng-field-label">Text Size</span>
+          <span className="ng-field-label">{t('textSize')}</span>
           <input
             type="number"
             min="8"
@@ -74,7 +74,7 @@ export function StickyNoteInspector({
           />
         </div>
         <div className="ng-field-row" style={{ marginBottom: '8px' }}>
-          <span className="ng-field-label">Text Color</span>
+          <span className="ng-field-label">{t('textColor')}</span>
           <input
             type="color"
             className="ng-input-color"

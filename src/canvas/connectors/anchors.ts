@@ -1,4 +1,4 @@
-import { FabricObject, Group, Point, util } from 'fabric';
+import { FabricObject, Point } from 'fabric';
 import { AnchorSide } from '../../types';
 
 export interface AnchorPoint {
@@ -9,25 +9,8 @@ export interface AnchorPoint {
   y: number;
 }
 
-/** Return the effective bounding rect for anchoring (hardware chassis for product nodes, full bounds for others). */
+/** Return the full bounding rect used for anchoring (wraps image and visible title/spec labels). */
 export function getObjectAnchorBounds(obj: FabricObject): { left: number; top: number; width: number; height: number } {
-  const rec = obj as unknown as Record<string, unknown>;
-  if (rec.ngType === 'product' && typeof (obj as Group).getObjects === 'function') {
-    const children = (obj as Group).getObjects();
-    const chassis = children[0];
-    if (chassis) {
-      const m = obj.calcTransformMatrix();
-      const center = util.transformPoint(new Point(chassis.left, chassis.top), m);
-      const w = (chassis.width || 0) * (obj.scaleX || 1) * (chassis.scaleX || 1);
-      const h = (chassis.height || 0) * (obj.scaleY || 1) * (chassis.scaleY || 1);
-      return {
-        left: center.x - w / 2,
-        top: center.y - h / 2,
-        width: Math.max(1, w),
-        height: Math.max(1, h),
-      };
-    }
-  }
   return obj.getBoundingRect();
 }
 
@@ -38,7 +21,7 @@ export function getObjectEdgePoint(
   ratio = 0.5,
   offset = 0
 ): { x: number; y: number } {
-  const r = Math.max(0.08, Math.min(0.92, ratio));
+  const r = Math.max(0.02, Math.min(0.98, ratio));
   const br = getObjectAnchorBounds(obj);
   switch (side) {
     case 'top':
@@ -82,17 +65,26 @@ export function getObjectAnchorPorts(obj: FabricObject, forceOffset?: number): A
   return ports;
 }
 
-/** Find the nearest edge anchor point on any object within `maxDist` scene pixels. */
+/** Find the nearest discrete port or (when enabled) tight border-edge anchor point. */
 export function findNearestAnchorPort(
   objects: FabricObject[],
   scenePt: Point,
   maxDist = 7,
   excludeObjectId?: string,
   targetObject?: FabricObject | null,
-  isAltFreeMode = false
+  isAltFreeMode = false,
+  snapToEdges = false
 ): AnchorPoint | null {
-  let best: AnchorPoint | null = null;
-  let bestDist = isAltFreeMode ? Math.max(maxDist, 40) : maxDist;
+  const zoom = objects[0]?.canvas ? Math.max(0.1, objects[0].canvas.getZoom()) : 1;
+  const discreteRadius = snapToEdges && !isAltFreeMode ? Math.min(maxDist, 10) : maxDist;
+  const edgeMaxDist = isAltFreeMode
+    ? Math.max(maxDist, 40)
+    : snapToEdges
+      ? Math.min(maxDist, Math.min(10, Math.max(5, 6 / zoom)))
+      : 0;
+
+  let bestDiscrete: AnchorPoint | null = null;
+  let bestDiscreteDist = discreteRadius;
 
   // 1. If an object is currently selected on canvas, prioritize its offset-28 anchor handles.
   if (!isAltFreeMode && objects.length > 0) {
@@ -101,13 +93,13 @@ export function findNearestAnchorPort(
     if (activeObj && activeId && activeId !== excludeObjectId && activeObj.visible) {
       for (const port of getObjectAnchorPorts(activeObj, 28)) {
         const d = Math.hypot(scenePt.x - port.x, scenePt.y - port.y);
-        if (d < bestDist) {
-          bestDist = d;
-          best = port;
+        if (d < bestDiscreteDist) {
+          bestDiscreteDist = d;
+          bestDiscrete = port;
         }
       }
-      if (best) {
-        return best;
+      if (bestDiscrete) {
+        return bestDiscrete;
       }
     }
   }
@@ -119,6 +111,9 @@ export function findNearestAnchorPort(
       : [targetObject]
     : objects;
 
+  let bestEdge: AnchorPoint | null = null;
+  let bestEdgeDist = edgeMaxDist;
+
   for (let i = candidateObjects.length - 1; i >= 0; i--) {
     const obj = candidateObjects[i];
     const rec = obj as unknown as Record<string, unknown>;
@@ -128,9 +123,9 @@ export function findNearestAnchorPort(
     const isSelected = obj.canvas ? obj.canvas.getActiveObject() === obj : false;
     const offset = isSelected ? 28 : 0;
 
-    // Fast AABB check: if scenePt is not within effectiveDist of the bounding rect, skip completely
+    // Fast AABB check: skip objects far away from both discrete ports and edges.
     const br = getObjectAnchorBounds(obj);
-    const effectiveDist = (isAltFreeMode ? Math.max(maxDist, 40) : maxDist) + offset;
+    const effectiveDist = Math.max(discreteRadius + offset, edgeMaxDist);
     if (
       scenePt.x < br.left - effectiveDist ||
       scenePt.x > br.left + br.width + effectiveDist ||
@@ -140,30 +135,34 @@ export function findNearestAnchorPort(
       continue;
     }
 
-    // In normal mode, strictly check ONLY the discrete line anchor ports on the object
     if (!isAltFreeMode) {
       for (const port of getObjectAnchorPorts(obj, offset)) {
         const d = Math.hypot(scenePt.x - port.x, scenePt.y - port.y);
-        if (d < bestDist) {
-          bestDist = d;
-          best = port;
+        if (d < bestDiscreteDist) {
+          bestDiscreteDist = d;
+          bestDiscrete = port;
         }
       }
-    } else {
-      // Only in explicit Option/Alt freehand mode, snap continuously to the nearest edge
-      const dTop = Math.abs(scenePt.y - br.top);
-      const dBot = Math.abs(scenePt.y - (br.top + br.height));
-      const dLeft = Math.abs(scenePt.x - br.left);
-      const dRight = Math.abs(scenePt.x - (br.left + br.width));
+    }
+
+    if ((snapToEdges || isAltFreeMode) && edgeMaxDist > 0) {
+      // Distance to each finite border segment (clamped along the perpendicular span)
+      const cx = Math.max(br.left, Math.min(br.left + br.width, scenePt.x));
+      const cy = Math.max(br.top, Math.min(br.top + br.height, scenePt.y));
+      const dTop = Math.hypot(scenePt.x - cx, scenePt.y - br.top);
+      const dBot = Math.hypot(scenePt.x - cx, scenePt.y - (br.top + br.height));
+      const dLeft = Math.hypot(scenePt.x - br.left, scenePt.y - cy);
+      const dRight = Math.hypot(scenePt.x - (br.left + br.width), scenePt.y - cy);
       const minEdge = Math.min(dTop, dBot, dLeft, dRight);
-      if (minEdge < bestDist) {
-        bestDist = minEdge;
+
+      if (minEdge < bestEdgeDist) {
+        bestEdgeDist = minEdge;
         if (minEdge === dTop) {
-          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.x - br.left) / Math.max(1, br.width)));
-          best = { objectId: id, side: 'top', ratio, x: br.left + br.width * ratio, y: br.top };
+          const ratio = Math.max(0.02, Math.min(0.98, (cx - br.left) / Math.max(1, br.width)));
+          bestEdge = { objectId: id, side: 'top', ratio, x: br.left + br.width * ratio, y: br.top };
         } else if (minEdge === dBot) {
-          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.x - br.left) / Math.max(1, br.width)));
-          best = {
+          const ratio = Math.max(0.02, Math.min(0.98, (cx - br.left) / Math.max(1, br.width)));
+          bestEdge = {
             objectId: id,
             side: 'bottom',
             ratio,
@@ -171,11 +170,11 @@ export function findNearestAnchorPort(
             y: br.top + br.height,
           };
         } else if (minEdge === dLeft) {
-          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.y - br.top) / Math.max(1, br.height)));
-          best = { objectId: id, side: 'left', ratio, x: br.left, y: br.top + br.height * ratio };
+          const ratio = Math.max(0.02, Math.min(0.98, (cy - br.top) / Math.max(1, br.height)));
+          bestEdge = { objectId: id, side: 'left', ratio, x: br.left, y: br.top + br.height * ratio };
         } else {
-          const ratio = Math.max(0.04, Math.min(0.96, (scenePt.y - br.top) / Math.max(1, br.height)));
-          best = {
+          const ratio = Math.max(0.02, Math.min(0.98, (cy - br.top) / Math.max(1, br.height)));
+          bestEdge = {
             objectId: id,
             side: 'right',
             ratio,
@@ -186,6 +185,6 @@ export function findNearestAnchorPort(
       }
     }
   }
-  return best;
+  return bestDiscrete || bestEdge;
 }
 

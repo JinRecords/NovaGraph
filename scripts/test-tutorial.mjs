@@ -66,7 +66,7 @@ try {
   await page.screenshot({ path: path.join(outDir, 'tutorial-step1.png') });
 
   const titles = [s.title];
-  for (let i = 2; i <= 6; i++) {
+  for (let i = 2; i <= 7; i++) {
     await clickIn('.ng-tutorial-actions .ng-btn-accent');
     await sleep(350);
     s = await state();
@@ -76,13 +76,13 @@ try {
     check(`step ${i} has spotlight & card in viewport`, s.hasSpot && inView, `${s.label} | ${s.title}`);
     await page.screenshot({ path: path.join(outDir, `tutorial-step${i}.png`) });
   }
-  check('all step titles distinct', new Set(titles).size === 6);
+  check('all step titles distinct', new Set(titles).size === 7);
 
   // Keyboard back
   await page.keyboard.press('ArrowLeft');
   await sleep(200);
   s = await state();
-  check('ArrowLeft goes back', s.title === titles[4], s.title);
+  check('ArrowLeft goes back', s.title === titles[5], s.title);
 
   // Finish
   await page.keyboard.press('ArrowRight');

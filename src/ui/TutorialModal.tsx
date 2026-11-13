@@ -15,7 +15,7 @@ export function hasCompletedTutorial(): boolean {
 export function markTutorialCompleted() {
   try {
     localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
-  } catch {}
+  } catch { }
 }
 
 type Placement = 'center' | 'right' | 'left' | 'bottom' | 'inside';
@@ -34,7 +34,8 @@ const STEPS: TutorialStep[] = [
   { target: '.ng-canvas-container', placement: 'inside', titleKey: 'tutStep3Title', bodyKey: 'tutStep3Body' },
   { target: '.ng-tool-group', placement: 'bottom', titleKey: 'tutStep4Title', bodyKey: 'tutStep4Body' },
   { target: '.ng-sidebar-right', placement: 'left', titleKey: 'tutStep5Title', bodyKey: 'tutStep5Body' },
-  { target: '.ng-header-right', placement: 'bottom', titleKey: 'tutStep6Title', bodyKey: 'tutStep6Body' },
+  { target: '.ng-btn-vnnox', placement: 'bottom', titleKey: 'tutStep6Title', bodyKey: 'tutStep6Body' },
+  { target: '.ng-header-right', placement: 'bottom', titleKey: 'tutStep7Title', bodyKey: 'tutStep7Body' },
 ];
 
 const CARD_WIDTH = 340;

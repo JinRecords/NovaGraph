@@ -461,9 +461,10 @@ export function installInteractionHandlers(ctrl: CanvasController) {
     if (activeObj) {
       const vPt = ctrl.canvas.getViewportPoint(ev);
       const hitCorner =
+        (ctrl.canvas as any)._currentTransform ||
         (activeObj as any).__corner ||
-        (typeof (activeObj as any)._findTargetCorner === 'function' &&
-          (activeObj as any)._findTargetCorner(vPt));
+        (typeof (activeObj as any).findControl === 'function' &&
+          (activeObj as any).findControl(vPt));
       if (hitCorner) {
         return;
       }
@@ -537,7 +538,8 @@ export function installInteractionHandlers(ctrl: CanvasController) {
         7,
         undefined,
         target,
-        Boolean(ev.altKey)
+        Boolean(ev.altKey),
+        ctrl.activeTool === 'connect'
       );
     }
     if (startingAnchor) {
@@ -704,7 +706,8 @@ export function installInteractionHandlers(ctrl: CanvasController) {
           14,
           excludeId,
           null,
-          Boolean(ev.altKey)
+          Boolean(ev.altKey),
+          true
         );
         ctrl.repositioningConnector.targetAnchor = snapAnchor;
         ctrl.hoveredObject = snapAnchor ? ctrl.findObjectById(snapAnchor.objectId) : null;
@@ -736,7 +739,8 @@ export function installInteractionHandlers(ctrl: CanvasController) {
           14,
           ctrl.draftConnector.from.objectId,
           null,
-          Boolean(ev.altKey)
+          Boolean(ev.altKey),
+          true
         );
         ctrl.draftConnector.toAnchor = snapAnchor;
       }
@@ -848,8 +852,8 @@ export function installInteractionHandlers(ctrl: CanvasController) {
     const vPt = ctrl.canvas.getViewportPoint(ev);
     const isOverControl =
       activeObj &&
-      typeof (activeObj as any)._findTargetCorner === 'function' &&
-      Boolean((activeObj as any)._findTargetCorner(vPt));
+      typeof (activeObj as any).findControl === 'function' &&
+      Boolean((activeObj as any).findControl(vPt));
 
     ctrl.altPressed = Boolean(ev.altKey);
     ctrl.shiftPressed = Boolean(ev.shiftKey);
@@ -863,7 +867,8 @@ export function installInteractionHandlers(ctrl: CanvasController) {
             7,
             undefined,
             topObj,
-            Boolean(ev.altKey)
+            Boolean(ev.altKey),
+            ctrl.activeTool === 'connect'
           );
     const prevHoveredObj = ctrl.hoveredObject;
     const prevHoveredAnchor = ctrl.hoveredAnchor;
@@ -875,7 +880,7 @@ export function installInteractionHandlers(ctrl: CanvasController) {
     if (nearAnchor) {
       ctrl.canvas.defaultCursor = 'crosshair';
       ctrl.canvas.hoverCursor = 'crosshair';
-    } else {
+    } else if (!isOverControl) {
       const hitConn = hitTestConnector(ctrl.connectors, allObjects, scenePt, 9);
       if (hitConn) {
         ctrl.canvas.defaultCursor = 'pointer';

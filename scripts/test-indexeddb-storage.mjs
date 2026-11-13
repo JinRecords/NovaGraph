@@ -1,4 +1,8 @@
 import assert from 'node:assert';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 // Lightweight in-memory Mock for IndexedDB in Node environment
 class MockIDBObjectStore {
@@ -180,7 +184,7 @@ globalThis.chrome = mockChrome;
 // Import our compiled or source modules using Vite build or direct import
 import('vite').then(async ({ build }) => {
   const res = await build({
-    root: '/Users/jin/Desktop/extension/NovaGraph',
+    root,
     configFile: false,
     logLevel: 'error',
     build: {

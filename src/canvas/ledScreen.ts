@@ -9,8 +9,13 @@ import {
   Rect,
   util,
 } from 'fabric';
-import { LedScreenConfig } from '../types';
+import { LedPortRoute, LedScreenConfig } from '../types';
 import { genNgId } from './nodes';
+import {
+  collapseCollinearPoints,
+  formatPortLabel,
+  getEffectivePortRoutes,
+} from './ledWiring';
 
 export const DEFAULT_LED_SCREEN_CONFIG: LedScreenConfig = {
   name: 'LED Screen',
@@ -21,6 +26,7 @@ export const DEFAULT_LED_SCREEN_CONFIG: LedScreenConfig = {
   physicalHeightM: 0,
   verticalPartitions: [],
   horizontalPartitions: [],
+  partitionLineStyle: 'dashed',
   borderThickness: 0,
   borderColor: '#a47551',
   borderLabel: 'Wood Frame',
@@ -57,6 +63,156 @@ export function getLedVisualSize(cfg: LedScreenConfig): { innerW: number; innerH
     innerH = 95;
   }
   return { innerW, innerH };
+}
+
+function renderPortRoutesToChildren(
+  children: FabricObject[],
+  routes: LedPortRoute[],
+  routeVStops: number[],
+  routeHStops: number[],
+  innerW: number,
+  innerH: number
+): void {
+  const numC = Math.max(1, routeVStops.length - 1);
+  const numR = Math.max(1, routeHStops.length - 1);
+  const avgCellW = innerW / numC;
+  const avgCellH = innerH / numR;
+
+  const isDenseMatrix = (avgCellW < 18 && avgCellH < 28) || avgCellW < 7;
+  const isVeryNarrow = avgCellW < 22;
+  const strokeW = Math.max(1, Math.min(1.6, Math.min(avgCellW, avgCellH) * 0.15));
+  const arrowW = Math.max(2, Math.min(4, Math.min(avgCellW, avgCellH) * 0.25));
+  const arrowH = Math.max(2, Math.min(3.5, Math.min(avgCellW, avgCellH) * 0.25));
+  const dotRadius = Math.max(1.5, Math.min(3, avgCellW * 0.25, avgCellH * 0.25));
+  const sqSize = Math.max(2, Math.min(4, Math.min(avgCellW, avgCellH) * 0.3));
+
+  for (const route of routes) {
+    const validCells = route.cells.filter(
+      (c) => c.row >= 0 && c.row < numR && c.col >= 0 && c.col < numC
+    );
+    if (validCells.length === 0) continue;
+
+    const pts = validCells.map((c) => ({
+      x: -innerW / 2 + ((routeVStops[c.col] + routeVStops[c.col + 1]) / 2) * innerW,
+      y: -innerH / 2 + ((routeHStops[c.row] + routeHStops[c.row + 1]) / 2) * innerH,
+    }));
+
+    const color = route.color || '#0284c7';
+    const portLabel = formatPortLabel(route);
+    const startPt = pts[0];
+
+    const circleRadius = isDenseMatrix
+      ? dotRadius
+      : isVeryNarrow
+      ? Math.max(3.2, Math.min(5, avgCellW * 0.42))
+      : Math.min(6.5, Math.max(4, Math.min(avgCellW, avgCellH) * 0.4));
+
+    children.push(
+      new Circle({
+        left: startPt.x,
+        top: startPt.y,
+        radius: circleRadius,
+        fill: color,
+        originX: 'center',
+        originY: 'center',
+      })
+    );
+
+    if (!isDenseMatrix) {
+      const badgeFontSize = isVeryNarrow
+        ? Math.max(3.2, Math.min(4.8, avgCellW * 0.45))
+        : portLabel.length >= 4
+        ? 5.6
+        : 6.5;
+      children.push(
+        new IText(portLabel, {
+          fontFamily:
+            '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontSize: badgeFontSize,
+          fontWeight: '700',
+          fill: '#ffffff',
+          originX: 'center',
+          originY: 'center',
+          left: startPt.x,
+          top: startPt.y,
+        })
+      );
+    }
+
+    if (pts.length >= 2) {
+      const collapsed = collapseCollinearPoints(pts);
+      for (let s = 0; s < collapsed.length - 1; s++) {
+        const a = collapsed[s];
+        const b = collapsed[s + 1];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const segLen = Math.hypot(dx, dy);
+        if (segLen < 0.5) continue;
+
+        const ux = dx / segLen;
+        const uy = dy / segLen;
+        const isFirstSeg = s === 0;
+        const isLastSeg = s === collapsed.length - 2;
+        const startInset = isFirstSeg ? Math.min(segLen * 0.4, circleRadius + 1.5) : 0;
+        const endInset = 0;
+
+        if (segLen > startInset + endInset + 1) {
+          const p1x = a.x + ux * startInset;
+          const p1y = a.y + uy * startInset;
+          const p2x = b.x - ux * endInset;
+          const p2y = b.y - uy * endInset;
+
+          children.push(
+            new Line([p1x, p1y, p2x, p2y], {
+              stroke: color,
+              strokeWidth: strokeW,
+              strokeLineCap: 'round',
+            })
+          );
+
+          const drawLen = Math.hypot(p2x - p1x, p2y - p1y);
+          if (drawLen >= arrowW * 2.2) {
+            const mx = (p1x + p2x) / 2;
+            const my = (p1y + p2y) / 2;
+            const tipX = mx + ux * arrowW;
+            const tipY = my + uy * arrowW;
+            const baseX = mx - ux * arrowW;
+            const baseY = my - uy * arrowW;
+            const px = -uy * arrowH;
+            const py = ux * arrowH;
+
+            children.push(
+              new Polygon(
+                [
+                  { x: tipX, y: tipY },
+                  { x: baseX + px, y: baseY + py },
+                  { x: baseX - px, y: baseY - py },
+                ],
+                {
+                  fill: color,
+                  strokeWidth: 0,
+                }
+              )
+            );
+          }
+        }
+      }
+
+      const lastPt = collapsed[collapsed.length - 1];
+      children.push(
+        new Rect({
+          left: lastPt.x,
+          top: lastPt.y,
+          width: sqSize,
+          height: sqSize,
+          fill: color,
+          strokeWidth: 0,
+          originX: 'center',
+          originY: 'center',
+        })
+      );
+    }
+  }
 }
 
 function buildLedScreenChildren(
@@ -220,7 +376,10 @@ function buildLedScreenChildren(
     }
   }
 
-  // 2c. Cabinet matrix grid & port routing overlays (if configured)
+  const isSolidPartition = cfg.partitionLineStyle === 'solid';
+  const partitionDash = isSolidPartition ? undefined : [4, 4];
+
+  // 2c. Cabinet matrix grid seam lines (if configured and partitions do not already provide them)
   if (cfg.cabinetGrid) {
     const grid = cfg.cabinetGrid;
     const cols = Math.max(1, grid.cols || 8);
@@ -228,7 +387,6 @@ function buildLedScreenChildren(
     const cellW = innerW / cols;
     const cellH = innerH / rows;
 
-    // Cabinet seam grid lines - draw only if partitions do not already provide them
     const hasVPartGrid = cfg.verticalPartitions.length >= cols - 1;
     const hasHPartGrid = cfg.horizontalPartitions.length >= rows - 1;
 
@@ -239,6 +397,7 @@ function buildLedScreenChildren(
           new Line([x, -innerH / 2, x, innerH / 2], {
             stroke: '#cbd5e1',
             strokeWidth: 0.8,
+            strokeDashArray: partitionDash,
           })
         );
       }
@@ -246,7 +405,6 @@ function buildLedScreenChildren(
     if (!hasHPartGrid) {
       for (let r = 1; r < rows; r++) {
         const y = -innerH / 2 + r * cellH;
-        // Skip if this line coincides with a partition boundary
         const ratio = r / rows;
         const isPartition = cfg.horizontalPartitions.some(
           (p) => Math.abs(p - ratio) < 0.01
@@ -256,662 +414,42 @@ function buildLedScreenChildren(
             new Line([-innerW / 2, y, innerW / 2, y], {
               stroke: '#cbd5e1',
               strokeWidth: 0.8,
+              strokeDashArray: partitionDash,
             })
           );
         }
       }
     }
+  }
 
-    const numSendingCards = grid.sendingCardPartitions || (grid.card2Name ? 2 : 1);
-    const hasPartitions = Boolean(
-      numSendingCards > 1 || cfg.horizontalPartitions.length > 0 || cfg.verticalPartitions.length > 0
+  // 2d. Port wiring routes (custom Cabinet Wiring Tool routes or procedural VNNOX Care routes)
+  const effectivePortRoutes = getEffectivePortRoutes(cfg);
+  if (effectivePortRoutes.length > 0) {
+    const useGridStops =
+      cfg.portRoutes === undefined &&
+      Boolean(cfg.cabinetGrid) &&
+      (vStops.length - 1 !== cfg.cabinetGrid!.cols ||
+        hStops.length - 1 !== cfg.cabinetGrid!.rows);
+    const routeVStops = useGridStops
+      ? Array.from(
+          { length: cfg.cabinetGrid!.cols + 1 },
+          (_, i) => i / cfg.cabinetGrid!.cols
+        )
+      : vStops;
+    const routeHStops = useGridStops
+      ? Array.from(
+          { length: cfg.cabinetGrid!.rows + 1 },
+          (_, i) => i / cfg.cabinetGrid!.rows
+        )
+      : hStops;
+    renderPortRoutesToChildren(
+      children,
+      effectivePortRoutes,
+      routeVStops,
+      routeHStops,
+      innerW,
+      innerH
     );
-    const isVertPartition = grid.sendingCardPartitions
-      ? grid.sendingCardPartitions > 1 && grid.splitAxis === 'vertical'
-      : (Boolean(grid.card2Name) && cols >= 2);
-    const rowsPerCard = Math.floor(rows / (grid.splitAxis === 'horizontal' ? numSendingCards : 1));
-    const colsPerCard = Math.floor(cols / (grid.splitAxis === 'vertical' ? numSendingCards : 1));
-
-    const isDenseMatrix = (cellW < 18 && cellH < 28) || cellW < 7;
-
-    if (grid.showPortRoutes) {
-      const isVertical = grid.drawStyle === 'vertical';
-
-      if (isVertical) {
-        // Vertical routing (e.g. VLT2RB) across column groups
-        const colsPerPort = Math.max(1, grid.colsPerPort || 3);
-        const totalPorts = Math.max(
-          1,
-          grid.totalPorts || Math.ceil(cols / colsPerPort)
-        );
-        const badgeColor = '#0284c7'; // Ethernet Blue
-        const strokeW = Math.max(1, Math.min(1.5, cellW * 0.15));
-        const arrowW = Math.max(2, Math.min(3.5, cellW * 0.25));
-        const arrowH = Math.max(2, Math.min(3.5, cellH * 0.25));
-
-        for (let p = 0; p < totalPorts; p++) {
-          const cStart = p * colsPerPort;
-          const cEnd = Math.min(cols, (p + 1) * colsPerPort);
-          if (cStart >= cols) break;
-          const portNum = p + 1;
-          const portLabel = `${portNum}`;
-
-          // Port badge in the top cabinet of the first column of the group
-          const x0 = -innerW / 2 + (cStart + 0.5) * cellW;
-          const y0 = -innerH / 2 + 0.5 * cellH;
-
-          if (!isDenseMatrix) {
-            children.push(
-              new Circle({
-                left: x0,
-                top: y0,
-                radius: 6.5,
-                fill: badgeColor,
-                originX: 'center',
-                originY: 'center',
-              })
-            );
-            children.push(
-              new IText(portLabel, {
-                fontFamily:
-                  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                fontSize: 6.5,
-                fontWeight: '700',
-                fill: '#ffffff',
-                originX: 'center',
-                originY: 'center',
-                left: x0,
-                top: y0,
-              })
-            );
-          } else {
-            // Clean compact start dot without text on dense / big screens
-            const dotRadius = Math.max(1.5, Math.min(3, cellW * 0.25, cellH * 0.25));
-            children.push(
-              new Circle({
-                left: x0,
-                top: y0,
-                radius: dotRadius,
-                fill: badgeColor,
-                originX: 'center',
-                originY: 'center',
-              })
-            );
-          }
-
-          // Draw vertical snakes across the columns in this port group
-          for (let colIdx = cStart; colIdx < cEnd; colIdx++) {
-            const isFirstCol = colIdx === cStart;
-            const isEvenInGroup = (colIdx - cStart) % 2 === 0;
-            const xMid = -innerW / 2 + (colIdx + 0.5) * cellW;
-            const isLastCol = colIdx === cEnd - 1;
-
-            if (isEvenInGroup) {
-              // Top-to-bottom arrow line
-              const yStart = isFirstCol
-                ? (!isDenseMatrix ? y0 + 7.5 : y0 + Math.max(2, cellH * 0.25))
-                : -innerH / 2 + 0.5 * cellH;
-              const yEnd = -innerH / 2 + (rows - 0.5) * cellH;
-              const yMidCol = (yStart + yEnd) / 2;
-
-              children.push(
-                new Line([xMid, yStart, xMid, yEnd], {
-                  stroke: badgeColor,
-                  strokeWidth: strokeW,
-                })
-              );
-
-              // Downward directional arrowhead midway along column
-              children.push(
-                new Polygon(
-                  [
-                    { x: xMid - arrowW, y: yMidCol - arrowH },
-                    { x: xMid, y: yMidCol + arrowH },
-                    { x: xMid + arrowW, y: yMidCol - arrowH },
-                  ],
-                  {
-                    fill: badgeColor,
-                    strokeWidth: 0,
-                  }
-                )
-              );
-
-              if (!isLastCol) {
-                // Horizontal bridge turn at bottom to next column
-                children.push(
-                  new Line([xMid, yEnd, xMid + cellW, yEnd], {
-                    stroke: badgeColor,
-                    strokeWidth: strokeW,
-                  })
-                );
-              } else {
-                // End square at bottom
-                const sqSize = Math.max(2, Math.min(4, cellW * 0.3));
-                children.push(
-                  new Rect({
-                    left: xMid,
-                    top: yEnd + Math.min(2, cellH * 0.15),
-                    width: sqSize,
-                    height: sqSize,
-                    fill: badgeColor,
-                    strokeWidth: 0,
-                    originX: 'center',
-                    originY: 'center',
-                  })
-                );
-              }
-            } else {
-              // Bottom-to-top arrow line
-              const yStart = -innerH / 2 + (rows - 0.5) * cellH;
-              const yEnd = -innerH / 2 + 0.5 * cellH;
-              const yMidCol = (yStart + yEnd) / 2;
-
-              children.push(
-                new Line([xMid, yStart, xMid, yEnd], {
-                  stroke: badgeColor,
-                  strokeWidth: strokeW,
-                })
-              );
-
-              // Upward directional arrowhead midway along column
-              children.push(
-                new Polygon(
-                  [
-                    { x: xMid - arrowW, y: yMidCol + arrowH },
-                    { x: xMid, y: yMidCol - arrowH },
-                    { x: xMid + arrowW, y: yMidCol + arrowH },
-                  ],
-                  {
-                    fill: badgeColor,
-                    strokeWidth: 0,
-                  }
-                )
-              );
-
-              if (!isLastCol) {
-                // Horizontal bridge turn at top to next column
-                children.push(
-                  new Line([xMid, yEnd, xMid + cellW, yEnd], {
-                    stroke: badgeColor,
-                    strokeWidth: strokeW,
-                  })
-                );
-              } else {
-                // End square at top
-                const sqSize = Math.max(2, Math.min(4, cellW * 0.3));
-                children.push(
-                  new Rect({
-                    left: xMid,
-                    top: yEnd - Math.min(2, cellH * 0.15),
-                    width: sqSize,
-                    height: sqSize,
-                    fill: badgeColor,
-                    strokeWidth: 0,
-                    originX: 'center',
-                    originY: 'center',
-                  })
-                );
-              }
-            }
-          }
-        }
-      } else {
-        // Horizontal routing across cabinet pairs or rows (e.g. HLT2RB)
-        const totalPorts = Math.max(1, grid.totalPorts || 1);
-        const strokeW = Math.max(1, Math.min(1.5, cellH * 0.15));
-        const arrowW = Math.max(2, Math.min(4, cellW * 0.25));
-        const arrowH = Math.max(2, Math.min(3.5, cellH * 0.25));
-        const isVeryNarrow = cellW < 22;
-
-        if (isVertPartition) {
-          // Vertical partition(s) dividing screen into column groups (e.g. Card 1: Cols 1–35, Card 2: Cols 36–70)
-          const numPartitions = numSendingCards;
-          const cardPorts = Math.max(1, Math.round(totalPorts / numPartitions));
-
-          for (let k = 0; k < numPartitions; k++) {
-            const colStart = Math.round((k * cols) / numPartitions);
-            const colEnd = Math.round(((k + 1) * cols) / numPartitions);
-            const cardCols = colEnd - colStart;
-            const cardNum = k + 1;
-            const badgeColor =
-              k === 0 ? '#16a34a' : k === 1 ? '#ea580c' : '#7c3aed';
-
-            for (let r = 0; r < rows; r++) {
-              const yMid = -innerH / 2 + (r + 0.5) * cellH;
-
-              for (let p = 0; p < cardPorts; p++) {
-                const c0 = colStart + Math.round((p * cardCols) / cardPorts);
-                const c1 =
-                  colStart + Math.round(((p + 1) * cardCols) / cardPorts);
-                if (c0 >= colEnd) break;
-                const actualC1 = Math.min(colEnd, Math.max(c0 + 1, c1));
-
-                const portNum = p + 1;
-                const portLabel = `${cardNum}-${portNum}`;
-
-                const circleX = -innerW / 2 + (c0 + 0.5) * cellW;
-                const x1 = -innerW / 2 + actualC1 * cellW;
-
-                const circleRadius = isVeryNarrow
-                  ? Math.max(3.2, Math.min(5, cellW * 0.42))
-                  : 6.5;
-                const badgeFontSize = isVeryNarrow
-                  ? Math.max(3.2, Math.min(4.8, cellW * 0.45))
-                  : 6.5;
-
-                // Port badge circle
-                children.push(
-                  new Circle({
-                    left: circleX,
-                    top: yMid,
-                    radius: circleRadius,
-                    fill: badgeColor,
-                    originX: 'center',
-                    originY: 'center',
-                  })
-                );
-
-                // Port badge text (e.g. 1-1, 1-2, 2-1, 2-2)
-                children.push(
-                  new IText(portLabel, {
-                    fontFamily:
-                      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                    fontSize: badgeFontSize,
-                    fontWeight: '700',
-                    fill: '#ffffff',
-                    originX: 'center',
-                    originY: 'center',
-                    left: circleX,
-                    top: yMid,
-                  })
-                );
-
-                // Horizontal cascade line through cards loaded by this port
-                if (actualC1 > c0) {
-                  const lineStartX = circleX + circleRadius + 1;
-                  const lineEndX = x1 - Math.max(2, cellW * 0.15);
-                  if (lineEndX > lineStartX + 2) {
-                    children.push(
-                      new Line([lineStartX, yMid, lineEndX, yMid], {
-                        stroke: badgeColor,
-                        strokeWidth: strokeW,
-                      })
-                    );
-
-                    // Directional arrowhead
-                    const arrowTipX = (lineStartX + lineEndX) / 2 + arrowW;
-                    children.push(
-                      new Polygon(
-                        [
-                          { x: arrowTipX - arrowW, y: yMid - arrowH },
-                          { x: arrowTipX, y: yMid },
-                          { x: arrowTipX - arrowW, y: yMid + arrowH },
-                        ],
-                        {
-                          fill: badgeColor,
-                          strokeWidth: 0,
-                        }
-                      )
-                    );
-                  }
-
-                  // End square
-                  const sqSize = Math.max(2, Math.min(3.5, cellW * 0.25));
-                  children.push(
-                    new Rect({
-                      left: x1 - Math.max(2, cellW * 0.15),
-                      top: yMid,
-                      width: sqSize,
-                      height: sqSize,
-                      fill: badgeColor,
-                      strokeWidth: 0,
-                      originX: 'center',
-                      originY: 'center',
-                    })
-                  );
-                }
-              }
-            }
-          }
-        } else if (totalPorts >= rows) {
-          const cabsPerPort = Math.max(1, grid.cabsPerPort || 2);
-          const portsPerRow = Math.max(1, Math.floor(cols / cabsPerPort));
-
-          for (let r = 0; r < rows; r++) {
-            const isCard1 = !hasPartitions || r < rowsPerCard;
-            const badgeColor = hasPartitions
-              ? isCard1
-                ? '#16a34a'
-                : '#ea580c'
-              : '#0284c7';
-
-            for (let p = 0; p < portsPerRow; p++) {
-              const c0 = p * cabsPerPort;
-              const c1 = Math.min(cols, (p + 1) * cabsPerPort);
-              const x0 = -innerW / 2 + c0 * cellW;
-              const x1 = -innerW / 2 + c1 * cellW;
-              const yMid = -innerH / 2 + (r + 0.5) * cellH;
-
-              const cardNum = isCard1 ? 1 : 2;
-              const rowInCard = isCard1 ? r : r - rowsPerCard;
-              const portNum = hasPartitions
-                ? rowInCard * portsPerRow + p + 1
-                : r * portsPerRow + p + 1;
-              const portLabel = hasPartitions
-                ? `${cardNum}-${portNum}`
-                : `${portNum}`;
-
-              const circleX = x0 + cellW * 0.5;
-
-              if (!isDenseMatrix) {
-                // Circular port badge with text
-                children.push(
-                  new Circle({
-                    left: circleX,
-                    top: yMid,
-                    radius: 6.5,
-                    fill: badgeColor,
-                    originX: 'center',
-                    originY: 'center',
-                  })
-                );
-                children.push(
-                  new IText(portLabel, {
-                    fontFamily:
-                      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                    fontSize: 6.5,
-                    fontWeight: '700',
-                    fill: '#ffffff',
-                    originX: 'center',
-                    originY: 'center',
-                    left: circleX,
-                    top: yMid,
-                  })
-                );
-
-                if (cabsPerPort > 1) {
-                  // Directional arrow line spanning across to the end of segment
-                  const lineStartX = circleX + 7.5;
-                  const lineEndX = x1 - 10;
-                  if (lineEndX > lineStartX) {
-                    children.push(
-                      new Line([lineStartX, yMid, lineEndX, yMid], {
-                        stroke: badgeColor,
-                        strokeWidth: strokeW,
-                      })
-                    );
-                    // Arrowhead
-                    children.push(
-                      new Polygon(
-                        [
-                          { x: lineEndX - 4, y: yMid - 3 },
-                          { x: lineEndX + 2, y: yMid },
-                          { x: lineEndX - 4, y: yMid + 3 },
-                        ],
-                        {
-                          fill: badgeColor,
-                          strokeWidth: 0,
-                        }
-                      )
-                    );
-                  }
-                  // End square
-                  children.push(
-                    new Rect({
-                      left: x1 - 5,
-                      top: yMid,
-                      width: 3.5,
-                      height: 3.5,
-                      fill: badgeColor,
-                      strokeWidth: 0,
-                      originX: 'center',
-                      originY: 'center',
-                    })
-                  );
-                }
-              } else {
-                // DENSE / BIG SCREEN:
-                // No text inside badge to avoid clutter!
-                const dotRadius = Math.max(1.5, Math.min(3, cellW * 0.25, cellH * 0.25));
-                children.push(
-                  new Circle({
-                    left: circleX,
-                    top: yMid,
-                    radius: dotRadius,
-                    fill: badgeColor,
-                    originX: 'center',
-                    originY: 'center',
-                  })
-                );
-
-                if (cabsPerPort > 1) {
-                  const lineStartX = circleX + dotRadius + 1;
-                  const lineEndX = x1 - Math.max(3, cellW * 0.2);
-                  if (lineEndX > lineStartX + 4) {
-                    children.push(
-                      new Line([lineStartX, yMid, lineEndX, yMid], {
-                        stroke: badgeColor,
-                        strokeWidth: strokeW,
-                      })
-                    );
-                    // Midway arrowhead
-                    const arrowTipX = (lineStartX + lineEndX) / 2 + arrowW;
-                    children.push(
-                      new Polygon(
-                        [
-                          { x: arrowTipX - arrowW, y: yMid - arrowH },
-                          { x: arrowTipX, y: yMid },
-                          { x: arrowTipX - arrowW, y: yMid + arrowH },
-                        ],
-                        {
-                          fill: badgeColor,
-                          strokeWidth: 0,
-                        }
-                      )
-                    );
-                  }
-                  // End square
-                  const sqSize = Math.max(2, Math.min(3.5, cellW * 0.25));
-                  children.push(
-                    new Rect({
-                      left: x1 - Math.max(2, cellW * 0.15),
-                      top: yMid,
-                      width: sqSize,
-                      height: sqSize,
-                      fill: badgeColor,
-                      strokeWidth: 0,
-                      originX: 'center',
-                      originY: 'center',
-                    })
-                  );
-                }
-              }
-            }
-          }
-        } else {
-          // totalPorts < rows (e.g. Scheme 6096: TB60 with 3 ports for 10 rows)
-          // Each port snakes across multiple rows!
-          const rowsPerPort = rows / totalPorts;
-
-          for (let p = 0; p < totalPorts; p++) {
-            const rStart = Math.round(p * rowsPerPort);
-            const rEnd = Math.min(rows, Math.round((p + 1) * rowsPerPort));
-            if (rStart >= rows) break;
-
-            const isCard1 = !hasPartitions || rStart < rowsPerCard;
-            const badgeColor = hasPartitions
-              ? isCard1
-                ? '#16a34a'
-                : '#ea580c'
-              : '#0284c7';
-            const portNum = p + 1;
-            const portLabel = `${portNum}`;
-
-            // Port start badge at row rStart, col 0 (left-top of this port's block)
-            const xStartMid = -innerW / 2 + 0.5 * cellW;
-            const yStartMid = -innerH / 2 + (rStart + 0.5) * cellH;
-
-            if (!isDenseMatrix) {
-              children.push(
-                new Circle({
-                  left: xStartMid,
-                  top: yStartMid,
-                  radius: 6.5,
-                  fill: badgeColor,
-                  originX: 'center',
-                  originY: 'center',
-                })
-              );
-              children.push(
-                new IText(portLabel, {
-                  fontFamily:
-                    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                  fontSize: 6.5,
-                  fontWeight: '700',
-                  fill: '#ffffff',
-                  originX: 'center',
-                  originY: 'center',
-                  left: xStartMid,
-                  top: yStartMid,
-                })
-              );
-            } else {
-              // Compact start dot, NO text to avoid clutter!
-              const dotRadius = Math.max(1.5, Math.min(3, cellW * 0.25, cellH * 0.25));
-              children.push(
-                new Circle({
-                  left: xStartMid,
-                  top: yStartMid,
-                  radius: dotRadius,
-                  fill: badgeColor,
-                  originX: 'center',
-                  originY: 'center',
-                })
-              );
-            }
-
-            // Snake across rows from rStart to rEnd - 1
-            for (let r = rStart; r < rEnd; r++) {
-              const isEvenInBlock = (r - rStart) % 2 === 0;
-              const isFirstRowInBlock = r === rStart;
-              const isLastRowInBlock = r === rEnd - 1;
-              const yMidRow = -innerH / 2 + (r + 0.5) * cellH;
-
-              const xLeft = -innerW / 2 + 0.5 * cellW;
-              const xRight = -innerW / 2 + (cols - 0.5) * cellW;
-
-              if (isEvenInBlock) {
-                // Left-to-Right
-                const lineStartX = isFirstRowInBlock
-                  ? (!isDenseMatrix ? xLeft + 7.5 : xLeft + Math.max(2, cellW * 0.25))
-                  : xLeft;
-                const lineEndX = xRight;
-                const xMid = (lineStartX + lineEndX) / 2;
-
-                children.push(
-                  new Line([lineStartX, yMidRow, lineEndX, yMidRow], {
-                    stroke: badgeColor,
-                    strokeWidth: strokeW,
-                  })
-                );
-
-                // Rightward arrowhead
-                children.push(
-                  new Polygon(
-                    [
-                      { x: xMid - arrowW, y: yMidRow - arrowH },
-                      { x: xMid + arrowW, y: yMidRow },
-                      { x: xMid - arrowW, y: yMidRow + arrowH },
-                    ],
-                    {
-                      fill: badgeColor,
-                      strokeWidth: 0,
-                    }
-                  )
-                );
-
-                if (!isLastRowInBlock) {
-                  // Turn down at right edge into next row
-                  children.push(
-                    new Line([xRight, yMidRow, xRight, yMidRow + cellH], {
-                      stroke: badgeColor,
-                      strokeWidth: strokeW,
-                    })
-                  );
-                } else {
-                  // End square at right edge
-                  const sqSize = Math.max(2, Math.min(4, cellW * 0.3));
-                  children.push(
-                    new Rect({
-                      left: xRight + Math.min(2, cellW * 0.15),
-                      top: yMidRow,
-                      width: sqSize,
-                      height: sqSize,
-                      fill: badgeColor,
-                      strokeWidth: 0,
-                      originX: 'center',
-                      originY: 'center',
-                    })
-                  );
-                }
-              } else {
-                // Right-to-Left
-                const lineStartX = xRight;
-                const lineEndX = xLeft;
-                const xMid = (lineStartX + lineEndX) / 2;
-
-                children.push(
-                  new Line([lineStartX, yMidRow, lineEndX, yMidRow], {
-                    stroke: badgeColor,
-                    strokeWidth: strokeW,
-                  })
-                );
-
-                // Leftward arrowhead
-                children.push(
-                  new Polygon(
-                    [
-                      { x: xMid + arrowW, y: yMidRow - arrowH },
-                      { x: xMid - arrowW, y: yMidRow },
-                      { x: xMid + arrowW, y: yMidRow + arrowH },
-                    ],
-                    {
-                      fill: badgeColor,
-                      strokeWidth: 0,
-                    }
-                  )
-                );
-
-                if (!isLastRowInBlock) {
-                  // Turn down at left edge into next row
-                  children.push(
-                    new Line([xLeft, yMidRow, xLeft, yMidRow + cellH], {
-                      stroke: badgeColor,
-                      strokeWidth: strokeW,
-                    })
-                  );
-                } else {
-                  // End square at left edge
-                  const sqSize = Math.max(2, Math.min(4, cellW * 0.3));
-                  children.push(
-                    new Rect({
-                      left: xLeft - Math.min(2, cellW * 0.15),
-                      top: yMidRow,
-                      width: sqSize,
-                      height: sqSize,
-                      fill: badgeColor,
-                      strokeWidth: 0,
-                      originX: 'center',
-                      originY: 'center',
-                    })
-                  );
-                }
-              }
-            }
-          }
-        }
-      }
-    }
   }
 
   // 2d. Partition cell labels (e.g. Card 1: H_16xRJ45+2xfiber sending card-1...)
@@ -964,7 +502,7 @@ function buildLedScreenChildren(
     const line = new Line([x, -innerH / 2, x, innerH / 2], {
       stroke: isHovered ? '#ff6a2b' : anyCellColored ? '#64748b' : '#cbd5e1',
       strokeWidth: isHovered ? 2.5 : isDenseV ? 0.8 : anyCellColored ? 1.5 : 1.2,
-      strokeDashArray: isDenseV || isHovered ? undefined : anyCellColored ? undefined : [4, 4],
+      strokeDashArray: isHovered ? undefined : partitionDash,
     });
     children.push(line);
 
@@ -994,7 +532,7 @@ function buildLedScreenChildren(
     const line = new Line([-innerW / 2, y, innerW / 2, y], {
       stroke: isHovered ? '#ff6a2b' : anyCellColored ? '#64748b' : '#cbd5e1',
       strokeWidth: isHovered ? 2.5 : isDenseH ? 0.8 : anyCellColored ? 1.5 : 1.2,
-      strokeDashArray: isDenseH || isHovered ? undefined : anyCellColored ? undefined : [4, 4],
+      strokeDashArray: isHovered ? undefined : partitionDash,
     });
     children.push(line);
 
@@ -1018,24 +556,17 @@ function buildLedScreenChildren(
   const mainTextColor = cfg.textColor || '#18181b';
   const subTextColor = cfg.textColor || '#64748b';
 
-  // 5. Partition segment pixel labels along top & left edges - rendered only when not too dense to preserve 60FPS
-  if (vStops.length > 2 && vStops.length <= 13) {
+  // 5. Partition segment pixel labels along edges (manual LED screens only; suppressed on cabinet grids and dense matrices)
+  if (!cfg.cabinetGrid && vStops.length > 2 && vStops.length <= 13) {
     for (let i = 0; i < vStops.length - 1; i++) {
       const segRatio = vStops[i + 1] - vStops[i];
       const segPx = Math.round(segRatio * cfg.resWidth);
       const midX = -innerW / 2 + ((vStops[i] + vStops[i + 1]) / 2) * innerW;
-      const isGrid = Boolean(cfg.cabinetGrid);
-      const cardTag = isGrid ? `Card ${i + 1} • ` : '';
-      const tagColor = isGrid
-        ? i === 0
-          ? '#15803d'
-          : '#9a3412'
-        : subTextColor;
-      const lbl = new IText(`${cardTag}${segPx.toLocaleString()}px`, {
+      const lbl = new IText(`${segPx.toLocaleString()}px`, {
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
         fontSize: 9.5,
-        fontWeight: isGrid ? '600' : 'normal',
-        fill: tagColor,
+        fontWeight: 'normal',
+        fill: subTextColor,
         originX: 'center',
         originY: 'bottom',
         left: midX,
@@ -1045,21 +576,19 @@ function buildLedScreenChildren(
     }
   }
 
-  if (hStops.length > 2 && hStops.length <= 13) {
+  if (!cfg.cabinetGrid && hStops.length > 2 && hStops.length <= 13) {
     for (let i = 0; i < hStops.length - 1; i++) {
       const segRatio = hStops[i + 1] - hStops[i];
       const segPx = Math.round(segRatio * cfg.resHeight);
       const midY = -innerH / 2 + ((hStops[i] + hStops[i + 1]) / 2) * innerH;
-      const cardTag = cfg.cabinetGrid ? `Card ${i + 1} • ` : '';
-      const isGrid = Boolean(cfg.cabinetGrid);
-      const lbl = new IText(`${cardTag}${segPx.toLocaleString()}px`, {
+      const lbl = new IText(`${segPx.toLocaleString()}px`, {
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
         fontSize: 9.5,
-        fontWeight: '600',
-        fill: i === 0 ? '#15803d' : '#9a3412',
-        originX: isGrid ? 'left' : 'right',
+        fontWeight: 'normal',
+        fill: subTextColor,
+        originX: 'right',
         originY: 'center',
-        left: isGrid ? innerW / 2 + 10 : innerW / 2 - 8,
+        left: innerW / 2 - 8,
         top: midY,
       });
       children.push(lbl);
@@ -1072,7 +601,8 @@ function buildLedScreenChildren(
   const titleStr = `${cfg.name || 'LED Screen'} ${cfg.resWidth.toLocaleString()}×${cfg.resHeight.toLocaleString()}`;
   const hasCellLabels =
     Boolean(cfg.cellLabels && Object.keys(cfg.cellLabels).length > 0) ||
-    Boolean(cfg.cabinetGrid);
+    Boolean(cfg.cabinetGrid) ||
+    effectivePortRoutes.length > 0;
 
   if (hasCellLabels) {
     const titleObj = new IText(titleStr, {

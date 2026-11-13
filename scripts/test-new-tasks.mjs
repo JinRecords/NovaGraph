@@ -249,9 +249,9 @@ try {
     const highResData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNk+M/wn4GBgYGBgQEAAwAB/0n56m8AAAAASUVORK5CYII=';
     await ctrl.addImageFromDataUrl(highResData, 'hires-test-diagram.png', { x: 300, y: 300 });
 
-    // Trigger save and wait for debounce autosave
+    // Trigger save and wait past the 800ms debounce autosave
     ctrl.notifyChange(true);
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 1200));
 
     // Verify IndexedDB database exists and contains board & asset
     const dbs = await window.indexedDB.databases?.() || [];

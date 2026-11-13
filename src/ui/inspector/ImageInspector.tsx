@@ -28,9 +28,9 @@ export function ImageInspector({
 
       {/* Image details */}
       <div className="ng-inspector-section">
-        <span className="ng-section-title">Image Details</span>
+        <span className="ng-section-title">{t('imageDetailsSection')}</span>
         <div className="ng-field-row">
-          <span className="ng-field-label">Label / Name</span>
+          <span className="ng-field-label">{t('labelNameField')}</span>
           <input
             type="text"
             className="ng-input-text"
@@ -44,7 +44,7 @@ export function ImageInspector({
           />
         </div>
         <div className="ng-field-row" style={{ marginTop: '6px' }}>
-          <span className="ng-field-label">Label Size</span>
+          <span className="ng-field-label">{t('labelSizeField')}</span>
           <input
             type="number"
             min="8"
@@ -60,7 +60,7 @@ export function ImageInspector({
           />
         </div>
         <div className="ng-field-row" style={{ marginTop: '6px' }}>
-          <span className="ng-field-label">Label Color</span>
+          <span className="ng-field-label">{t('labelColorField')}</span>
           <input
             type="color"
             className="ng-input-color"

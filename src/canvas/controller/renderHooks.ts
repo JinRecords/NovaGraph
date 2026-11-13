@@ -150,6 +150,15 @@ export function installRenderHooks(ctrl: CanvasController) {
       }
     }
 
+    // Preserve active object's resize/rotate control handles even if a connector overlaps them
+    const activeObj = ctrl.canvas.getActiveObject();
+    if (activeObj && typeof (activeObj as any).findControl === 'function') {
+      const vPt = ctrl.canvas.getViewportPoint(e);
+      if ((activeObj as any).findControl(vPt)) {
+        return activeObj;
+      }
+    }
+
     const target = origFindTarget(e);
     // Check if the click hit a connector line that is layered ABOVE the clicked target
     if (target) {

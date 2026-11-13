@@ -1,6 +1,7 @@
 import { Group, Rect } from 'fabric';
 import { h } from 'preact';
 import type { CanvasController } from '../../canvas/controller';
+import { t } from '../../i18n';
 import { Icon } from '../Icons';
 
 export function FrameInspector({
@@ -21,16 +22,16 @@ export function FrameInspector({
   return (
     <div className="ng-sidebar-right">
       <div className="ng-inspector-header">
-        <span>Frame Properties</span>
+        <span>{t('frameProps')}</span>
         <button className="ng-btn-icon" onClick={() => controller.deleteSelected()}>
           <Icon name="trash" size={14} />
         </button>
       </div>
 
       <div className="ng-inspector-section">
-        <span className="ng-section-title">Frame Header</span>
+        <span className="ng-section-title">{t('frameHeaderSection')}</span>
         <div className="ng-field-row">
-          <span className="ng-field-label">Title</span>
+          <span className="ng-field-label">{t('frameTitle')}</span>
           <input
             type="text"
             className="ng-input-text"
@@ -44,7 +45,7 @@ export function FrameInspector({
           />
         </div>
         <div className="ng-field-row" style={{ marginTop: '6px' }}>
-          <span className="ng-field-label">Title Size</span>
+          <span className="ng-field-label">{t('frameTitleSize')}</span>
           <input
             type="number"
             min="8"
@@ -60,7 +61,7 @@ export function FrameInspector({
           />
         </div>
         <div className="ng-field-row" style={{ marginTop: '6px' }}>
-          <span className="ng-field-label">Title Color</span>
+          <span className="ng-field-label">{t('frameTitleColor')}</span>
           <input
             type="color"
             className="ng-input-color"
@@ -75,9 +76,9 @@ export function FrameInspector({
       </div>
 
       <div className="ng-inspector-section">
-        <span className="ng-section-title">Style & Colors</span>
+        <span className="ng-section-title">{t('styleAndColorsSection')}</span>
         <div className="ng-field-row">
-          <span className="ng-field-label">Fill Color</span>
+          <span className="ng-field-label">{t('fillColor')}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input
               type="color"

@@ -144,12 +144,14 @@ if (!watch) {
     const sourceZipPath = path.join(root, sourceZipName);
     createZipArchive(root, sourceZipPath, (name) => {
       return (
-        !['node_modules', '.git', 'dist'].includes(name) &&
+        !['node_modules', '.git', 'dist', '.tools', 'coverage'].includes(name) &&
         !name.endsWith('.zip') &&
         !name.endsWith('.xpi') &&
         !name.endsWith('.crx') &&
         !name.endsWith('.pem') &&
-        name !== '.DS_Store'
+        !name.endsWith('.log') &&
+        name !== '.DS_Store' &&
+        name !== 'Thumbs.db'
       );
     });
     console.log(`📦 Packaged Source code:      ${sourceZipName}`);

@@ -5,11 +5,11 @@ try {
   metadataModule = await import('../src/export/metadata.ts');
 } catch {
   const path = await import('node:path');
-  const { fileURLToPath } = await import('node:url');
+  const { fileURLToPath, pathToFileURL } = await import('node:url');
   const { createRequire } = await import('node:module');
   const require = createRequire(import.meta.url);
   const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-  const { build } = await import(path.join(root, 'node_modules/vite/dist/node/index.js'));
+  const { build } = await import(pathToFileURL(path.join(root, 'node_modules/vite/dist/node/index.js')).href);
   const res = await build({
     root,
     configFile: false,
@@ -37,6 +37,8 @@ const {
   extractMetadataFromJpeg,
   generatePdfWithMetadata,
   extractMetadataFromPdf,
+  extractBoardFromFile,
+  isLikelyImageFile,
 } = metadataModule;
 
 // 1. Create a dummy PNG (1x1 red PNG)
@@ -147,6 +149,60 @@ async function testMetadata() {
   assert.strictEqual(extractedPdfDoc.id, sampleDoc.id);
   assert.strictEqual(extractedPdfDoc.name, sampleDoc.name);
   console.log('✓ PDF Metadata embedding & extraction verified.');
+
+  console.log('Testing JPEG padding tolerance & metadata-less image fallback detection...');
+  const paddedJpeg = Buffer.concat([
+    jpegWithMeta.subarray(0, 2),
+    Buffer.from([0xff, 0xff, 0xff, 0x01]),
+    jpegWithMeta.subarray(2),
+  ]);
+  const extractedPaddedJpeg = extractMetadataFromJpeg(new Uint8Array(paddedJpeg));
+  assert.ok(extractedPaddedJpeg, 'JPEG extraction should tolerate FF padding and standalone markers');
+  assert.strictEqual(extractedPaddedJpeg.id, sampleDoc.id);
+
+  const plainJpegNamedPng = {
+    name: 'screenshot.png',
+    type: '',
+    arrayBuffer: async () => Uint8Array.from(dummyJpeg).buffer,
+    slice: (start, end) => ({
+      arrayBuffer: async () => Uint8Array.from(dummyJpeg.subarray(start, end)).buffer,
+    }),
+  };
+  assert.strictEqual(await extractBoardFromFile(plainJpegNamedPng), null);
+  assert.strictEqual(await isLikelyImageFile(plainJpegNamedPng), true);
+
+  const unicodeDoc = { ...sampleDoc, name: '诺瓦星云 — 测试方案 (HUB75)' };
+  const unicodePdf = await generatePdfWithMetadata(dummyPng, 1200, 900, unicodeDoc);
+  assert.ok(unicodePdf.length > 500);
+  const extractedUnicodePdf = await extractMetadataFromPdf(unicodePdf);
+  assert.strictEqual(extractedUnicodePdf.name, unicodeDoc.name);
+
+  console.log('Testing extractBoardFromFile roundtrip for PNG, JPEG, PDF & isolated ArrayBuffers...');
+  const vm = await import('node:vm');
+  const toForeignAb = (bytes) => {
+    const ab = new Uint8Array(bytes).buffer;
+    const ctx = vm.createContext({ src: ab });
+    return vm.runInContext('Uint8Array.from(new Uint8Array(src)).buffer', ctx);
+  };
+  const makeMockFile = (name, type, bytes) => ({
+    name,
+    type,
+    arrayBuffer: async () => toForeignAb(bytes),
+    slice: (start, end) => ({
+      arrayBuffer: async () => toForeignAb(bytes.subarray(start, end)),
+    }),
+  });
+
+  const roundtripPng = await extractBoardFromFile(makeMockFile('board.png', 'image/png', pngWithMeta));
+  assert.ok(roundtripPng && roundtripPng.id === sampleDoc.id, 'PNG File roundtrip should succeed');
+  const roundtripJpg = await extractBoardFromFile(makeMockFile('board.jpg', 'image/jpeg', jpegWithMeta));
+  assert.ok(roundtripJpg && roundtripJpg.id === sampleDoc.id, 'JPEG File roundtrip should succeed');
+  const roundtripPdf = await extractBoardFromFile(makeMockFile('board.pdf', 'application/pdf', pdfBytes));
+  assert.ok(roundtripPdf && roundtripPdf.id === sampleDoc.id, 'PDF File roundtrip should succeed');
+  assert.strictEqual(await isLikelyImageFile(makeMockFile('board.png', 'image/png', pngWithMeta)), true);
+  assert.strictEqual(await isLikelyImageFile(makeMockFile('board.jpg', 'image/jpeg', jpegWithMeta)), true);
+
+  console.log('✓ Extended JPEG/PNG/PDF metadata & image fallback checks verified.');
 }
 
 testMetadata().then(

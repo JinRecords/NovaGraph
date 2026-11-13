@@ -13,12 +13,42 @@ const ICONIFY_MIRRORS = [
   'https://api.unisvg.com',
 ];
 
+const ICONIFY_PREFIX_RE = /^[a-z0-9-]+$/i;
+const ICONIFY_ICON_LIST_RE = /^[a-z0-9-]+(?:,[a-z0-9-]+)*$/i;
+const ICONIFY_KEY_PATH_RE = /^[a-z0-9-]+\/[a-z0-9-]+$/i;
+const VNNOX_HOST_RE = /^[a-z0-9-]+\.vnnox\.com$/i;
+
+function isAllowedVnnoxUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    return (
+      parsed.protocol === 'https:' &&
+      VNNOX_HOST_RE.test(parsed.hostname) &&
+      parsed.pathname.startsWith('/gateway/')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeVnnoxDomain(rawDomain: unknown): string {
+  const domain = String(rawDomain || 'au.vnnox.com').trim();
+  return VNNOX_HOST_RE.test(domain) ? domain : 'au.vnnox.com';
+}
+
 // Provide background fetch capability with host_permissions to bypass host-page CSP / CORS limits
 chrome.runtime?.onMessage?.addListener((request, _sender, sendResponse) => {
+  if (_sender?.id && chrome.runtime?.id && _sender.id !== chrome.runtime.id) {
+    return false;
+  }
+  if (!request || typeof request.type !== 'string') {
+    return false;
+  }
   if (request.type === 'FETCH_ICONIFY_SEARCH') {
     (async () => {
-      const q = encodeURIComponent(request.query || '');
-      const limit = Number(request.limit) || 36;
+      const q = encodeURIComponent(String(request.query || '').slice(0, 120));
+      const parsedLimit = Number(request.limit) || 36;
+      const limit = Math.min(100, Math.max(1, Math.floor(parsedLimit)));
       for (const mirror of ICONIFY_MIRRORS) {
         try {
           const res = await fetch(`${mirror}/search?query=${q}&limit=${limit}`);
@@ -37,7 +67,11 @@ chrome.runtime?.onMessage?.addListener((request, _sender, sendResponse) => {
   if (request.type === 'FETCH_ICONIFY_BATCH') {
     (async () => {
       const prefix = String(request.prefix || '');
-      const icons = Array.isArray(request.icons) ? request.icons.join(',') : '';
+      const icons = Array.isArray(request.icons) ? request.icons.map(String).join(',') : '';
+      if (!ICONIFY_PREFIX_RE.test(prefix) || !ICONIFY_ICON_LIST_RE.test(icons)) {
+        sendResponse({ ok: false, error: 'Invalid Iconify batch parameters' });
+        return;
+      }
       for (const mirror of ICONIFY_MIRRORS) {
         try {
           const res = await fetch(`${mirror}/${prefix}.json?icons=${icons}`);
@@ -56,6 +90,10 @@ chrome.runtime?.onMessage?.addListener((request, _sender, sendResponse) => {
   if (request.type === 'FETCH_ICONIFY_SVG') {
     (async () => {
       const key = String(request.iconKey || '').replace(':', '/');
+      if (!ICONIFY_KEY_PATH_RE.test(key)) {
+        sendResponse({ ok: false, error: 'Invalid Iconify icon key' });
+        return;
+      }
       for (const mirror of ICONIFY_MIRRORS) {
         try {
           const res = await fetch(`${mirror}/${key}.svg?color=%231e293b`);
@@ -75,7 +113,11 @@ chrome.runtime?.onMessage?.addListener((request, _sender, sendResponse) => {
     (async () => {
       try {
         const targetUrl = String(request.url || '');
-        const domain = String(request.domain || 'au.vnnox.com');
+        if (!isAllowedVnnoxUrl(targetUrl)) {
+          sendResponse({ ok: false, error: 'Blocked disallowed VNNOX Care URL' });
+          return;
+        }
+        const domain = sanitizeVnnoxDomain(request.domain);
         const res = await fetch(targetUrl, {
           method: 'GET',
           headers: {
